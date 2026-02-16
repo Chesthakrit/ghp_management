@@ -1,0 +1,29 @@
+นี้คือโปรแกรมสำหรับจัดการ งานของบริษัท
+    เป็นเว็บ application 
+    front end 
+        html
+        css
+        javascript
+    back end 
+        python
+    server
+        ubuntu server
+    Database
+        PostgreSQL
+        JSON
+        
+จะมีโมดูลดังต่อไปนี้
+    - login
+        - สำหรับพนักงาน
+        - สำหรับลูกค้า
+    - create project
+    - planner manager ระบบบริหารจัดการ วางแผนงาน
+    - factory manager ระบบบริหารจัดการ ฝ่ายผลิต 
+    - install manager ระบบบริหารจัดการ ฝ่ายติดตั้ง
+    - draftsman manager ระบบบริหารจัดการ ฝ่าย เขียนแบบ
+    - employee manager  ระบบบริหารจัดการ พนักงาน
+    - customer manager ระบบบริหารจัดการ ลูกค้า
+    - office manager ระบบบริหารจัดการ ออฟฟิศ
+
+
+    
