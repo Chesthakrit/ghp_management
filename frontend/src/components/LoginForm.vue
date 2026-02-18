@@ -1,5 +1,6 @@
 <template>
   <div class="login-wrapper">
+    
     <div class="login-card">
 
       <div class="logo-section">
@@ -13,8 +14,25 @@
         </div>
 
         <div class="input-group">
-          <input type="text" placeholder="Username" class="custom-input" />
-          <input type="password" placeholder="Password" class="custom-input" />
+          
+          <input 
+            type="text" 
+            v-model="username" 
+            placeholder="Username" 
+            class="custom-input" 
+          />
+          
+          <div class="password-field">
+            <input 
+              :type="isPasswordVisible ? 'text' : 'password'" 
+              v-model="password" 
+              placeholder="Password" 
+              class="custom-input" 
+            />
+            <span class="eye-icon" @click="togglePassword">
+              {{ isPasswordVisible ? '👁️' : '🙈' }}
+            </span>
+          </div>
 
           <div class="options-container">
             <label class="remember-me">
@@ -25,9 +43,11 @@
           </div>
         </div>
 
-        <button class="signin-button" @click="onLoginSubmit">
+        <button class="signin-button" @click="handleLogin">
           Sign In
         </button>
+
+        <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
 
         <p class="company-footer">Goodhome Professional Group.</p>
       </div>
@@ -37,24 +57,51 @@
 </template>
 
 <script setup>
-// [สำคัญมาก] ต้องอิมพอร์ต ref มาด้วยเพื่อให้ v-model ทำงานได้
+/**
+ * การนำเข้า (Import) สิ่งที่จำเป็น
+ * ref: ใช้สร้างตัวแปรที่เปลี่ยนแปลงค่าได้และหน้าจอจะอัปเดตตาม
+ */
 import { ref } from 'vue'
 
-// สร้างตัวแปรเก็บสถานะการติ๊ก "จดจำฉัน" (เริ่มเป็น false คือยังไม่ติ๊ก)
+// --- การประกาศตัวแปร (Variables) ---
+const username = ref('')
+const password = ref('')
 const rememberMe = ref(false)
+const isPasswordVisible = ref(false) // สถานะดวงตา
+const errorMessage = ref('')
 
+// สัญญาณส่งไปหา App.vue
 const emit = defineEmits(['login-success'])
 
 /**
- * ฟังก์ชันเมื่อกดปุ่ม Sign In
+ * ฟังก์ชันสลับการมองเห็นรหัสผ่าน
  */
-const onLoginSubmit = () => {
-  emit('login-success')
+const togglePassword = () => {
+  isPasswordVisible.value = !isPasswordVisible.value
+}
+
+/**
+ * ฟังก์ชันจัดการการล็อกอิน (Logic)
+ */
+const handleLogin = () => {
+  // ตรวจสอบความว่างเปล่า
+  if (!username.value || !password.value) {
+    errorMessage.value = 'กรุณากรอกข้อมูลให้ครบถ้วนครับ ช่างกิ๊บ'
+    return
+  }
+
+  // ตรวจสอบ Username/Password จำลอง
+  if (username.value === 'admin' && password.value === '1234') {
+    errorMessage.value = ''
+    emit('login-success')
+  } else {
+    errorMessage.value = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+  }
 }
 </script>
 
 <style scoped>
-/* จัดกึ่งกลางหน้าจอ */
+/* --- 1. สไตล์สำหรับ iPhone (Mobile First) --- */
 .login-wrapper {
   display: flex;
   justify-content: center;
@@ -63,28 +110,27 @@ const onLoginSubmit = () => {
   padding: 20px;
 }
 
-/* ตัวการ์ดลอย (Floating Card) */
 .login-card {
   background-color: #ffffff;
   border-radius: 40px;
   width: 100%;
   max-width: 100%;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4); /* เงาเข้มเพื่อให้กล่องดูลอย */
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  padding-bottom: 20px;
 }
 
-/* ส่วนโลโก้ */
 .logo-section {
   padding-top: 50px;
   display: flex;
   justify-content: center;
 }
+
 .app-logo {
-  height: 90px;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+  height: 80px;
+  width: auto;
 }
 
-/* เนื้อหาภายใน */
 .login-body {
   padding: 20px 30px 40px;
   text-align: center;
@@ -92,9 +138,8 @@ const onLoginSubmit = () => {
 
 .login-title {
   font-family: 'Kanit', sans-serif;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  color: #1a1a1a;
   margin-bottom: 5px;
 }
 
@@ -115,12 +160,30 @@ const onLoginSubmit = () => {
   box-sizing: border-box;
 }
 
-/* [สไตล์ที่เพิ่มใหม่] จัดวาง Remember me และ Forgot Password */
+/* ส่วนของรหัสผ่านที่มีดวงตา */
+.password-field {
+  position: relative;
+}
+
+.password-field .custom-input {
+  padding-right: 60px; /* เว้นที่ให้ดวงตา */
+}
+
+.eye-icon {
+  position: absolute;
+  right: 20px;
+  top: 40%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 20px;
+  user-select: none;
+}
+
+/* Options */
 .options-container {
   display: flex;
-  justify-content: space-between; /* แยกซ้าย-ขวา */
+  justify-content: space-between;
   align-items: center;
-  margin-top: 5px;
   margin-bottom: 30px;
   padding: 0 5px;
 }
@@ -141,7 +204,7 @@ const onLoginSubmit = () => {
   font-weight: 600;
 }
 
-/* ปุ่มกด */
+/* ปุ่ม Sign In */
 .signin-button {
   width: 100%;
   padding: 18px;
@@ -151,7 +214,12 @@ const onLoginSubmit = () => {
   border-radius: 30px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 20px rgba(26, 42, 58, 0.2);
+}
+
+.error-text {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 15px;
 }
 
 .company-footer {
@@ -160,11 +228,23 @@ const onLoginSubmit = () => {
   margin-top: 35px;
 }
 
-/* ปรับขนาดตามหน้าจอ */
-@media (min-width: 768px) { .login-card { max-width: 480px; } }
+/* --- 2. สไตล์สำหรับ iPad (Tablet) --- */
+@media (min-width: 768px) {
+  .login-card {
+    max-width: 480px;
+  }
+}
+
+/* --- 3. สไตล์สำหรับ Desktop (PC) --- */
 @media (min-width: 1024px) {
-  .login-card { max-width: 550px; }
-  .app-logo { height: 110px; }
-  .login-body { padding: 30px 70px 50px; }
+  .login-card {
+    max-width: 550px;
+  }
+  .app-logo {
+    height: 100px;
+  }
+  .login-body {
+    padding: 30px 70px 50px;
+  }
 }
 </style>
