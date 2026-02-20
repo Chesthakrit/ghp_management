@@ -39,5 +39,10 @@ def get_my_projects(
     current_user: user_models.User = Depends(oauth2.get_current_user)
 ):
     # ดึงเฉพาะงานที่ owner_id ตรงกับคน Login (งานคนอื่นไม่เห็น)
-    projects = db.query(models.Project).filter(models.Project.owner_id == current_user.id).all()
+    # แต่ถ้าเป็น Admin (หรือมีสิทธิ์ project.view_all) ให้เห็นทั้งหมด
+    if "project.view_all" in current_user.permissions:
+        projects = db.query(models.Project).all()
+    else:
+        projects = db.query(models.Project).filter(models.Project.owner_id == current_user.id).all()
+    
     return projects
