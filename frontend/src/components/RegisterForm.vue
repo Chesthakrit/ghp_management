@@ -50,9 +50,22 @@
               <label>Last Name <span class="req">*</span></label>
               <input type="text" v-model="formData.lastName" placeholder="Last Name" class="custom-input" />
             </div>
-            <div class="field-group">
+            <div class="field-group" style="grid-column: 1 / -1">
               <label>Date of Birth <span class="req">*</span></label>
-              <input type="date" v-model="formData.birthDate" class="custom-input" />
+              <div class="dob-row">
+                <select v-model="dobDay" class="custom-input dob-select">
+                  <option value="">Day</option>
+                  <option v-for="d in 31" :key="d" :value="String(d).padStart(2,'0')">{{ d }}</option>
+                </select>
+                <select v-model="dobMonth" class="custom-input dob-select">
+                  <option value="">Month</option>
+                  <option v-for="(m, i) in monthNames" :key="i" :value="String(i+1).padStart(2,'0')">{{ m }}</option>
+                </select>
+                <select v-model="dobYear" class="custom-input dob-select">
+                  <option value="">Year</option>
+                  <option v-for="y in yearList" :key="y" :value="String(y)">{{ y }}</option>
+                </select>
+              </div>
             </div>
             <div class="field-group">
               <label>Phone Number <span class="req">*</span></label>
@@ -88,31 +101,36 @@
         <div class="form-section">
           <h3 class="section-title">Photos &amp; Documents Upload</h3>
           <div class="upload-grid">
+            <!-- Portrait Photo -->
             <div class="upload-item">
               <label class="upload-label">Portrait Photo <span class="req">*</span></label>
-              <div class="upload-box" @click="$refs.photoInput.click()" :class="{ 'has-file': previewPhoto }">
-                <img v-if="previewPhoto" :src="previewPhoto" class="preview-img" />
+              <div class="upload-box upload-box--portrait" @click="$refs.photoInput.click()">
+                <img v-if="previewPhoto" :src="previewPhoto" />
                 <div v-else class="upload-placeholder">
-                  <span class="upload-icon">+</span>
-                  <span>Click to upload photo</span>
-                  <span class="upload-hint">JPG, PNG (max 5MB)</span>
+                  <span class="upload-icon">👤</span>
+                  <span>Click to upload</span>
+                  <span class="upload-hint">Portrait (3×4) · JPG, PNG</span>
                 </div>
               </div>
               <input ref="photoInput" type="file" accept="image/*" style="display:none" @change="handlePhotoChange" />
-              <span class="file-name" v-if="formData.photo">{{ formData.photo.name }}</span>
             </div>
+            <!-- ID / Passport -->
             <div class="upload-item">
-              <label class="upload-label">ID / Passport / Work Permit Document <span class="req">*</span></label>
-              <div class="upload-box" @click="$refs.idDocInput.click()" :class="{ 'has-file': previewIdDoc }">
-                <img v-if="previewIdDoc" :src="previewIdDoc" class="preview-img" />
+              <label class="upload-label">ID / Passport Document <span class="req">*</span></label>
+              <div class="upload-box upload-box--landscape" @click="$refs.idDocInput.click()">
+                <img v-if="previewIdDoc && previewIdDoc !== '__pdf__'" :src="previewIdDoc" />
+                <div v-else-if="previewIdDoc === '__pdf__'" class="upload-placeholder">
+                  <span class="upload-icon">📄</span>
+                  <span>PDF selected</span>
+                  <span class="upload-hint">Ready to upload</span>
+                </div>
                 <div v-else class="upload-placeholder">
-                  <span class="upload-icon">+</span>
-                  <span>Click to upload document</span>
-                  <span class="upload-hint">JPG, PNG, PDF (max 5MB)</span>
+                  <span class="upload-icon">🎟️</span>
+                  <span>Click to upload</span>
+                  <span class="upload-hint">Landscape · JPG, PNG, PDF</span>
                 </div>
               </div>
               <input ref="idDocInput" type="file" accept="image/*,application/pdf" style="display:none" @change="handleIdDocChange" />
-              <span class="file-name" v-if="formData.idDoc">{{ formData.idDoc.name }}</span>
             </div>
           </div>
         </div>
@@ -130,8 +148,8 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
-import axios from 'axios'
+import { reactive, ref, watch } from 'vue'
+import api from '../api'
 import Swal from 'sweetalert2'
 
 defineEmits(['go-to-login'])
@@ -157,11 +175,28 @@ const formData = reactive({
   idDoc: null,
 })
 
+// ─── Date of Birth dropdowns ───
+const monthNames = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December'
+]
+const currentYear = new Date().getFullYear()
+const yearList = Array.from({ length: 80 }, (_, i) => currentYear - i)
+
+const dobDay   = ref('')
+const dobMonth = ref('')
+const dobYear  = ref('')
+
+watch([dobDay, dobMonth, dobYear], ([d, m, y]) => {
+  formData.birthDate = (d && m && y) ? `${y}-${m}-${d}` : ''
+})
+
 const handlePhotoChange = (e) => {
   const file = e.target.files[0]
   if (!file) return
   formData.photo = file
   previewPhoto.value = URL.createObjectURL(file)
+  e.target.value = ''
 }
 
 const handleIdDocChange = (e) => {
@@ -171,8 +206,9 @@ const handleIdDocChange = (e) => {
   if (file.type.startsWith('image/')) {
     previewIdDoc.value = URL.createObjectURL(file)
   } else {
-    previewIdDoc.value = null // PDF — no preview
+    previewIdDoc.value = '__pdf__'
   }
+  e.target.value = ''
 }
 
 const handleRegister = async () => {
@@ -221,14 +257,14 @@ const handleRegister = async () => {
       role:           'employee',
     }
 
-    const resp = await axios.post('http://127.0.0.1:8000/users/', payload)
+    const resp = await api.post('/users/', payload)
     const userId = resp.data.id
 
     // Step 2: Upload files
     const fd = new FormData()
     fd.append('photo',  formData.photo)
     fd.append('id_doc', formData.idDoc)
-    await axios.post(`http://127.0.0.1:8000/users/${userId}/upload`, fd, {
+    await api.post(`/users/${userId}/upload`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -246,6 +282,7 @@ const handleRegister = async () => {
       firstName: '', lastName: '', birthDate: '', phone: '',
       idCard: '', nationality: '', photo: null, idDoc: null,
     })
+    dobDay.value = dobMonth.value = dobYear.value = ''
     previewPhoto.value = null
     previewIdDoc.value = null
 
@@ -312,6 +349,20 @@ const handleRegister = async () => {
 }
 @media (max-width: 600px) { .input-grid { grid-template-columns: 1fr; } }
 
+/* DOB three-dropdown row */
+.dob-row {
+  display: flex;
+  gap: 8px;
+}
+.dob-select {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 400px) {
+  .dob-row { flex-wrap: wrap; }
+  .dob-select { flex: 1 1 calc(50% - 4px); }
+}
+
 .field-group { display: flex; flex-direction: column; gap: 5px; }
 .field-group label {
   font-size: 0.75rem;
@@ -350,22 +401,28 @@ const handleRegister = async () => {
   user-select: none;
 }
 
-/* Upload boxes */
-.upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-@media (max-width: 600px) { .upload-grid { grid-template-columns: 1fr; } }
-
-.upload-item { display: flex; flex-direction: column; gap: 8px; }
+/* Upload boxes — same style as EmployeeIdentityEditor */
+.upload-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: center;
+}
+.upload-item { display: flex; flex-direction: column; gap: 6px; align-items: center; }
 .upload-label {
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   font-weight: 700;
   color: #4a6070;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
+
+/* Base upload box */
 .upload-box {
   border: 2px dashed #ccd6de;
   border-radius: 10px;
-  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -374,24 +431,45 @@ const handleRegister = async () => {
   background: #f7f9fa;
   transition: border-color 0.2s, background 0.2s;
 }
-.upload-box:hover, .upload-box.has-file { border-color: #2e4057; background: #edf1f4; }
+.upload-box:hover { border-color: #2e4057; background: #edf1f4; }
+.upload-box img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Portrait — 3:4 */
+.upload-box--portrait {
+  width: 200px;
+  aspect-ratio: 3 / 4;
+  flex-shrink: 0;
+}
+.upload-box--portrait img { object-fit: cover; }
+
+/* Landscape — 8:5 */
+.upload-box--landscape {
+  width: 375px;
+  flex-shrink: 0;
+  aspect-ratio: 8 / 5;
+}
+.upload-box--landscape img { object-fit: contain; }
+
+/* Placeholder */
 .upload-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   color: #7a9bb0;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  padding: 10px 8px;
+  text-align: center;
 }
-.upload-icon {
-  font-size: 2rem;
-  font-weight: 300;
-  line-height: 1;
-  color: #4a6070;
+.upload-icon { font-size: 1.6rem; line-height: 1; }
+.upload-hint { font-size: 0.66rem; color: #a8bcc8; }
+
+@media (max-width: 640px) {
+  .upload-grid { gap: 12px; }
+  .upload-box--portrait  { width: 110px; }
+  .upload-box--landscape { width: 200px; }
 }
-.upload-hint { font-size: 0.72rem; color: #b0c4d0; }
-.preview-img { width: 100%; height: 100%; object-fit: cover; }
-.file-name { font-size: 0.75rem; color: #4a6070; word-break: break-all; }
 
 /* Buttons */
 .action-buttons {

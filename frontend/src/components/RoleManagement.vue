@@ -73,7 +73,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../api'
 import Swal from 'sweetalert2'
 
 const roles = ref([])
@@ -92,8 +92,8 @@ const fetchData = async () => {
   const token = localStorage.getItem('token')
   try {
     const [rolesRes, permsRes] = await Promise.all([
-      axios.get('http://127.0.0.1:8000/roles/', { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get('http://127.0.0.1:8000/permissions/', { headers: { Authorization: `Bearer ${token}` } })
+      api.get('/roles/'),
+      api.get('/permissions/')
     ])
     roles.value = rolesRes.data
     availablePermissions.value = permsRes.data
@@ -132,14 +132,9 @@ const saveRole = async () => {
   try {
     if (isEditing.value) {
       // Update
-      await axios.put(`http://127.0.0.1:8000/roles/${editingId.value}`, form.value, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await api.put(`/roles/${editingId.value}`, form.value)
     } else {
-      // Create
-      await axios.post('http://127.0.0.1:8000/roles/', form.value, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await api.post('/roles/', form.value)
     }
     
     Swal.fire('Success', 'บันทึกเรียบร้อย', 'success')

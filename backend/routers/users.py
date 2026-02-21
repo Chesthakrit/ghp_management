@@ -99,15 +99,27 @@ def upload_user_files(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    def delete_old_files(folder: str, stem: str):
+        """ลบไฟล์เก่าทุก extension เพื่อไม่ให้สะสม"""
+        folder_path = os.path.join(UPLOAD_DIR, folder)
+        for f in os.listdir(folder_path):
+            if f.startswith(stem + ".") or f == stem:
+                try:
+                    os.remove(os.path.join(folder_path, f))
+                except OSError:
+                    pass
+
     if photo and photo.filename:
-        ext = os.path.splitext(photo.filename)[-1]
+        ext = os.path.splitext(photo.filename)[-1].lower()
+        delete_old_files("photos", f"user_{user_id}")
         path = os.path.join(UPLOAD_DIR, "photos", f"user_{user_id}{ext}")
         with open(path, "wb") as f:
             shutil.copyfileobj(photo.file, f)
         user.photo_path = f"uploads/photos/user_{user_id}{ext}"
 
     if id_doc and id_doc.filename:
-        ext = os.path.splitext(id_doc.filename)[-1]
+        ext = os.path.splitext(id_doc.filename)[-1].lower()
+        delete_old_files("id_docs", f"user_{user_id}")
         path = os.path.join(UPLOAD_DIR, "id_docs", f"user_{user_id}{ext}")
         with open(path, "wb") as f:
             shutil.copyfileobj(id_doc.file, f)
@@ -173,8 +185,16 @@ def update_user(
         user.first_name = request.first_name
     if request.last_name is not None:
         user.last_name = request.last_name
+    if request.birth_date is not None:
+        user.birth_date = request.birth_date
     if request.phone is not None:
         user.phone = request.phone
+    if request.nickname is not None:
+        user.nickname = request.nickname
+    if request.nationality is not None:
+        user.nationality = request.nationality
+    if request.id_card_number is not None:
+        user.id_card_number = request.id_card_number
 
     db.commit()
     db.refresh(user)
@@ -270,6 +290,21 @@ def delete_user(
     profile = db.query(models.EmployeeProfile).filter(models.EmployeeProfile.user_id == user_id).first()
     if profile:
         db.delete(profile)
+
+    # ลบไฟล์รูปและเอกสารออกจาก disk
+    def remove_file(relative_path: str):
+        if not relative_path:
+            return
+        full_path = os.path.join(os.path.dirname(__file__), "..", relative_path)
+        full_path = os.path.normpath(full_path)
+        try:
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+        except OSError:
+            pass
+
+    remove_file(user.photo_path)
+    remove_file(user.id_doc_path)
 
     db.delete(user)
     db.commit()

@@ -15,6 +15,7 @@ import LoginForm from './components/LoginForm.vue'
 import RegisterForm from './components/RegisterForm.vue'
 import Dashboard from './components/Dashboard.vue'
 import AdminPanel from './components/AdminPanel.vue'
+import EmployeeIdentityEditor from './components/EmployeeIdentityEditor.vue'
 
 // ตัวแปรควบคุมหน้าจอ: 'login' หรือ 'register'
 // ตรวจสอบ Token ใน localStorage เพื่อคงสถานะล็อกอิน
@@ -31,13 +32,15 @@ const getInitialView = () => {
 }
 
 const currentView = ref(getInitialView())
+const selectedUserId = ref(null)
 
 /**
  * ฟังก์ชันสลับหน้า
  * @param {String} pageName - ชื่อหน้าที่ต้องการไป
  */
-const goToPage = (pageName) => {
+const goToPage = (pageName, userId = null) => {
   currentView.value = pageName
+  selectedUserId.value = userId
   localStorage.setItem('last_view', pageName) // บันทึกหน้าปัจจุบันลง localStorage
 }
 </script>
@@ -64,6 +67,13 @@ const goToPage = (pageName) => {
     <AdminPanel
       v-else-if="currentView === 'admin'"
       @go-back="goToPage('dashboard')"
+      @go-to-identity="(id) => goToPage('identity', id)"
+    />
+
+    <EmployeeIdentityEditor
+      v-else-if="currentView === 'identity'"
+      :initialUserId="selectedUserId"
+      @go-back="goToPage('admin')"
     />
   </div>
 </template>

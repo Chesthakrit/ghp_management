@@ -10,6 +10,7 @@
           <th>Email</th>
           <th>ตำแหน่งปัจจุบัน (Role)</th>
           <th>เปลี่ยนตำแหน่ง</th>
+          <th>แก้ไขข้อมูล</th>
         </tr>
       </thead>
       <tbody>
@@ -32,6 +33,11 @@
               </option>
             </select>
           </td>
+          <td>
+            <button class="edit-btn" @click="editUser(user)">
+              <i class="fas fa-edit"></i> แก้ไข
+            </button>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -40,7 +46,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../api'
 import Swal from 'sweetalert2'
 
 const users = ref([])
@@ -52,8 +58,8 @@ const fetchData = async () => {
     const [usersRes, rolesRes] = await Promise.all([
       // ต้องสร้าง API list users ก่อน (เดี๋ยวเราไปเพิ่มใน Backend)
       // สมมติว่ามี GET /users/ (Admin Only)
-      axios.get('http://127.0.0.1:8000/users/', { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get('http://127.0.0.1:8000/roles/', { headers: { Authorization: `Bearer ${token}` } })
+      api.get('/users/'),
+      api.get('/roles/')
     ])
     users.value = usersRes.data
     roles.value = rolesRes.data
@@ -70,10 +76,7 @@ const updateRole = async (user, newRoleName) => {
     // สมมติ PUT /users/{id}/role body: { role: "new_role" }
     // แต่เรายังไม่ได้ทำ Endpoint นี้ใน Backend ชัดเจน (ทำแค่ create_role)
     // เดี๋ยวต้องไปเพิ่ม Endpoint นี้ใน users.py
-    await axios.put(`http://127.0.0.1:8000/users/${user.id}/role`, 
-      { role: newRoleName }, 
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    await api.put(`/users/${user.id}/role`, { role: newRoleName })
     
     user.role = newRoleName // Update Local UI
     Swal.fire({
@@ -89,6 +92,11 @@ const updateRole = async (user, newRoleName) => {
     // Revert UI if needed (refresh)
     fetchData()
   }
+}
+
+const editUser = (user) => {
+  // ยังไม่ต้องทำอะไรตามที่ User แจ้ง
+  console.log('Edit user:', user)
 }
 
 onMounted(() => {
@@ -129,5 +137,27 @@ onMounted(() => {
   padding: 6px;
   border: 1px solid #ddd;
   border-radius: 4px;
+}
+
+.edit-btn {
+  padding: 6px 12px;
+  background-color: #4A90E2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.edit-btn:hover {
+  background-color: #357ABD;
+}
+
+.edit-btn i {
+  font-size: 0.8rem;
 }
 </style>

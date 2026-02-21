@@ -37,8 +37,11 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    birth_date: Optional[str] = None
     phone: Optional[str] = None
     nickname: Optional[str] = None
+    nationality: Optional[str] = None
+    id_card_number: Optional[str] = None
 
 # --- Employee Profile Update ---
 class EmployeeProfileUpdate(BaseModel):
@@ -58,6 +61,7 @@ class UserOut(BaseModel):
 
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    birth_date: Optional[str] = None
     phone: Optional[str] = None
     nationality: Optional[str] = None
     id_card_number: Optional[str] = None

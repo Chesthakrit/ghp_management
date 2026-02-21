@@ -16,8 +16,9 @@ app = FastAPI()
 
 # --- 2. เพิ่มชุดคำสั่งอนุญาต CORS (แปะต่อจาก app = FastAPI() เลย) ---
 origins = [
-    "http://localhost:5173",    # อนุญาตให้ Vue หน้าบ้านเข้ามาได้
+    "http://localhost:5173",         # อนุญาตให้ Vue หน้าบ้านเข้ามาได้
     "http://127.0.0.1:5173",
+    "http://192.168.100.13:5173",    # ← มือถือในวง LAN
 ]
 
 app.add_middleware(

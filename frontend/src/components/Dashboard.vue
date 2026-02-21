@@ -71,7 +71,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../api'
 import Swal from 'sweetalert2'
 import UserManagement from './UserManagement.vue'
 import RoleManagement from './RoleManagement.vue'
@@ -110,19 +110,13 @@ const fetchProjects = async () => {
         username.value = payload.sub
         
         // 2. ดึงข้อมูล User ล่าสุด (Role + Permissions)
-        const userRes = await axios.get('http://127.0.0.1:8000/users/me', {
-            headers: { Authorization: `Bearer ${token}` }
-        })
+        const userRes = await api.get('/users/me')
         
         roleName.value = userRes.data.role
         permissions.value = userRes.data.permissions || []
 
         // 3. ดึงข้อมูล Projects
-        const response = await axios.get('http://127.0.0.1:8000/projects/', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
+        const response = await api.get('/projects/')
         projects.value = response.data
 
     } catch (error) {

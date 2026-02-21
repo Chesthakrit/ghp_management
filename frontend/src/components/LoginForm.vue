@@ -43,7 +43,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../api'
 import Swal from 'sweetalert2'
 import logo from '../assets/ghp-logo.png'
 
@@ -65,7 +65,7 @@ const handleLogin = async () => {
         formData.append('username', username.value)
         formData.append('password', password.value)
 
-        const response = await axios.post('http://127.0.0.1:8000/auth/login', formData)
+        const response = await api.post('/auth/login', formData)
 
         if (response.data.access_token) {
             localStorage.setItem('token', response.data.access_token)
@@ -119,7 +119,7 @@ const handleRegisterClick = async () => {
 
     if (adminCode) {
         try {
-            await axios.post('http://127.0.0.1:8000/auth/verify-admin-code', { code: adminCode })
+            await api.post('/auth/verify-admin-code', { code: adminCode })
             emit('go-to-register')
         } catch (error) {
             Swal.fire({
