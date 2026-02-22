@@ -1,72 +1,105 @@
 <template>
-    <div class="dashboard-container">
-        <!-- แถบเมนูด้านบน (Navbar) -->
-        <nav class="navbar">
-            <div class="navbar-brand">GHP Management Platform</div>
-            <div class="navbar-user">
-                <span>Welcome, {{ username }}</span>
-                <span v-if="roleName" class="role-badge">{{ roleName }}</span>
-                
-                <!-- ปุ่มเมนูสำหรับ Admin/Manager -->
-                <div class="admin-menu" v-if="canManageUsers || canManageRoles">
-                    <button @click="currentView = 'projects'" :class="{ active: currentView === 'projects' }">Projects</button>
-                    <button v-if="canManageUsers" @click="emit('go-to-admin')" class="btn-admin-panel">⚙️ Admin Panel</button>
-                </div>
+  <div class="dashboard-container">
+    <!-- ─── Sidebar ─── -->
+    <aside class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
+      <div class="sidebar-logo">
+        <span>GHP Platform</span>
+        <button class="sidebar-close-btn" @click="sidebarOpen = false">✕</button>
+      </div>
 
-                <button @click="logout" class="btn-logout">Logout</button>
+      <div class="user-profile-mini">
+        <div class="mini-avatar">{{ username?.[0]?.toUpperCase() }}</div>
+        <div class="mini-info">
+          <span class="mini-name">{{ username }}</span>
+          <span v-if="roleName" class="mini-role">{{ roleName }}</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- ปุ่มไปหน้า Profile ใหม่ -->
+        <button 
+          class="nav-item" 
+          @click="emit('go-to-profile')"
+        >
+          👤 My Profile
+        </button>
+
+        <!-- ยกเลิกปุ่ม Construction Projects ตามคำขอ -->
+        <button 
+          v-if="canManageUsers" 
+          class="nav-item btn-admin-panel-nav" 
+          @click="emit('go-to-admin')"
+        >
+          ⚙️ Admin Panel
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button @click="logout" class="btn-logout-sidebar">🚪 Logout</button>
+      </div>
+    </aside>
+
+    <!-- Overlay for mobile/iPad -->
+    <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false"></div>
+
+    <!-- ─── Main Content ─── -->
+    <div class="main-wrapper">
+      
+      <!-- Mobile Topbar -->
+      <header class="mobile-topbar">
+        <button class="mobile-menu-btn" @click="sidebarOpen = true">☰</button>
+        <span class="mobile-title">Projects Dashboard</span>
+        <div style="width: 40px;"></div> <!-- spacer -->
+      </header>
+
+      <main class="dashboard-content">
+        
+        <!-- View: Projects -->
+        <div v-if="currentView === 'projects'">
+          <div class="content-header">
+            <h2>Construction Projects</h2>
+            <!-- ยกเลิกปุ่ม New Project ตามคำขอ -->
+          </div>
+
+          <!-- Loading State -->
+          <div v-if="isLoading" class="loading-spinner">
+            Loading...
+          </div>
+
+          <!-- Project Grid -->
+          <div v-else-if="projects.length > 0" class="projects-grid">
+            <div v-for="project in projects" :key="project.id" class="project-card">
+              <div class="card-header">
+                <h3>{{ project.name }}</h3>
+                <span class="status-badge">Active</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Customer:</strong> {{ project.customer }}</p>
+                <p><strong>Due Date:</strong> {{ project.due_date || 'N/A' }}</p>
+                <p class="description">{{ project.description }}</p>
+                <!-- Show Owner ID if Admin (or has permission) -->
+                <p v-if="canViewAllProjects" class="owner-info">Owner ID: {{ project.owner_id }}</p>
+              </div>
+              <div class="card-footer">
+                <button class="btn-view">View Details</button>
+              </div>
             </div>
-        </nav>
+          </div>
 
-        <!-- ส่วนเนื้อหาหลัก (Content Area) -->
-        <main class="dashboard-content">
-            
-            <!-- View: Projects -->
-            <div v-if="currentView === 'projects'">
-                <div class="content-header">
-                    <h2>Construction Projects</h2>
-                    <button class="btn-create">+ New Project</button>
-                </div>
+          <!-- Empty State -->
+          <div v-else class="empty-state">
+            <h3>No Projects Found</h3>
+            <p>Get started by creating a new project.</p>
+          </div>
+        </div>
 
-                <!-- Loading State -->
-                <div v-if="isLoading" class="loading-spinner">
-                    Loading...
-                </div>
+        <!-- View: User Management (Inside Dashboard if needed) -->
+        <UserManagement v-if="currentView === 'users'" />
+        <RoleManagement v-if="currentView === 'roles'" />
 
-                <!-- Project Grid -->
-                <div v-else-if="projects.length > 0" class="projects-grid">
-                    <div v-for="project in projects" :key="project.id" class="project-card">
-                        <div class="card-header">
-                            <h3>{{ project.name }}</h3>
-                            <span class="status-badge">Active</span>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Customer:</strong> {{ project.customer }}</p>
-                            <p><strong>Due Date:</strong> {{ project.due_date || 'N/A' }}</p>
-                            <p class="description">{{ project.description }}</p>
-                            <!-- Show Owner ID if Admin (or has permission) -->
-                            <p v-if="canViewAllProjects" class="owner-info">Owner ID: {{ project.owner_id }}</p>
-                        </div>
-                        <div class="card-footer">
-                            <button class="btn-view">View Details</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Empty State -->
-                <div v-else class="empty-state">
-                    <h3>No Projects Found</h3>
-                    <p>Get started by creating a new project.</p>
-                </div>
-            </div>
-
-            <!-- View: User Management -->
-            <UserManagement v-if="currentView === 'users'" />
-
-            <!-- View: Role Management -->
-            <RoleManagement v-if="currentView === 'roles'" />
-
-        </main>
+      </main>
     </div>
+  </div>
 </template>
 
 <script setup>
@@ -76,297 +109,225 @@ import Swal from 'sweetalert2'
 import UserManagement from './UserManagement.vue'
 import RoleManagement from './RoleManagement.vue'
 
-const emit = defineEmits(['go-to-login', 'go-to-admin'])
+const emit = defineEmits(['go-to-login', 'go-to-admin', 'go-to-profile'])
 
-// --- Logic from Dashboard.js ---
 const projects = ref([])
 const isLoading = ref(false)
+const sidebarOpen = ref(false)
 
 // User Info
 const username = ref('')
 const roleName = ref('')
 const permissions = ref([])
 
-// View State (projects, users, roles)
+// View State
 const currentView = ref('projects') 
 
-// Permission Checks (Computed)
+// Permission Checks
 const canManageUsers = computed(() => permissions.value.includes('user.manage'))
 const canManageRoles = computed(() => permissions.value.includes('role.manage'))
 const canViewAllProjects = computed(() => permissions.value.includes('project.view_all'))
 
 const fetchProjects = async () => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-        window.location.reload() 
-        return
-    }
-
-    try {
-        isLoading.value = true
-
-        // 1. Decode Token ข้อมูลเบื้องต้น
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        username.value = payload.sub
-        
-        // 2. ดึงข้อมูล User ล่าสุด (Role + Permissions)
-        const userRes = await api.get('/users/me')
-        
-        roleName.value = userRes.data.role
-        permissions.value = userRes.data.permissions || []
-
-        // 3. ดึงข้อมูล Projects
-        const response = await api.get('/projects/')
-        projects.value = response.data
-
-    } catch (error) {
-        console.error('Error fetching data:', error)
-        if (error.response && error.response.status === 401) {
-            logout()
-        }
-    } finally {
-        isLoading.value = false
-    }
+  const token = localStorage.getItem('token')
+  if (!token) {
+    window.location.reload() 
+    return
+  }
+  try {
+    isLoading.value = true
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    username.value = payload.sub
+    const userRes = await api.get('/users/me')
+    roleName.value = userRes.data.role
+    permissions.value = userRes.data.permissions || []
+    const response = await api.get('/projects/')
+    projects.value = response.data
+  } catch (error) {
+    console.error('Error fetching data:', error)
+    if (error.response && error.response.status === 401) logout()
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const logout = () => {
-    localStorage.removeItem('token')
-    window.location.reload() 
-    
-    Swal.fire({
-        icon: 'success',
-        title: 'Logged Out',
-        timer: 1000,
-        showConfirmButton: false
-    })
+  localStorage.removeItem('token')
+  window.location.reload() 
+  Swal.fire({ icon: 'success', title: 'Logged Out', timer: 1000, showConfirmButton: false })
 }
 
-// Initial Fetch
-onMounted(() => {
-    fetchProjects()
-})
+onMounted(() => { fetchProjects() })
 </script>
 
 <style scoped>
-/* --- Styles from Dashboard.css --- */
 .dashboard-container {
-    min-height: 100vh;
-    background-color: #f5f7fa;
-    color: #333;
-    font-family: 'Kanit', sans-serif;
+  display: flex;
+  min-height: 100vh;
+  background-color: #f2f4f6;
+  font-family: 'Kanit', sans-serif;
+  overflow: hidden;
 }
 
-/* แถบเมนูด้านบน (Navbar) */
-.navbar {
-    background-color: #1a2a3a;
-    color: white;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* ═══════════ SIDEBAR ═══════════ */
+.sidebar {
+  width: 250px;
+  background: #1a2a3a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+  z-index: 200;
+}
+.sidebar-logo {
+  padding: 24px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sidebar-close-btn { display: none; background: transparent; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }
+
+.user-profile-mini {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.03);
+}
+.mini-avatar {
+  width: 40px; height: 40px;
+  background: #3498db;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1.1rem;
+}
+.mini-info { display: flex; flex-direction: column; }
+.mini-name { font-size: 0.9rem; font-weight: 600; }
+.mini-role { font-size: 0.72rem; color: #7a9bb0; }
+
+.sidebar-nav {
+  flex: 1;
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-item {
+  background: transparent;
+  border: none;
+  color: #a8bcc8;
+  padding: 12px 14px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.88rem;
+  transition: all 0.2s;
+}
+.nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.btn-admin-panel-nav { border: 1px dashed rgba(52, 152, 219, 0.4); margin-top: 10px; color: #fff; font-weight: 600; }
+
+.sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+.btn-logout-sidebar {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #c0a0a0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.btn-logout-sidebar:hover { background: #8b3a3a; color: #fff; border-color: #8b3a3a; }
+
+.sidebar-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 199;
+  display: none;
 }
 
-.navbar-brand {
-    font-size: 1.5rem;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+/* ═══════════ MAIN CONTENT ═══════════ */
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.btn-admin-panel {
-    background: rgba(52, 152, 219, 0.3);
-    border: 1px solid #3498db !important;
-    color: white;
+.mobile-topbar {
+  display: none;
+  background: #1a2a3a;
+  color: #fff;
+  padding: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
 }
-.btn-admin-panel:hover {
-    background: #3498db !important;
+.mobile-menu-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.4rem;
+  cursor: pointer;
 }
+.mobile-title { font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
 
-.btn-logout {
-    background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-logout:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: white;
-}
-
-/* ส่วนเนื้อหาหลัก (Content Area) */
 .dashboard-content {
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
 }
 
 .content-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
+.content-header h2 { font-size: 1.5rem; color: #1a2a3a; margin: 0; }
 
-.content-header h2 {
-    font-size: 1.8rem;
-    color: #1a2a3a;
-    margin: 0;
-}
-
-.btn-create {
-    background-color: #2ecc71;
-    color: white;
-    border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.navbar-user {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.role-badge {
-    background-color: rgba(255, 255, 255, 0.2);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
-.admin-menu {
-    display: flex;
-    gap: 10px;
-    margin-right: 15px;
-}
-
-.admin-menu button {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.admin-menu button.active {
-    background: white;
-    color: #1a2a3a;
-    font-weight: bold;
-}
-
-/* ตารางแสดงรายการโปรเจกต์ (Project Grid) */
+/* Project Cards */
 .projects-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
 }
-
-/* การ์ดโปรเจกต์ (Project Card) */
 .project-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
-    border-left: 5px solid #1a2a3a;
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s; border: 1px solid #edf0f2;
 }
+.project-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08); }
 
-.project-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-}
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.card-header h3 { font-size: 1.1rem; color: #1a2a3a; margin: 0; }
+.status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; background: #f1c40f; color: #fff; font-weight: 600; }
+.card-body p { margin: 6px 0; font-size: 0.88rem; color: #576574; }
+.description { color: #8395a7; font-size: 0.82rem; margin-top: 8px !important; }
+.card-footer { margin-top: 16px; padding-top: 14px; border-top: 1px solid #f2f4f6; display: flex; justify-content: flex-end; }
+.btn-view { background: transparent; color: #3498db; border: 1px solid #3498db; padding: 6px 14px; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
+.btn-view:hover { background: #3498db; color: #fff; }
 
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .mobile-topbar { display: flex; }
+  .sidebar-overlay { display: block; }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%); box-shadow: 10px 0 40px rgba(0,0,0,0.3); }
+  .sidebar.sidebar-open { transform: translateX(0); }
+  .sidebar-close-btn { display: block; }
+  .dashboard-content { padding: 20px; }
 }
-
-.card-header h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-    color: #2c3e50;
+@media (max-width: 640px) {
+  .projects-grid { grid-template-columns: 1fr; }
 }
-
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 15px;
-    font-size: 0.8rem;
-    background-color: #eab543;
-    color: white;
-}
-
-.card-body p {
-    margin: 0.5rem 0;
-    color: #576574;
-}
-
-.description {
-    color: #95a5a6;
-    font-size: 0.9rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.owner-info {
-    font-size: 0.8rem;
-    color: #7f8c8d;
-    margin-top: 10px !important;
-}
-
-.card-footer {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid #eee;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.btn-view {
-    background-color: transparent;
-    color: #3498db;
-    border: 1px solid #3498db;
-    padding: 0.4rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-view:hover {
-    background-color: #3498db;
-    color: white;
-}
-
-/* กรณีไม่มีข้อมูล (Empty State) */
-.empty-state {
-    text-align: center;
-    padding: 4rem;
-    color: #bdc3c7;
-    grid-column: 1 / -1;
-}
-
-.empty-state h3 {
-    margin-bottom: 0.5rem;
-}
-
-.loading-spinner {
-    text-align: center;
-    padding: 2rem;
-    color: #666;
-    grid-column: 1 / -1;
-}
+.loading-spinner, .empty-state { text-align: center; padding: 60px; color: #a8bcc8; grid-column: 1 / -1; }
+.empty-state h3 { color: #1a2a3a; margin-bottom: 6px; }
 </style>

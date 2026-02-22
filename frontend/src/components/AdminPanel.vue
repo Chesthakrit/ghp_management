@@ -26,15 +26,17 @@
     <!-- Mobile Overlay -->
     <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false"></div>
 
-    <!-- ─── Main Content ─── -->
-    <main class="admin-content">
-
+    <!-- ─── Main Content Area ─── -->
+    <div class="main-wrapper">
+      
       <!-- Mobile Top Bar -->
       <div class="mobile-topbar">
         <button class="mobile-menu-btn" @click="sidebarOpen = true">☰</button>
         <span class="mobile-title">{{ activeTab === 'users' ? 'User Management' : 'Roles & Permissions' }}</span>
         <button class="mobile-back-btn" @click="$emit('go-back')">✕</button>
       </div>
+
+      <main class="admin-content">
 
       <!-- TAB: Users -->
       <div v-if="activeTab === 'users'">
@@ -172,7 +174,8 @@
         <RoleManagement />
       </div>
 
-    </main>
+      </main>
+    </div>
 
     <!-- ─── Edit User Modal ─── -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
@@ -522,7 +525,7 @@ onMounted(fetchData)
 
 /* ═══════════ SIDEBAR ═══════════ */
 .sidebar {
-  width: 220px;
+  width: 240px;
   background: #1a2a3a;
   color: #a8bcc8;
   display: flex;
@@ -609,10 +612,8 @@ onMounted(fetchData)
   background: #1a2a3a;
   color: #fff;
   padding: 12px 16px;
-  margin: -16px -16px 16px;
-  position: sticky;
-  top: 0;
   z-index: 100;
+  flex-shrink: 0;
 }
 .mobile-menu-btn, .mobile-back-btn {
   background: transparent;
@@ -631,6 +632,15 @@ onMounted(fetchData)
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* Main Wrapper helps with mobile topbar + scrolling */
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
 }
 
 /* ═══════════ MAIN CONTENT ═══════════ */

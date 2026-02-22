@@ -16,17 +16,21 @@ import RegisterForm from './components/RegisterForm.vue'
 import Dashboard from './components/Dashboard.vue'
 import AdminPanel from './components/AdminPanel.vue'
 import EmployeeIdentityEditor from './components/EmployeeIdentityEditor.vue'
+import UserProfile from './components/UserProfile.vue'
 
 // ตัวแปรควบคุมหน้าจอ: 'login' หรือ 'register'
 // ตรวจสอบ Token ใน localStorage เพื่อคงสถานะล็อกอิน
 const token = localStorage.getItem('token')
+const userRole = ref(localStorage.getItem('user_role'))
+const username = ref(localStorage.getItem('username') || '')
 const savedView = localStorage.getItem('last_view') // อ่านค่าหน้าล่าสุดที่เปิดค้างไว้
 
-// ถ้ามี token -> ไป dashboard
-// ถ้าไม่มี token และ last_view เป็น register -> ไป register
-// นอกนั้น -> ไป login
+// ถ้ามี token -> ตรวจสอบ role
 const getInitialView = () => {
-  if (token) return 'dashboard'
+  if (token) {
+    if (userRole.value === 'admin') return 'dashboard'
+    return 'profile' // User ทั่วไปเข้าหน้า Profile เลย
+  }
   if (savedView === 'register') return 'register'
   return 'login'
 }
@@ -38,10 +42,21 @@ const selectedUserId = ref(null)
  * ฟังก์ชันสลับหน้า
  * @param {String} pageName - ชื่อหน้าที่ต้องการไป
  */
-const goToPage = (pageName, userId = null) => {
+const goToPage = (pageName, userId = null, userData = null) => {
   currentView.value = pageName
   selectedUserId.value = userId
+  if (userData) {
+    username.value = userData.username
+    userRole.value = userData.role
+    localStorage.setItem('username', userData.username)
+    localStorage.setItem('user_role', userData.role)
+  }
   localStorage.setItem('last_view', pageName) // บันทึกหน้าปัจจุบันลง localStorage
+}
+
+const handleLogout = () => {
+  localStorage.clear()
+  currentView.value = 'login'
 }
 </script>
 
@@ -50,7 +65,7 @@ const goToPage = (pageName, userId = null) => {
     <LoginForm 
       v-if="currentView === 'login'" 
       @go-to-register="goToPage('register')" 
-      @go-to-dashboard="goToPage('dashboard')"
+      @go-to-dashboard="(data) => goToPage(data.role === 'admin' ? 'dashboard' : 'profile', null, data)"
     />
 
     <RegisterForm 
@@ -60,8 +75,9 @@ const goToPage = (pageName, userId = null) => {
 
     <Dashboard 
       v-else-if="currentView === 'dashboard'" 
-      @go-to-login="goToPage('login')"
+      @go-to-login="handleLogout"
       @go-to-admin="goToPage('admin')"
+      @go-to-profile="goToPage('profile')"
     />
 
     <AdminPanel
@@ -74,6 +90,13 @@ const goToPage = (pageName, userId = null) => {
       v-else-if="currentView === 'identity'"
       :initialUserId="selectedUserId"
       @go-back="goToPage('admin')"
+    />
+
+    <UserProfile
+      v-else-if="currentView === 'profile'"
+      :username="username"
+      @go-back="userRole === 'admin' ? goToPage('dashboard') : handleLogout()"
+      @logout="handleLogout"
     />
   </div>
 </template>

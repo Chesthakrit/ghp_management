@@ -3,7 +3,7 @@
  * 
  * ใช้ VITE_API_BASE จากไฟล์ .env
  * ถ้าต้องการให้มือถือเข้าได้ → แก้ค่า VITE_API_BASE ใน .env เป็น IP เครื่องคุณ
- * เช่น: VITE_API_BASE=http://192.168.1.100:8000
+ * เช่น: VITE_API_BASE=http://192.168.1.11:8000
  */
 import axios from 'axios'
 

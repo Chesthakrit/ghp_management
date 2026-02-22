@@ -70,29 +70,37 @@ const handleLogin = async () => {
         if (response.data.access_token) {
             localStorage.setItem('token', response.data.access_token)
 
+            // ดึงข้อมูล User ล่าสุดเพื่อดู Role
+            const userRes = await api.get('/users/me')
+            const userData = {
+                username: username.value,
+                role: userRes.data.role
+            }
+
             Swal.fire({
                 icon: 'success',
                 title: 'Login Successful',
-                text: 'Redirecting to Dashboard...',
+                text: 'Redirecting...',
                 timer: 1000,
                 showConfirmButton: false
             }).then(() => {
-                emit('go-to-dashboard')
+                emit('go-to-dashboard', userData)
             })
         }
     } catch (error) {
         console.error('Login Error:', error)
         
         let title = 'Login Failed'
-        let text = 'Invalid username or password'
+        let text = 'Username or password incorrect.'
 
         if (error.response) {
-            if (error.response.status === 500) {
-                title = 'Server Error'
-                text = 'Database connection or schema error. Please contact admin.'
-            } else if (error.response.data && error.response.data.detail) {
-                text = error.response.data.detail
-            }
+            // API returned an error
+            text = error.response.data.detail || 'Invalid Credentials';
+        } else if (error.request) {
+            // No response received (Network failure)
+            text = 'Network Error: Cannot connect to server. Please check your connection or IP configuration.';
+        } else {
+            text = error.message;
         }
 
         Swal.fire({

@@ -1,6 +1,7 @@
 from sqlalchemy import inspect
 from database import engine, SessionLocal
 from models import users as models
+from models import projects
 from hashing import Hash
 
 def check_status():
