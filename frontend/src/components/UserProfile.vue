@@ -1,82 +1,150 @@
 <template>
-  <div class="user-profile-layout">
+    <div class="user-profile-layout">
     <!-- ─── 1. Top Navbar ─── -->
     <header class="profile-header">
       <div class="header-left">
-        <div class="ghp-logo" @click="handleBack">GHP</div>
+        <button class="sidebar-toggle" @click="toggleSidebar">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="ghp-logo">GHP</div>
         <span class="brand-name">MANAGEMENT</span>
       </div>
       <div class="header-right">
+        <button v-if="isAdmin" class="admin-panel-btn" @click="handleBack">
+          <i class="fas fa-tools"></i> Admin Panel
+        </button>
         <button class="logout-btn" @click="handleLogout">
           <i class="fas fa-sign-out-alt"></i> Logout
         </button>
       </div>
     </header>
 
-    <div class="profile-body-container">
-      <div class="profile-view-content">
-        <!-- ─── Profile Info Left Aligned ─── -->
-        <div class="profile-info-status">
-          <div class="profile-pic-container">
-            <div class="profile-pic-wrapper">
-              <img v-if="user?.photo_path" :src="`${apiBase}/${user.photo_path}`" class="profile-pic" />
-              <div v-else class="profile-placeholder">{{ username?.[0]?.toUpperCase() }}</div>
-            </div>
-            <div class="photo-edit-badge">
-              <i class="fas fa-camera"></i>
-            </div>
+    <div class="layout-container">
+      <!-- ─── 2. Left Sidebar ─── -->
+      <aside class="sidebar" :class="{ 'collapsed': !isSidebarOpen, 'mobile-open': isSidebarOpen }">
+        <div class="sidebar-user-glance" v-if="isSidebarOpen">
+          <div class="mini-avatar">
+            <img v-if="user?.photo_path" :src="`${apiBase}/${user.photo_path}`" />
+            <span v-else>{{ user?.first_name?.[0] }}</span>
           </div>
-          
-          <div class="profile-info-column">
-            <h1 class="profile-name">{{ user?.first_name }} {{ user?.last_name }}</h1>
-            <div class="profile-sub-info">
-              <div class="info-text">{{ user?.employee_profile?.job_title || 'Role' }}</div>
-              <div class="info-text">{{ user?.employee_profile?.department || 'Department' }}</div>
+          <div class="mini-info">
+            <div class="mini-name">{{ user?.first_name }}</div>
+            <div class="mini-role">{{ user?.employee_profile?.job_title }}</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button 
+            v-for="item in menuItems" 
+            :key="item.id"
+            :class="['nav-item', { active: activeMenu === item.id }]"
+            @click="activeMenu = item.id; if (isMobile) isSidebarOpen = false"
+          >
+            <i :class="item.icon"></i>
+            <span v-if="isSidebarOpen">{{ item.label }}</span>
+          </button>
+        </nav>
+      </aside>
+
+      <!-- Mobile Overlay -->
+      <div v-if="isSidebarOpen && isMobile" class="sidebar-overlay" @click="isSidebarOpen = false"></div>
+
+
+      <!-- ─── 3. Main Content Area ─── -->
+      <main class="main-content">
+        <!-- Profile Header (Always visible or shows active component) -->
+        <div class="content-header-banner" v-if="activeMenu === 'profile'">
+          <div class="profile-info-status">
+            <div class="profile-pic-container">
+              <div class="profile-pic-wrapper">
+                <img v-if="user?.photo_path" :src="`${apiBase}/${user.photo_path}`" class="profile-pic" />
+                <div v-else class="profile-placeholder">{{ user?.username?.[0]?.toUpperCase() }}</div>
+              </div>
+              <div class="photo-edit-badge">
+                <i class="fas fa-camera"></i>
+              </div>
+            </div>
+            
+            <div class="profile-info-column">
+              <h1 class="profile-name">{{ user?.first_name }} {{ user?.last_name }}</h1>
+              <div class="profile-sub-info">
+                <div class="info-text">{{ user?.employee_profile?.job_title || 'Role' }}</div>
+                <div class="info-text">{{ user?.employee_profile?.department || 'Department' }}</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- ─── RIGHT CONTENT: Placeholder for other menus ─── -->
-      <main class="content-area">
-        <div class="empty-content-state">
-          <i class="fas fa-th-large"></i>
-          <h2>เมนูพนักงาน</h2>
-          <p>เลือกเมนูที่ต้องการแสดงผลในพื้นที่นี้</p>
-          
-          <div class="menu-placeholders-grid">
-            <div class="menu-box">
-              <i class="fas fa-calendar-alt"></i>
-              <span>ตารางงาน</span>
+        <div class="content-body">
+          <div v-if="activeMenu === 'profile'" class="profile-details-grid">
+            <!-- Example stats or details -->
+            <div class="detail-card">
+              <h3>ข้อมูลส่วนตัว</h3>
+              <div class="info-row"><span>ชื่อเล่น:</span> <strong>{{ user?.nickname || '-' }}</strong></div>
+              <div class="info-row"><span>ชื่อ-สกุล:</span> <strong>{{ user?.first_name }} {{ user?.last_name }}</strong></div>
+              <div class="info-row"><span>รหัสพนักงาน:</span> <strong>{{ user?.username }}</strong></div>
             </div>
-            <div class="menu-box">
-              <i class="fas fa-file-invoice"></i>
-              <span>ใบแจ้งเงินเดือน</span>
+            <div class="detail-card">
+              <h3>ข้อมูลการทำงาน</h3>
+              <div class="info-row"><span>แผนก:</span> <strong>{{ user?.employee_profile?.department }}</strong></div>
+              <div class="info-row"><span>ตำแหน่ง:</span> <strong>{{ user?.employee_profile?.job_title }}</strong></div>
+              <div class="info-row"><span>วันเริ่มงาน:</span> <strong>{{ formatDate(user?.employee_profile?.hire_date) }}</strong></div>
             </div>
-            <div class="menu-box">
-              <i class="fas fa-clock"></i>
-              <span>บันทึกเวลา</span>
-            </div>
+          </div>
+
+          <div v-else class="empty-content-state">
+            <i :class="currentMenuIcon"></i>
+            <h2>{{ currentMenuLabel }}</h2>
+            <p>ขณะนี้ยังไม่มีข้อมูลในส่วนของ {{ currentMenuLabel }}</p>
           </div>
         </div>
       </main>
     </div>
   </div>
+
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../api'
 
-const props = defineProps(['username'])
+const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout'])
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const user = ref(null)
+const isSidebarOpen = ref(window.innerWidth > 768)
+const isMobile = ref(window.innerWidth <= 768)
+const activeMenu = ref('profile')
+
+const menuItems = [
+  { id: 'profile', label: 'โปรไฟล์', icon: 'fas fa-user-circle' },
+  { id: 'schedule', label: 'ตารางงาน', icon: 'fas fa-calendar-alt' },
+  { id: 'payslip', label: 'ใบแจ้งเงินเดือน', icon: 'fas fa-file-invoice-dollar' },
+  { id: 'attendance', label: 'บันทึกเวลา', icon: 'fas fa-clock' },
+  { id: 'documents', label: 'เอกสารระเบียบ', icon: 'fas fa-book' },
+]
+
+const currentMenuLabel = computed(() => menuItems.find(m => m.id === activeMenu.value)?.label)
+const currentMenuIcon = computed(() => menuItems.find(m => m.id === activeMenu.value)?.icon)
+
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value
+}
+
+const isAdmin = computed(() => {
+  // Check if LOGGED-IN user is admin (from localStorage)
+  const role = (localStorage.getItem('user_role') || '').toLowerCase()
+  const uname = (localStorage.getItem('username') || '').toLowerCase()
+  return role === 'admin' || uname === 'admin'
+})
 
 const fetchUserData = async () => {
   try {
-    const res = await api.get('/users/me')
+    // If props.userId is provided, fetch that specific user (Admin viewing someone)
+    // Otherwise, fetch /users/me (Standard logged-in flow)
+    const endpoint = props.userId ? `/users/${props.userId}` : '/users/me'
+    const res = await api.get(endpoint)
     user.value = res.data
   } catch (err) {
     console.error('Error fetching user profile:', err)
@@ -88,7 +156,7 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   return date.toLocaleDateString('th-TH', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
     year: 'numeric'
   })
 }
@@ -96,9 +164,21 @@ const formatDate = (dateStr) => {
 const handleLogout = () => emit('logout')
 const handleBack = () => emit('go-back')
 
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value) {
+    isSidebarOpen.value = true
+  } else {
+    isSidebarOpen.value = false
+  }
+}
+
 onMounted(() => {
   fetchUserData()
+  window.addEventListener('resize', handleResize)
+  handleResize()
 })
+
 </script>
 
 <style scoped>
@@ -108,178 +188,387 @@ onMounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f4f7f9;
+  background: #f8fafc;
   font-family: 'Kanit', sans-serif;
-  color: #2c3e50;
+  color: #1e293b;
 }
 
 /* ─── Header ─── */
 .profile-header {
-  height: 60px;
-  background: #1a2a3a;
+  height: 64px;
+  background: #0f172a;
   color: #fff;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  z-index: 10;
-}
-.header-left { display: flex; align-items: center; gap: 15px; cursor: pointer; }
-.ghp-logo {
-  background: #3498db;
-  color: white;
-  padding: 5px 10px;
-  border-radius: 8px;
-  font-weight: 800;
-  font-size: 1.2rem;
-}
-.brand-name { font-weight: 600; font-size: 0.9rem; letter-spacing: 2px; }
-.logout-btn {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.3);
-  color: #fff;
-  padding: 6px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.2s;
-}
-.logout-btn:hover { background: #e74c3c; border-color: #e74c3c; }
-
-/* ─── Body Layout ─── */
-.profile-body-container {
-  flex: 1;
-  background: white; /* Clean white background */
-  overflow-y: auto;
-  padding: 15px 25px; /* Minimal padding for left alignment */
+  padding: 0 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 50;
 }
 
-.profile-view-content {
-  width: 100%;
-}
-
-/* ─── Profile Info Left Aligned ─── */
-.profile-info-status {
+.header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f1f5f9;
+  gap: 16px;
 }
 
-.profile-pic-container {
-  position: relative;
-  flex-shrink: 0;
+.sidebar-toggle {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-.profile-pic-wrapper {
-  width: 150px;
-  height: 150px;
-  background: #f8fafc;
-  border-radius: 50%;
-  border: 1px solid #e2e8f0;
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.ghp-logo {
+  background: #3b82f6;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.brand-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+.header-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-panel-btn {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.admin-panel-btn:hover {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.logout-btn {
+  background: rgba(239, 44, 44, 0.1);
+  border: 1px solid rgba(239, 44, 44, 0.2);
+  color: #f87171;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+/* ─── Layout Container ─── */
+.layout-container {
+  flex: 1;
+  display: flex;
   overflow: hidden;
 }
 
-.profile-pic {
+/* ─── Sidebar ─── */
+.sidebar {
+  width: 260px;
+  background: #fff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 40;
+}
+
+.sidebar.collapsed {
+  width: 80px;
+}
+
+.sidebar-user-glance {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.mini-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mini-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+.mini-avatar span {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.mini-info {
+  overflow: hidden;
+}
+
+.mini-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-role {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-nav {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.nav-item i {
+  font-size: 1.25rem;
+  width: 24px;
+  text-align: center;
+}
+
+.nav-item:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.nav-item.active {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+/* ─── Main Content ─── */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.content-header-banner {
+  background: #fff;
+  padding: 32px;
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.profile-info-status {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.profile-pic-container {
+  position: relative;
+}
+
+.profile-pic-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.profile-pic { width: 100%; height: 100%; object-fit: cover; }
 .profile-placeholder {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 2.5rem; font-weight: 700; color: #cbd5e0;
+  font-size: 3rem; font-weight: 700; color: #cbd5e0;
 }
 
 .photo-edit-badge {
   position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background: white;
-  width: 30px;
-  height: 30px;
+  bottom: 0;
+  right: 0;
+  background: #3b82f6;
+  color: #fff;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  border: 1px solid #e2e8f0;
-  color: #1a4d33;
-  font-size: 0.8rem;
-}
-
-.profile-info-column {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  border: 3px solid #fff;
+  cursor: pointer;
+  font-size: 0.875rem;
 }
 
 .profile-name {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #1a4d33; /* Green name from image */
-  font-weight: 600;
+  margin: 0 0 4px 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .profile-sub-info {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  gap: 16px;
 }
 
 .info-text {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   color: #64748b;
-  font-weight: 400;
-}
-
-/* ─── Right Content Area ─── */
-.content-area {
-  flex: 1;
-  padding: 40px;
-  background: #f8fafc;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
 }
+
+.info-text::before {
+  content: '•';
+  color: #cbd5e0;
+}
+.info-text:first-child::before { display: none; }
+
+/* ─── Content Body ─── */
+.profile-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.detail-card {
+  background: #fff;
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.detail-card h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 0.9375rem;
+}
+
+.info-row span { color: #64748b; }
+.info-row strong { color: #1e293b; font-weight: 500; }
 
 .empty-content-state {
   text-align: center;
+  padding: 80px 0;
   color: #94a3b8;
-  max-width: 500px;
 }
-.empty-content-state i { font-size: 4rem; margin-bottom: 20px; color: #e2e8f0; }
-.empty-content-state h2 { color: #475569; margin-bottom: 10px; }
 
-.menu-placeholders-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  margin-top: 30px;
+.empty-content-state i {
+  font-size: 4rem;
+  margin-bottom: 24px;
+  opacity: 0.2;
 }
-.menu-box {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px dashed #cbd5e0;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.menu-box:hover { border-color: #3498db; color: #3498db; transform: scale(1.05); }
-.menu-box i { font-size: 1.5rem; }
-.menu-box span { font-size: 0.85rem; font-weight: 500; }
 
-@media (max-width: 850px) {
-  .profile-top-banner { padding: 15px; }
-  .profile-info-status { gap: 15px; }
-  .profile-pic-wrapper { width: 120px; height: 120px; }
-  .profile-name { font-size: 1.3rem; }
-  .content-area { padding: 20px; }
+/* Responsiveness */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 64px;
+    transform: translateX(-100%);
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    width: 260px !important;
+  }
+  .sidebar.collapsed { 
+    transform: translateX(-100%);
+    width: 0; 
+    padding: 0; 
+    overflow: hidden; 
+    border: none; 
+  }
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 35;
+    backdrop-filter: blur(2px);
+  }
+  .main-content { padding: 20px; }
+  .profile-info-status { flex-direction: column; text-align: center; }
+  .profile-sub-info { justify-content: center; flex-wrap: wrap; }
 }
+
 </style>

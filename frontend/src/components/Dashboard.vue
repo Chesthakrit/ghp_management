@@ -16,22 +16,42 @@
       </div>
 
       <nav class="sidebar-nav">
-        <!-- ปุ่มไปหน้า Profile ใหม่ -->
+        <!-- Dashboard / Projects -->
         <button 
-          class="nav-item" 
-          @click="emit('go-to-profile')"
+          :class="['nav-item', { active: currentView === 'projects' }]"
+          @click="currentView = 'projects'; sidebarOpen = false"
         >
-          👤 My Profile
+          📊 กิจการทั้งหมด
         </button>
 
-        <!-- ยกเลิกปุ่ม Construction Projects ตามคำขอ -->
+        <!-- Profile -->
         <button 
-          v-if="canManageUsers" 
-          class="nav-item btn-admin-panel-nav" 
-          @click="emit('go-to-admin')"
+          :class="['nav-item', { active: currentView === 'profile' }]"
+          @click="emit('go-to-profile'); sidebarOpen = false"
         >
-          ⚙️ Admin Panel
+          👤 โปรไฟล์ของฉัน
         </button>
+
+        <!-- Admin Features directly in sidebar -->
+        <template v-if="canManageUsers || canManageRoles">
+          <div class="nav-divider">Admin Features</div>
+          
+          <button 
+            v-if="canManageUsers"
+            :class="['nav-item', { active: currentView === 'users' }]"
+            @click="currentView = 'users'; sidebarOpen = false"
+          >
+            👥 การจัดการผู้ใช้
+          </button>
+
+          <button 
+            v-if="canManageRoles"
+            :class="['nav-item', { active: currentView === 'roles' }]"
+            @click="currentView = 'roles'; sidebarOpen = false"
+          >
+            🔐 ตำแหน่งและสิทธิ์
+          </button>
+        </template>
       </nav>
 
       <div class="sidebar-footer">
@@ -48,7 +68,7 @@
       <!-- Mobile Topbar -->
       <header class="mobile-topbar">
         <button class="mobile-menu-btn" @click="sidebarOpen = true">☰</button>
-        <span class="mobile-title">Projects Dashboard</span>
+        <span class="mobile-title">{{ viewTitle }}</span>
         <div style="width: 40px;"></div> <!-- spacer -->
       </header>
 
@@ -57,8 +77,7 @@
         <!-- View: Projects -->
         <div v-if="currentView === 'projects'">
           <div class="content-header">
-            <h2>Construction Projects</h2>
-            <!-- ยกเลิกปุ่ม New Project ตามคำขอ -->
+            <h2>{{ viewTitle }}</h2>
           </div>
 
           <!-- Loading State -->
@@ -121,12 +140,21 @@ const roleName = ref('')
 const permissions = ref([])
 
 // View State
-const currentView = ref('projects') 
+const currentView = ref('users') 
 
 // Permission Checks
 const canManageUsers = computed(() => permissions.value.includes('user.manage'))
 const canManageRoles = computed(() => permissions.value.includes('role.manage'))
 const canViewAllProjects = computed(() => permissions.value.includes('project.view_all'))
+
+const viewTitle = computed(() => {
+  const titles = {
+    projects: 'กิจการทั้งหมด',
+    users: 'การจัดการผู้ใช้',
+    roles: 'ตำแหน่งและสิทธิ์'
+  }
+  return titles[currentView.value] || 'GHP Platform'
+})
 
 const fetchProjects = async () => {
   const token = localStorage.getItem('token')
@@ -231,6 +259,15 @@ onMounted(() => { fetchProjects() })
   transition: all 0.2s;
 }
 .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.nav-item.active { background: #3498db; color: #fff; font-weight: 600; }
+.nav-divider {
+  font-size: 0.65rem;
+  color: #576574;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 15px 14px 5px;
+  font-weight: 700;
+}
 .btn-admin-panel-nav { border: 1px dashed rgba(52, 152, 219, 0.4); margin-top: 10px; color: #fff; font-weight: 600; }
 
 .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); }

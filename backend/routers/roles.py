@@ -46,8 +46,9 @@ def check_admin_access(current_user: models.User):
     except:
         perms = []
         
-    # 3. Check specific permission
-    if "role.manage" not in perms:
+    # 3. Check specific permission (with admin bypass)
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if not is_admin and "role.manage" not in perms:
         raise HTTPException(status_code=403, detail="Access Denied: You need 'role.manage' permission.")
 
 # --- Endpoints ---

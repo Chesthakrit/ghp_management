@@ -75,7 +75,24 @@ def login(request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(
         if not Hash.verify(request.password, user.password):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials")
 
-    # 4. ถ้าผ่านหมด ให้สร้างบัตรผ่าน (Token)
+    # 4. เช็คสถานะการเข้าใช้งาน (Block logic for deactivated or terminated users)
+    # ยกเว้น Master Admin (แต่ถ้าสร้าง user ในระบบอาจจะมี profile ได้)
+    if user.username != "admin": # ปกติ admin หลักควรเข้าได้เสมอ
+        # เช็ค is_active เบื้องต้น
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="User account is deactivated. Please contact administrator."
+            )
+        
+        # เช็คสถานะ Terminate จาก EmployeeProfile
+        if user.employee_profile and user.employee_profile.employment_status == 'terminated':
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Login denied: This employee account has been terminated."
+            )
+
+    # 5. ถ้าผ่านหมด ให้สร้างบัตรผ่าน (Token)
     access_token = create_access_token(data={"sub": user.username})
 
     # 5. ส่งบัตรผ่านกลับไปให้ User

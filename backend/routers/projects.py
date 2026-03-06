@@ -40,7 +40,9 @@ def get_my_projects(
 ):
     # ดึงเฉพาะงานที่ owner_id ตรงกับคน Login (งานคนอื่นไม่เห็น)
     # แต่ถ้าเป็น Admin (หรือมีสิทธิ์ project.view_all) ให้เห็นทั้งหมด
-    if "project.view_all" in current_user.permissions:
+    # Admin bypass
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if is_admin or "project.view_all" in current_user.permissions:
         projects = db.query(models.Project).all()
     else:
         projects = db.query(models.Project).filter(models.Project.owner_id == current_user.id).all()

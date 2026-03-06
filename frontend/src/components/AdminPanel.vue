@@ -9,17 +9,32 @@
         <button class="sidebar-close-btn" @click="sidebarOpen = false">✕</button>
       </div>
       <nav class="sidebar-nav">
+        <!-- 1 Admin Profile Page -->
+        <button 
+          class="nav-item" 
+          @click="$emit('go-to-profile'); sidebarOpen = false"
+        >
+          👤 Admin Profile Page
+        </button>
+
+        <!-- 2 User Management -->
         <button
           :class="['nav-item', { active: activeTab === 'users' }]"
           @click="activeTab = 'users'; sidebarOpen = false"
-        >👥 User Management</button>
+        >
+          👥 User Management
+        </button>
+
+        <!-- 3 Role & Permission -->
         <button
           :class="['nav-item', { active: activeTab === 'roles' }]"
           @click="activeTab = 'roles'; sidebarOpen = false"
-        >🔐 Roles & Permissions</button>
+        >
+          🔐 Role & Permission
+        </button>
       </nav>
-      <button class="back-btn" @click="$emit('go-back')">
-        ← Back to Dashboard
+      <button class="logout-sidebar-btn" @click="$emit('logout')">
+        🚪 Logout System
       </button>
     </aside>
 
@@ -33,7 +48,7 @@
       <div class="mobile-topbar">
         <button class="mobile-menu-btn" @click="sidebarOpen = true">☰</button>
         <span class="mobile-title">{{ activeTab === 'users' ? 'User Management' : 'Roles & Permissions' }}</span>
-        <button class="mobile-back-btn" @click="$emit('go-back')">✕</button>
+        <button class="mobile-logout-btn" @click="$emit('logout')" title="Logout">🚪</button>
       </div>
 
       <main class="admin-content">
@@ -125,7 +140,7 @@
                         <img v-if="user.photo_path" :src="`${apiBase}/${user.photo_path}`" class="avatar-img" :alt="getInitials(user)" />
                         <span v-else>{{ getInitials(user) }}</span>
                       </div>
-                      <div class="name-info">
+                      <div class="name-info clickable-name" @click="$emit('view-profile', user.id)">
                         <span class="name-text">{{ user.first_name || '-' }} {{ user.last_name || '' }}</span>
                         <span v-if="user.nickname" class="nickname-text">({{ user.nickname }})</span>
                         <!-- Show on mobile only -->
@@ -152,12 +167,12 @@
                   </td>
                   <td class="hide-tablet date-cell">{{ fmtDate(user.employee_profile?.hire_date) }}</td>
                   <td class="action-cell">
-                    <template v-if="user.role !== 'admin'">
+                    <template v-if="(user.role || '').toLowerCase() !== 'admin' && (user.username || '').toLowerCase() !== 'admin'">
                       <button class="btn-id-card" @click="openEditIdentity(user)" title="Identity">🪪</button>
                       <button class="btn-edit" @click="openEdit(user)" title="Edit">✏️</button>
                       <button class="btn-delete" @click="deleteUser(user)" title="Delete">🗑️</button>
                     </template>
-                    <span v-else class="admin-lock-badge">Admin</span>
+                    <span v-else class="admin-lock-badge">Admin Locked</span>
                   </td>
                 </tr>
                 <tr v-if="filteredUsers.length === 0">
@@ -180,7 +195,7 @@
     <!-- ─── Edit User Modal ─── -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-box">
-        <h3>Edit Employee</h3>
+        <h3>Employment & Access Control</h3>
         <div class="modal-user-info">
           <div class="avatar large">
             <img v-if="editingUser?.photo_path" :src="`${apiBase}/${editingUser.photo_path}`" class="avatar-img" />
@@ -196,7 +211,7 @@
         <div class="form-grid">
           <div class="form-group">
             <label>Department</label>
-            <select v-model="form.department" class="form-input">
+            <select v-model="form.department" class="form-input" @change="form.job_title = ''">
               <option value="">— Not specified —</option>
               <option v-for="d in departments" :key="d.value" :value="d.value">{{ d.label }}</option>
             </select>
@@ -260,7 +275,7 @@ import RoleManagement from './RoleManagement.vue'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
-const emit = defineEmits(['go-back', 'go-to-identity'])
+const emit = defineEmits(['logout', 'go-to-identity', 'go-to-profile', 'view-profile'])
 
 const activeTab = ref('users')
 const sidebarOpen = ref(false)
@@ -306,10 +321,7 @@ const form = ref({
   employment_status: 'intern',
 })
 
-// Reset job_title when department changes
-watch(() => form.value.department, () => {
-  form.value.job_title = ''
-})
+// Reset job_title is now handled by @change in template to avoid resetting on modal open
 
 
 const deptLabel = (val) => departments.find(d => d.value === val)?.label || val || '—'
@@ -442,7 +454,7 @@ const saveUser = async () => {
   isSaving.value = true
   const token = localStorage.getItem('token')
   try {
-    // 1. อัปเดตข้อมูลส่วนตัว + Role
+    // 1. Update Personal Info + Role
     const userRes = await api.put(
       `/users/${editingUser.value.id}`,
       {
@@ -453,8 +465,9 @@ const saveUser = async () => {
       }
     )
 
-    // 2. อัปเดตข้อมูลบริษัท (EmployeeProfile)
-    const profileRes = await api.put(
+    // 2. Update Company Info (EmployeeProfile)
+    // The backend returns user object (UserOut) which includes updated employee_profile
+    const finalUpdateRes = await api.put(
       `/users/${editingUser.value.id}/profile`,
       {
         department: form.value.department,
@@ -464,12 +477,18 @@ const saveUser = async () => {
       }
     )
 
-    // Update local list
+    // Update local list with the MOST RECENT user object from server
+    const updatedUser = finalUpdateRes.data
     const idx = users.value.findIndex(u => u.id === editingUser.value.id)
-    if (idx !== -1) users.value[idx] = profileRes.data
+    if (idx !== -1) {
+      // Ensure we don't lose existing fields by replacing the whole object
+      users.value[idx] = updatedUser
+    }
 
-    Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false })
+    Swal.fire({ icon: 'success', title: 'Saved successfully!', timer: 1500, showConfirmButton: false })
     closeModal()
+    // Explicitly refresh data to be 100% sure sync is perfect
+    fetchData()
   } catch (e) {
     console.error(e)
     Swal.fire('Error', e.response?.data?.detail || 'Save failed', 'error')
@@ -580,20 +599,32 @@ onMounted(fetchData)
 }
 .nav-item:hover { background: #243447; color: #c8d8e4; }
 .nav-item.active { background: #243447; color: #fff; font-weight: 700; border-left: 3px solid #5a8ea8; }
-.back-btn {
+.logout-sidebar-btn {
   margin: 20px 10px 0;
   background: transparent;
-  border: 1px solid #2e4057;
-  color: #7a9bb0;
-  padding: 9px 14px;
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  color: #e74c3c;
+  padding: 10px 14px;
   border-radius: 6px;
   cursor: pointer;
   font-family: inherit;
   font-size: 0.85rem;
-  transition: all 0.15s;
+  transition: all 0.2s;
   text-align: left;
+  font-weight: 600;
 }
-.back-btn:hover { background: #243447; color: #c8d8e4; }
+.logout-sidebar-btn:hover { background: #e74c3c; color: #fff; }
+
+/* Mobile Logout icon */
+.mobile-logout-btn {
+  background: transparent;
+  border: none;
+  color: #e74c3c;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
 
 /* Mobile overlay behind sidebar */
 .sidebar-overlay {
@@ -775,8 +806,6 @@ onMounted(fetchData)
 .user-table tr:hover td { background: #f7f9fa; }
 
 /* Responsive column helpers */
-.hide-mobile  {} /* visible by default; hidden on mobile */
-.hide-tablet  {} /* visible by default; hidden on tablet+mobile */
 .show-mobile  { display: none; } /* hidden by default; shown only on mobile */
 
 /* Name cell */
@@ -798,6 +827,8 @@ onMounted(fetchData)
 .avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
 .name-info { display: flex; flex-direction: column; gap: 2px; }
+.name-info.clickable-name { cursor: pointer; }
+.name-info.clickable-name:hover .name-text { color: #3b82f6; text-decoration: underline; }
 .name-text  { font-size: 0.87rem; color: #1a2a3a; font-weight: 500; }
 .nickname-text { font-size: 0.74rem; color: #7a9bb0; }
 .username-sub  { font-size: 0.73rem; color: #7a9bb0; }

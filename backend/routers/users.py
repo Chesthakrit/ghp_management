@@ -150,6 +150,27 @@ def read_users_me(current_user: models.User = Depends(oauth2.get_current_user)):
 
 
 # ─────────────────────────────────────────────
+#  ดูข้อมูลรายบุคคล (Admin Only หรือ เจ้าของ)
+# ─────────────────────────────────────────────
+@router.get("/{user_id}", response_model=schemas.UserOut)
+def read_user(
+    user_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    # เจ้าของดูได้ หรือ คนที่มีสิทธิ์ admin/manage ดูได้
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    
+    if not is_admin and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ใช้อื่น")
+        
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+# ─────────────────────────────────────────────
 #  Admin: แก้ไขข้อมูลส่วนตัว User
 # ─────────────────────────────────────────────
 @router.put("/{user_id}", response_model=schemas.UserOut)
@@ -159,19 +180,19 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    if 'user.manage' not in current_user.permissions:
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in current_user.permissions:
         raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์จัดการผู้ใช้")
+
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 🔒 ป้องกัน Master Admin
-    if user.role and user.role.name == 'admin':
-        if request.role is not None and request.role != 'admin':
-            raise HTTPException(status_code=403, detail="ไม่สามารถเปลี่ยน Role ของ Master Admin ได้")
-        if request.is_active is not None and request.is_active == False:
-            raise HTTPException(status_code=403, detail="ไม่สามารถปิดการใช้งาน Master Admin ได้")
+    # 🔒 Block modifying Master Admin entirely
+    is_target_admin = (user.role and user.role.name.lower() == 'admin') or (user.username.lower() == 'admin')
+    if is_target_admin:
+        raise HTTPException(status_code=403, detail="ระบบไม่อนุญาตให้แก้ไขข้อมูล Master Admin ได้ครับ")
 
     if request.role is not None:
         new_role = db.query(models.Role).filter(models.Role.name == request.role).first()
@@ -211,12 +232,18 @@ def update_employee_profile(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    if 'user.manage' not in current_user.permissions:
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in current_user.permissions:
         raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์จัดการผู้ใช้")
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # 🔒 Block modifying Master Admin profile
+    is_target_admin = (user.role and user.role.name.lower() == 'admin') or (user.username.lower() == 'admin')
+    if is_target_admin:
+        raise HTTPException(status_code=403, detail="ระบบไม่อนุญาตให้แก้ไขข้อมูลบริษัทของ Master Admin ได้ครับ")
 
     # ดึง profile หรือสร้างใหม่ถ้าไม่มี
     profile = db.query(models.EmployeeProfile).filter(
@@ -275,7 +302,8 @@ def delete_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    if 'user.manage' not in current_user.permissions:
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in current_user.permissions:
         raise HTTPException(status_code=403, detail="Permission denied")
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
