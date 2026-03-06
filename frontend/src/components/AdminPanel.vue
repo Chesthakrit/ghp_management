@@ -243,7 +243,10 @@
             <div class="hr-list" v-if="selectedDeptId">
               <div v-for="jt in rawJobTitles.filter(j => j.department_id === selectedDeptId)" :key="jt.id" class="hr-list-item">
                 <span class="hr-label">{{ jt.name }}</span>
-                <button class="btn-delete-sm" @click="deleteJT(jt.id)">🗑️</button>
+                <div class="hr-actions">
+                  <button class="btn-primary-sm mr-2" @click="openJDModal(jt)">📋 Job Duties</button>
+                  <button class="btn-delete-sm" @click="deleteJT(jt.id)">🗑️</button>
+                </div>
               </div>
               <div v-if="rawJobTitles.filter(j => j.department_id === selectedDeptId).length === 0" class="no-data-hint">
                 No job titles yet for this department
@@ -254,6 +257,32 @@
       </div>
 
       </main>
+    </div>
+
+    <!-- ─── Edit Job Duties (JD) Modal ─── -->
+    <div v-if="showJDModal" class="modal-overlay" @click.self="closeJDModal">
+      <div class="modal-box jd-modal">
+        <h3>Job Duties for {{ selectedJT?.name }}</h3>
+        
+        <div class="hr-form-add mt-10">
+          <input v-model="newJD" placeholder="Enter duty or responsibility..." class="hr-input" @keyup.enter="saveJD" />
+          <button class="btn-primary" @click="saveJD">Add Duty</button>
+        </div>
+
+        <div class="hr-list jd-list">
+          <div v-for="jd in selectedJT?.descriptions || []" :key="jd.id" class="hr-list-item">
+            <span class="hr-label jd-text">• {{ jd.description }}</span>
+            <button class="btn-delete-sm" @click="deleteJD(jd.id)">🗑️</button>
+          </div>
+          <div v-if="!(selectedJT?.descriptions?.length)" class="no-data-hint">
+            No duties defined for this job title yet.
+          </div>
+        </div>
+
+        <div class="modal-actions mt-20">
+          <button class="btn-cancel" style="width: 100%" @click="closeJDModal">Done</button>
+        </div>
+      </div>
     </div>
 
     <!-- ─── Edit User Modal ─── -->
@@ -365,6 +394,10 @@ const jobTitlesByDept = ref({})
 const newDept = ref({ name: '', value: '' })
 const newJobTitle = ref({ name: '', department_id: null })
 const selectedDeptId = ref(null)
+
+const showJDModal = ref(false)
+const selectedJT = ref(null)
+const newJD = ref('')
 
 const form = ref({
   first_name: '',
@@ -567,6 +600,43 @@ const deleteJT = async (id) => {
     await api.delete(`/hr/job-titles/${id}`)
     await fetchHRData()
     Swal.fire({ icon: 'success', title: 'Deleted', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to delete', 'error')
+  }
+}
+
+const openJDModal = (jt) => {
+  selectedJT.value = jt
+  showJDModal.value = true
+}
+const closeJDModal = () => {
+  showJDModal.value = false
+  selectedJT.value = null
+  newJD.value = ''
+}
+const saveJD = async () => {
+  if (!newJD.value || !selectedJT.value) return
+  try {
+    await api.post('/hr/job-descriptions', {
+      description: newJD.value,
+      job_title_id: selectedJT.value.id
+    })
+    newJD.value = ''
+    await fetchHRData() // Refresh backend list (important)
+    // Update local modal data live
+    const updatedJT = rawJobTitles.value.find(j => j.id === selectedJT.value.id)
+    if (updatedJT) selectedJT.value = updatedJT 
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to add duty', 'error')
+  }
+}
+const deleteJD = async (id) => {
+  try {
+    await api.delete(`/hr/job-descriptions/${id}`)
+    await fetchHRData()
+    // Update local modal data live
+    const updatedJT = rawJobTitles.value.find(j => j.id === selectedJT.value.id)
+    if (updatedJT) selectedJT.value = updatedJT 
   } catch (e) {
     Swal.fire('Error', e.response?.data?.detail || 'Failed to delete', 'error')
   }
@@ -1218,6 +1288,19 @@ onMounted(fetchData)
   cursor: pointer;
 }
 .btn-primary:hover { background: #243447; }
+
+/* HR Settings & Job Duties Modal Extras */
+.hr-actions { display: flex; align-items: center; }
+.btn-primary-sm {
+  background: #243447; color: white; border: none; padding: 4px 10px; border-radius: 6px; 
+  font-size: 0.75rem; cursor: pointer; transition: background 0.2s;
+}
+.btn-primary-sm:hover { background: #1a2a3a; }
+.jd-modal { max-width: 500px; }
+.jd-text { font-weight: 400; font-size: 0.88rem; }
+.mt-10 { margin-top: 10px; }
+.mt-20 { margin-top: 20px; }
+.mr-2 { margin-right: 8px; }
 
 /* ═══════════════════════════════════════════════════════
    RESPONSIVE — Tablet + Mobile  (≤ 1024px)

@@ -90,3 +90,37 @@ def delete_job_title(
     db.delete(db_jt)
     db.commit()
     return {"message": "Deleted"}
+
+# ─────────────────────────────────────────────
+#  Job Descriptions
+# ─────────────────────────────────────────────
+@router.post("/job-descriptions", response_model=schemas.JobDescription)
+def create_job_description(
+    jd: schemas.JobDescriptionCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_jd = models.JobDescription(**jd.dict())
+    db.add(db_jd)
+    db.commit()
+    db.refresh(db_jd)
+    return db_jd
+
+@router.delete("/job-descriptions/{jd_id}")
+def delete_job_description(
+    jd_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_jd = db.query(models.JobDescription).filter(models.JobDescription.id == jd_id).first()
+    if not db_jd:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(db_jd)
+    db.commit()
+    return {"message": "Deleted"}

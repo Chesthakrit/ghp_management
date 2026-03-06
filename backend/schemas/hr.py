@@ -1,6 +1,18 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+class JobDescriptionBase(BaseModel):
+    description: str
+
+class JobDescriptionCreate(JobDescriptionBase):
+    job_title_id: int
+
+class JobDescription(JobDescriptionBase):
+    id: int
+    job_title_id: int
+    class Config:
+        from_attributes = True
+
 class JobTitleBase(BaseModel):
     name: str
 
@@ -10,6 +22,7 @@ class JobTitleCreate(JobTitleBase):
 class JobTitle(JobTitleBase):
     id: int
     department_id: int
+    descriptions: List[JobDescription] = []
     class Config:
         from_attributes = True
 

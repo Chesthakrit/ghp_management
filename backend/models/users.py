@@ -69,7 +69,14 @@ class JobTitle(Base):
     name = Column(String, index=True) # e.g., 'Admin'
     department_id = Column(Integer, ForeignKey("departments.id"))
     department = relationship("Department", back_populates="job_titles")
+    descriptions = relationship("JobDescription", back_populates="job_title", cascade="all, delete-orphan")
 
+class JobDescription(Base):
+    __tablename__ = "job_descriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String) # the actual text of the duty
+    job_title_id = Column(Integer, ForeignKey("job_titles.id"))
+    job_title = relationship("JobTitle", back_populates="descriptions")
 
 class EmployeeProfile(Base):
     """ข้อมูลที่เกี่ยวกับบริษัท (Company / HR Information)"""
