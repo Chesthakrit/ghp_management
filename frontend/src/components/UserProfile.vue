@@ -99,6 +99,41 @@
             </div>
           </div>
 
+          <div v-else-if="activeMenu === 'skills'" class="skills-content">
+            <div class="section-card-flat">
+              <div class="skills-grid-wrapper">
+                <div v-if="!userSkills || userSkills.length === 0" class="no-skills-notice">
+                   <i class="fas fa-info-circle"></i>
+                   <p>No skills requirements listed for this job title yet.</p>
+                </div>
+                
+                <div v-else class="skill-category-group" v-for="(skills, catName) in groupedSkills" :key="catName">
+                  <h4 class="category-title"># {{ catName }}</h4>
+                  <div class="skill-items-list">
+                    <div v-for="skill in skills" :key="skill.id" class="skill-item-row">
+                      <div class="skill-info-box">
+                        <div class="skill-name-text">{{ skill.name }}</div>
+                        <div class="skill-desc-text" v-if="skill.description">{{ skill.description }}</div>
+                      </div>
+                      <div class="skill-rating-box">
+                        <div class="stars-row">
+                          <i 
+                            v-for="star in 5" 
+                            :key="star"
+                            class="fa-star"
+                            :class="[getStarClass(skill.id, star), { 'clickable': canEvaluate }]"
+                            @click="handleRate(skill.id, star)"
+                          ></i>
+                        </div>
+                        <div class="rating-label">{{ getRatingLabel(skill.id) }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div v-else class="empty-content-state">
             <i :class="currentMenuIcon"></i>
             <h2>{{ currentMenuLabel }}</h2>
@@ -133,12 +168,17 @@ const isSidebarOpen = ref(window.innerWidth > 768)
 const isMobile = ref(window.innerWidth <= 768)
 const activeMenu = ref('profile')
 
+const userSkills = ref([])
+const userEvaluations = ref({})
+const isEvaluating = ref(false)
+
 const menuItems = [
   { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
   { id: 'schedule', label: 'Schedule', icon: 'fas fa-calendar-alt' },
   { id: 'payslip', label: 'Payslip', icon: 'fas fa-file-invoice-dollar' },
   { id: 'attendance', label: 'Attendance', icon: 'fas fa-clock' },
   { id: 'documents', label: 'Documents', icon: 'fas fa-book' },
+  { id: 'skills', label: 'Skills', icon: 'fas fa-award' },
 ]
 
 const currentMenuLabel = computed(() => menuItems.find(m => m.id === activeMenu.value)?.label)
@@ -155,22 +195,105 @@ const isAdmin = computed(() => {
   return role === 'admin' || uname === 'admin'
 })
 
+const canEvaluate = computed(() => {
+  if (isAdmin.value) return true
+  // Also check if they have manage permission (if stored in localStorage)
+  const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
+  return perms.includes('user.manage')
+})
+
+const groupedSkills = computed(() => {
+  const groups = {}
+  userSkills.value.forEach(s => {
+    const cat = s.category?.name || 'Uncategorized'
+    if (!groups[cat]) groups[cat] = []
+    groups[cat].push(s)
+  })
+  return groups
+})
+
 const fetchUserData = async () => {
   isLoading.value = true
   user.value = null
+  userSkills.value = []
+  userEvaluations.value = {}
   try {
-    // If we're loading a new user, reset to profile tab
-    activeMenu.value = 'profile'
-    
-    // If props.userId is provided, fetch that specific user (Admin viewing someone)
-    // Otherwise, fetch /users/me (Standard logged-in flow)
-    const endpoint = props.userId ? `/users/${props.userId}` : '/users/me'
+    const targetUserId = props.userId || null
+    const endpoint = targetUserId ? `/users/${targetUserId}` : '/users/me'
     const res = await api.get(endpoint)
     user.value = res.data
+
+    // Fetch Skills & Evaluations (Wrap in individual try-catch to avoid total hang)
+    let evalsRes = { data: [] }
+    let jobsRes = { data: [] }
+    
+    try {
+      evalsRes = await api.get(`/hr/evaluations/${finalUserId}`)
+    } catch (e) {
+      console.warn('Evaluations not found or inaccessible')
+    }
+
+    try {
+      jobsRes = await api.get('/hr/job-titles')
+    } catch (e) {
+      console.error('Job titles could not be fetched', e)
+    }
+
+    // 1. Process Evaluations
+    const evMap = {}
+    if (evalsRes.data) {
+      evalsRes.data.forEach(ev => {
+        evMap[ev.duty_id] = ev.score
+      })
+    }
+    userEvaluations.value = evMap
+
+    // 2. Process Skills for this user's Job Title
+    const userJT = user.value.employee_profile?.job_title
+    if (userJT && jobsRes.data) {
+      const matchedJob = jobsRes.data.find(j => j.name === userJT)
+      if (matchedJob) {
+        userSkills.value = matchedJob.duties || []
+      }
+    }
+
   } catch (err) {
     console.error('Error fetching user profile:', err)
   } finally {
     isLoading.value = false
+  }
+}
+
+const getStarClass = (skillId, starIndex) => {
+  const score = userEvaluations.value[skillId] || 0
+  if (starIndex <= score) return 'fas fa-star text-gold'
+  return 'far fa-star text-muted'
+}
+
+const getRatingLabel = (skillId) => {
+  const score = userEvaluations.value[skillId] || 0
+  if (!score) return 'Pending'
+  const labels = ['Novice', 'Beginner', 'Competent', 'Proficient', 'Expert']
+  return labels[score - 1] || 'Rated'
+}
+
+const handleRate = async (skillId, score) => {
+  if (!canEvaluate.value) return
+  if (isEvaluating.value) return
+
+  try {
+    isEvaluating.value = true
+    await api.post('/hr/evaluations', {
+      user_id: user.value.id,
+      duty_id: skillId,
+      score: score
+    })
+    userEvaluations.value[skillId] = score
+    // Optional toast
+  } catch (err) {
+    Swal.fire('Error', 'Failed to update rating', 'error')
+  } finally {
+    isEvaluating.value = false
   }
 }
 
@@ -634,5 +757,114 @@ onMounted(() => {
   border-radius: 8px;
   cursor: pointer;
   font-family: inherit;
+}
+
+/* ─── Skills Tab Styles ─── */
+.skills-content {
+  animation: fadeIn 0.3s ease;
+}
+
+.section-card-flat {
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.category-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 20px 0 12px 0;
+  padding-left: 10px;
+  border-left: 3px solid #3b82f6;
+}
+
+.skill-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skill-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  transition: transform 0.2s;
+}
+
+.skill-item-row:hover {
+  transform: translateX(4px);
+  background: #f1f5f9;
+}
+
+.skill-info-box {
+  flex: 1;
+}
+
+.skill-name-text {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.skill-desc-text {
+  font-size: 0.825rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.skill-rating-box {
+  text-align: right;
+  min-width: 140px;
+}
+
+.stars-row {
+  font-size: 1.15rem;
+  margin-bottom: 4px;
+}
+
+.stars-row i {
+  margin-left: 2px;
+}
+
+.text-gold { color: #f59e0b; }
+.text-muted { color: #cbd5e0; }
+
+.clickable {
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.clickable:hover {
+  transform: scale(1.2);
+}
+
+.rating-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.no-skills-notice {
+  text-align: center;
+  padding: 40px;
+  color: #94a3b8;
+}
+
+.no-skills-notice i {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

@@ -168,6 +168,65 @@ def delete_job_description(
     return {"message": "Deleted"}
 
 # ─────────────────────────────────────────────
+#  Duty Categories (Skill Tags)
+# ─────────────────────────────────────────────
+@router.get("/duty-categories", response_model=List[schemas.DutyCategory])
+def get_duty_categories(db: Session = Depends(get_db)):
+    return db.query(models.DutyCategory).all()
+
+@router.post("/duty-categories", response_model=schemas.DutyCategory)
+def create_duty_category(
+    cat: schemas.DutyCategoryCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_cat = models.DutyCategory(**cat.dict())
+    db.add(db_cat)
+    db.commit()
+    db.refresh(db_cat)
+    return db_cat
+
+@router.put("/duty-categories/{cat_id}", response_model=schemas.DutyCategory)
+def update_duty_category(
+    cat_id: int,
+    cat_update: schemas.DutyCategoryUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_cat = db.query(models.DutyCategory).filter(models.DutyCategory.id == cat_id).first()
+    if not db_cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+        
+    for key, value in cat_update.dict(exclude_unset=True).items():
+        setattr(db_cat, key, value)
+        
+    db.commit()
+    db.refresh(db_cat)
+    return db_cat
+
+@router.delete("/duty-categories/{cat_id}")
+def delete_duty_category(
+    cat_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_cat = db.query(models.DutyCategory).filter(models.DutyCategory.id == cat_id).first()
+    if not db_cat:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(db_cat)
+    db.commit()
+    return {"message": "Deleted"}
+
+# ─────────────────────────────────────────────
 #  Duties (Skill Library)
 # ─────────────────────────────────────────────
 @router.get("/duties", response_model=List[schemas.Duty])
@@ -248,3 +307,56 @@ def update_job_title_duties(
     db.commit()
     db.refresh(db_jt)
     return db_jt
+
+# ─────────────────────────────────────────────
+#  Skill Evaluations
+# ─────────────────────────────────────────────
+@router.get("/evaluations/{user_id}", response_model=List[schemas.UserDutyEvaluation])
+def get_user_evaluations(
+    user_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    # Only self or admin/manager can view
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if not is_admin and current_user.id != user_id:
+        # Check permission for non-admins
+        if 'user.manage' not in current_user.permissions:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        
+    return db.query(models.UserDutyEvaluation).filter(models.UserDutyEvaluation.user_id == user_id).all()
+
+@router.post("/evaluations", response_model=schemas.UserDutyEvaluation)
+def save_user_evaluation(
+    eval_req: schemas.UserDutyEvaluationCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    # Only admin/manager can evaluate
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in current_user.permissions:
+        raise HTTPException(status_code=403, detail="Not authorized to evaluate skills")
+
+    from datetime import datetime
+    
+    # Check if exists
+    db_eval = db.query(models.UserDutyEvaluation).filter(
+        models.UserDutyEvaluation.user_id == eval_req.user_id,
+        models.UserDutyEvaluation.duty_id == eval_req.duty_id
+    ).first()
+    
+    if db_eval:
+        db_eval.score = eval_req.score
+        db_eval.evaluated_by_id = current_user.id
+        db_eval.updated_at = datetime.now().isoformat()
+    else:
+        db_eval = models.UserDutyEvaluation(
+            **eval_req.dict(),
+            evaluated_by_id=current_user.id,
+            updated_at=datetime.now().isoformat()
+        )
+        db.add(db_eval)
+
+    db.commit()
+    db.refresh(db_eval)
+    return db_eval

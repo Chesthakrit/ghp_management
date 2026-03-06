@@ -269,8 +269,40 @@
               </div>
             </div>
           </div>
+
+          <!-- 3. Skill Categories (Tags) -->
+          <div class="section-card">
+            <div class="section-header">
+              <h2>🏷️ Skill Categories</h2>
+            </div>
+            
+            <div class="hr-form-add">
+              <input v-model="newDutyCategoryName" placeholder="Category (e.g. SketchUp)" class="hr-input" @keyup.enter="saveDutyCategory" />
+              <button class="btn-primary" @click="saveDutyCategory">Add Tag</button>
+            </div>
+
+            <div class="hr-list">
+              <div v-for="cat in dutyCategories" :key="cat.id" class="hr-list-item">
+                <div v-if="editingDutyCategory?.id === cat.id" style="display: flex; gap: 8px; width: 100%; align-items: center;">
+                  <input v-model="editingDutyCategory.name" class="hr-input" style="flex:1; margin-bottom: 0;" />
+                  <button class="btn-primary-sm" @click="updateDutyCategory">Save</button>
+                  <button class="btn-cancel" style="padding: 4px 10px; font-size: 0.75rem;" @click="editingDutyCategory = null">Cancel</button>
+                </div>
+                <template v-else>
+                  <span class="hr-label">{{ cat.name }}</span>
+                  <div class="hr-actions">
+                    <button class="btn-primary-sm mr-2" @click="startEditDutyCategory(cat)">✏️ Edit</button>
+                    <button class="btn-delete-sm" @click="deleteDutyCategory(cat.id)">🗑️</button>
+                  </div>
+                </template>
+              </div>
+              <div v-if="dutyCategories.length === 0" class="no-data-hint">
+                No categories defined.
+              </div>
+            </div>
+          </div>
           
-          <!-- 3. Skills Library -->
+          <!-- 4. Skills Library -->
           <div class="section-card">
             <div class="section-header">
               <h2>📚 Skills Library</h2>
@@ -283,7 +315,10 @@
 
             <div class="hr-list" style="max-height: 400px; overflow-y: auto;">
               <div v-for="duty in dutiesPool" :key="duty.id" class="hr-list-item">
-                <span class="hr-label">{{ duty.name }}</span>
+                <div class="hr-item-main">
+                  <span class="hr-label">{{ duty.name }}</span>
+                  <span v-if="duty.category" class="hr-sublabel" style="color: #3b82f6; font-weight: 600;">#{{ duty.category.name }}</span>
+                </div>
                 <div class="hr-actions">
                   <button class="btn-primary-sm mr-2" @click="openDutyModal(duty)">ℹ️ Details</button>
                   <button class="btn-delete-sm" @click="deleteDutyFromPool(duty.id)">🗑️</button>
@@ -311,6 +346,14 @@
           <input v-model="selectedDuty.name" class="form-input" />
         </div>
         
+        <div class="form-group" style="margin-top: 15px;">
+          <label>Category / Tag</label>
+          <select v-model="selectedDuty.category_id" class="form-input">
+            <option :value="null">None / Uncategorized</option>
+            <option v-for="cat in dutyCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+          </select>
+        </div>
+
         <div class="form-group" style="margin-top: 15px;">
           <label>Description / Details</label>
           <textarea v-model="selectedDuty.description" class="form-input" rows="4" placeholder="Explain what this skill requires..."></textarea>
@@ -468,7 +511,10 @@ const newDutyName = ref('')
 const selectedJT_duties = ref([])
 
 const showDutyModal = ref(false)
-const selectedDuty = ref({ id: null, name: '', description: '' })
+const selectedDuty = ref({ id: null, name: '', description: '', category_id: null })
+const dutyCategories = ref([])
+const newDutyCategoryName = ref('')
+const editingDutyCategory = ref(null)
 
 const form = ref({
   first_name: '',
@@ -570,12 +616,14 @@ const availableRoles = computed(() => {
 
 const fetchHRData = async () => {
   try {
-    const [deptsRes, jobsRes, dutiesRes] = await Promise.all([
+    const [deptsRes, jobsRes, dutiesRes, catsRes] = await Promise.all([
       api.get('/hr/departments'),
       api.get('/hr/job-titles'),
-      api.get('/hr/duties')
+      api.get('/hr/duties'),
+      api.get('/hr/duty-categories')
     ])
     dutiesPool.value = dutiesRes.data
+    dutyCategories.value = catsRes.data
     departments.value = deptsRes.data.map(d => ({ 
       id: d.id, 
       name: d.name, 
@@ -782,13 +830,18 @@ const deleteDutyFromPool = async (id) => {
 }
 
 const openDutyModal = (duty) => {
-  selectedDuty.value = { ...duty }
+  selectedDuty.value = { 
+    id: duty.id,
+    name: duty.name,
+    description: duty.description,
+    category_id: duty.category_id || null
+  }
   showDutyModal.value = true
 }
 
 const closeDutyModal = () => {
   showDutyModal.value = false
-  selectedDuty.value = { id: null, name: '', description: '' }
+  selectedDuty.value = { id: null, name: '', description: '', category_id: null }
 }
 
 const saveDutyDetails = async () => {
@@ -796,13 +849,62 @@ const saveDutyDetails = async () => {
   try {
     await api.put(`/hr/duties/${selectedDuty.value.id}`, {
       name: selectedDuty.value.name,
-      description: selectedDuty.value.description
+      description: selectedDuty.value.description,
+      category_id: selectedDuty.value.category_id
     })
     await fetchHRData()
     closeDutyModal()
     Swal.fire({ icon: 'success', title: 'Saved successfully', timer: 1000, showConfirmButton: false })
   } catch (e) {
     Swal.fire('Error', e.response?.data?.detail || 'Failed to update detail', 'error')
+  }
+}
+
+// Duty Categories Management
+const saveDutyCategory = async () => {
+  if (!newDutyCategoryName.value) return
+  try {
+    await api.post('/hr/duty-categories', { name: newDutyCategoryName.value })
+    newDutyCategoryName.value = ''
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Category Added', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to add category', 'error')
+  }
+}
+
+const startEditDutyCategory = (cat) => {
+  editingDutyCategory.value = { ...cat }
+}
+
+const updateDutyCategory = async () => {
+  if (!editingDutyCategory.value) return
+  try {
+    await api.put(`/hr/duty-categories/${editingDutyCategory.value.id}`, {
+      name: editingDutyCategory.value.name
+    })
+    editingDutyCategory.value = null
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Category Updated', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to update category', 'error')
+  }
+}
+
+const deleteDutyCategory = async (id) => {
+  const result = await Swal.fire({
+    title: 'Delete Category?',
+    text: 'This will not delete the skills in this category, but they will become uncategorized.',
+    icon: 'warning',
+    showCancelButton: true
+  })
+  if (!result.isConfirmed) return
+  try {
+    await api.delete(`/hr/duty-categories/${id}`)
+    await fetchHRData()
+    Swal.fire('Deleted', 'Category removed', 'success')
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to delete category', 'error')
   }
 }
 

@@ -1,9 +1,24 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+class DutyCategoryBase(BaseModel):
+    name: str
+
+class DutyCategoryCreate(DutyCategoryBase):
+    pass
+
+class DutyCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+
+class DutyCategory(DutyCategoryBase):
+    id: int
+    class Config:
+        from_attributes = True
+
 class DutyBase(BaseModel):
     name: str
     description: Optional[str] = None
+    category_id: Optional[int] = None
 
 class DutyCreate(DutyBase):
     pass
@@ -11,9 +26,11 @@ class DutyCreate(DutyBase):
 class DutyUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    category_id: Optional[int] = None
 
 class Duty(DutyBase):
     id: int
+    category: Optional[DutyCategory] = None
     class Config:
         from_attributes = True
 
@@ -65,5 +82,21 @@ class DepartmentUpdate(BaseModel):
 class Department(DepartmentBase):
     id: int
     job_titles: List[JobTitle] = []
+    class Config:
+        from_attributes = True
+
+class UserDutyEvaluationBase(BaseModel):
+    user_id: int
+    duty_id: int
+    score: int
+
+class UserDutyEvaluationCreate(UserDutyEvaluationBase):
+    pass
+
+class UserDutyEvaluation(UserDutyEvaluationBase):
+    id: int
+    evaluated_by_id: Optional[int] = None
+    updated_at: Optional[str] = None
+    duty: Optional[Duty] = None
     class Config:
         from_attributes = True

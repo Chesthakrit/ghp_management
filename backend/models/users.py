@@ -50,6 +50,7 @@ class User(Base):
     # Relationships
     projects = relationship("Project", back_populates="owner")
     employee_profile = relationship("EmployeeProfile", back_populates="user", uselist=False)
+    duty_evaluations = relationship("UserDutyEvaluation", foreign_keys="[UserDutyEvaluation.user_id]", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def permissions(self):
@@ -81,11 +82,19 @@ class JobTitle(Base):
     descriptions = relationship("JobDescription", back_populates="job_title", cascade="all, delete-orphan")
     duties = relationship("Duty", secondary=job_title_duty_link, back_populates="job_titles")
 
+class DutyCategory(Base):
+    __tablename__ = "duty_categories"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True) # "SketchUp Skill", "Handtool Skill"
+    duties = relationship("Duty", back_populates="category", cascade="all, delete-orphan")
+
 class Duty(Base):
     __tablename__ = "duties"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True) # "Skill / Duty name"
     description = Column(String, nullable=True) # "Skill detailed explanation"
+    category_id = Column(Integer, ForeignKey("duty_categories.id"), nullable=True)
+    category = relationship("DutyCategory", back_populates="duties")
     job_titles = relationship("JobTitle", secondary=job_title_duty_link, back_populates="duties")
 
 class JobDescription(Base):
@@ -94,6 +103,19 @@ class JobDescription(Base):
     description = Column(String) # the actual text of the duty
     job_title_id = Column(Integer, ForeignKey("job_titles.id"))
     job_title = relationship("JobTitle", back_populates="descriptions")
+
+class UserDutyEvaluation(Base):
+    __tablename__ = "user_duty_evaluations"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    duty_id = Column(Integer, ForeignKey("duties.id", ondelete="CASCADE"))
+    score = Column(Integer, default=0) # 0-5 stars
+    evaluated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(String, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id], back_populates="duty_evaluations")
+    duty = relationship("Duty", backref="user_evaluations")
+    evaluator = relationship("User", foreign_keys=[evaluated_by_id])
 
 class EmployeeProfile(Base):
     """ข้อมูลที่เกี่ยวกับบริษัท (Company / HR Information)"""
