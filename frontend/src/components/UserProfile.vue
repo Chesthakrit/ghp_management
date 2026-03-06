@@ -52,7 +52,14 @@
 
       <!-- ─── 3. Main Content Area ─── -->
       <main class="main-content">
-        <!-- Profile Header (Always visible or shows active component) -->
+        <!-- Loading State -->
+        <div v-if="isLoading" class="profile-loading">
+          <div class="loader-spinner"></div>
+          <p>กำลังโหลดข้อมูล...</p>
+        </div>
+
+        <template v-else-if="user">
+          <!-- Profile Header (Always visible or shows active component) -->
         <div class="content-header-banner" v-if="activeMenu === 'profile'">
           <div class="profile-info-status">
             <div class="profile-pic-container">
@@ -98,6 +105,14 @@
             <p>ขณะนี้ยังไม่มีข้อมูลในส่วนของ {{ currentMenuLabel }}</p>
           </div>
         </div>
+        </template>
+
+        <div v-else class="profile-error">
+           <i class="fas fa-exclamation-circle"></i>
+           <h2>ไม่พบข้อมูลผู้ใช้</h2>
+           <p>เกิดข้อผิดพลาดในการดึงข้อมูล หรือไม่มีผู้ใช้นี้ในระบบ</p>
+           <button class="btn-retry" @click="fetchUserData">ลองใหม่อีกครั้ง</button>
+        </div>
       </main>
     </div>
   </div>
@@ -105,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import api from '../api'
 
 const props = defineProps(['username', 'userId'])
@@ -113,6 +128,7 @@ const emit = defineEmits(['go-back', 'logout'])
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const user = ref(null)
+const isLoading = ref(false)
 const isSidebarOpen = ref(window.innerWidth > 768)
 const isMobile = ref(window.innerWidth <= 768)
 const activeMenu = ref('profile')
@@ -140,7 +156,12 @@ const isAdmin = computed(() => {
 })
 
 const fetchUserData = async () => {
+  isLoading.value = true
+  user.value = null
   try {
+    // If we're loading a new user, reset to profile tab
+    activeMenu.value = 'profile'
+    
     // If props.userId is provided, fetch that specific user (Admin viewing someone)
     // Otherwise, fetch /users/me (Standard logged-in flow)
     const endpoint = props.userId ? `/users/${props.userId}` : '/users/me'
@@ -148,8 +169,15 @@ const fetchUserData = async () => {
     user.value = res.data
   } catch (err) {
     console.error('Error fetching user profile:', err)
+  } finally {
+    isLoading.value = false
   }
 }
+
+// Watch for userId changes so we refresh data if admin switches users
+watch(() => props.userId, () => {
+  fetchUserData()
+})
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
@@ -571,4 +599,40 @@ onMounted(() => {
   .profile-sub-info { justify-content: center; flex-wrap: wrap; }
 }
 
+/* Loading & Error States */
+.profile-loading, .profile-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  gap: 16px;
+  padding: 40px;
+}
+.loader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f1f5f9;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.profile-error i {
+  font-size: 3rem;
+  color: #ef4444;
+}
+.btn-retry {
+  padding: 8px 20px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
 </style>

@@ -57,8 +57,7 @@ const selectedUserId = ref(null)
  * @param {String} pageName - ชื่อหน้าที่ต้องการไป
  */
 const goToPage = (pageName, userId = null, userData = null) => {
-  console.log("App.vue DEBUG - goToPage called:", { pageName, userData })
-  
+  console.log(`App.vue DEBUG - Navigating to ${pageName} for user:`, userId)
   let targetPage = pageName
 
   // ถ้ามีการส่งข้อมูล User มา (เช่น ตอน Login) ให้ตรวจสอบสิทธิ์ตรงนั้นเลย
@@ -120,6 +119,7 @@ const handleLogout = () => {
 
     <UserProfile
       v-else-if="currentView === 'profile'"
+      :key="selectedUserId"
       :username="username"
       :userId="selectedUserId"
       @go-back="((userRole || '').toLowerCase() === 'admin' || (username || '').toLowerCase() === 'admin') ? goToPage('admin') : handleLogout()"
