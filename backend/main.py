@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base
-from routers import users, auth, projects, roles, permissions
+from routers import users, auth, projects, roles, permissions, hr
 
 # --- ส่วนของการนำเข้า Models (เพื่อให้ Database รู้จักตาราง) ---
 # เราต้อง import ไฟล์ models เข้ามาเฉยๆ เพื่อให้มันลงทะเบียนกับ Base
@@ -34,6 +34,7 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(roles.router)
 app.include_router(permissions.router)
+app.include_router(hr.router)
 
 # Serve uploaded files (photos & id_docs) as static
 import os

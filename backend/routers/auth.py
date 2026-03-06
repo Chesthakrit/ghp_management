@@ -26,7 +26,7 @@ router = APIRouter(
 # ในงานจริง โค้ดลับนี้ต้องซ่อนไว้อย่างดี ห้ามให้ใครรู้
 SECRET_KEY = "1900"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30 # บัตรหมดอายุใน 30 นาที
+ACCESS_TOKEN_EXPIRE_MINUTES = 120 # บัตรหมดอายุใน 120 นาที (2 ชม.)
 
 # ฟังก์ชันสร้างบัตรผ่าน (Create Token)
 def create_access_token(data: dict):

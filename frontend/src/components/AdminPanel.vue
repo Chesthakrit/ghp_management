@@ -32,6 +32,14 @@
         >
           🔐 Role & Permission
         </button>
+
+        <!-- 4 HR Settings -->
+        <button
+          :class="['nav-item', { active: activeTab === 'hr' }]"
+          @click="activeTab = 'hr'; sidebarOpen = false"
+        >
+          ⚙️ HR Settings
+        </button>
       </nav>
       <button class="logout-sidebar-btn" @click="$emit('logout')">
         🚪 Logout System
@@ -47,7 +55,9 @@
       <!-- Mobile Top Bar -->
       <div class="mobile-topbar">
         <button class="mobile-menu-btn" @click="sidebarOpen = true">☰</button>
-        <span class="mobile-title">{{ activeTab === 'users' ? 'User Management' : 'Roles & Permissions' }}</span>
+        <span class="mobile-title">
+          {{ activeTab === 'users' ? 'User Management' : (activeTab === 'roles' ? 'Roles & Permissions' : 'HR Settings') }}
+        </span>
         <button class="mobile-logout-btn" @click="$emit('logout')" title="Logout">🚪</button>
       </div>
 
@@ -185,8 +195,62 @@
       </div>
 
       <!-- TAB: Roles -->
+      <!-- TAB: Roles -->
       <div v-if="activeTab === 'roles'">
         <RoleManagement />
+      </div>
+
+      <!-- TAB: HR Settings -->
+      <div v-if="activeTab === 'hr'">
+        <div class="hr-settings-grid">
+          <!-- 1. Departments Management -->
+          <div class="section-card">
+            <div class="section-header">
+              <h2>🏢 Manage Departments</h2>
+            </div>
+            
+            <div class="hr-form-add">
+              <input v-model="newDept.name" placeholder="Name (e.g. Sales)" class="hr-input" />
+              <input v-model="newDept.value" placeholder="Value (e.g. sales)" class="hr-input" />
+              <button class="btn-primary" @click="saveDept">Add Dept</button>
+            </div>
+
+            <div class="hr-list">
+              <div v-for="d in departments" :key="d.id" class="hr-list-item" :class="{ selected: selectedDeptId === d.id }" @click="selectedDeptId = d.id">
+                <div class="hr-item-main">
+                  <span class="hr-label">{{ d.name }}</span>
+                  <span class="hr-sublabel">({{ d.value }})</span>
+                </div>
+                <button class="btn-delete-sm" @click.stop="deleteDept(d.id)">🗑️</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Job Titles Management -->
+          <div class="section-card">
+            <div class="section-header">
+              <h2>🧑‍💼 Manage Job Titles</h2>
+            </div>
+
+            <div v-if="selectedDeptId" class="hr-form-add">
+              <input v-model="newJobTitle.name" placeholder="Job Name (e.g. Senior Manager)" class="hr-input" />
+              <button class="btn-primary" @click="saveJT">Add Title</button>
+            </div>
+            <div v-else class="hr-empty-hint">
+              Select a department on the left to manage job titles
+            </div>
+
+            <div class="hr-list" v-if="selectedDeptId">
+              <div v-for="jt in rawJobTitles.filter(j => j.department_id === selectedDeptId)" :key="jt.id" class="hr-list-item">
+                <span class="hr-label">{{ jt.name }}</span>
+                <button class="btn-delete-sm" @click="deleteJT(jt.id)">🗑️</button>
+              </div>
+              <div v-if="rawJobTitles.filter(j => j.department_id === selectedDeptId).length === 0" class="no-data-hint">
+                No job titles yet for this department
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       </main>
@@ -294,21 +358,13 @@ const photoPopup = ref(null)
 const openPhoto  = (url) => { photoPopup.value = url }
 const closePhoto = ()    => { photoPopup.value = null }
 
-const departments = [
-  { value: 'office',       label: 'Office' },
-  { value: 'draftman',    label: 'Draftman' },
-  { value: 'production',  label: 'Production' },
-  { value: 'installation',label: 'Installation' },
-  { value: 'management',  label: 'Management' },
-]
+const departments = ref([])
+const jobTitlesByDept = ref({})
 
-const jobTitlesByDept = {
-  office:       ['Admin', 'Accounting', 'Purchasing', 'Manager', 'Supervisor'],
-  draftman:     ['Master Draftman', 'Senior Draftman', 'Junior Draftman'],
-  production:   ['QC', 'CNC-Edge', 'Custom', 'Packing'],
-  installation: ['Supervisor', 'Installer', 'Assistant'],
-  management:   ['CEO'],
-}
+// For HR Settings Tab management
+const newDept = ref({ name: '', value: '' })
+const newJobTitle = ref({ name: '', department_id: null })
+const selectedDeptId = ref(null)
 
 const form = ref({
   first_name: '',
@@ -324,7 +380,7 @@ const form = ref({
 // Reset job_title is now handled by @change in template to avoid resetting on modal open
 
 
-const deptLabel = (val) => departments.find(d => d.value === val)?.label || val || '—'
+const deptLabel = (val) => departments.value.find(d => d.value === val)?.name || val || '—'
 
 // แปลง YYYY-MM-DD → DD/MM/YYYY (คส.) — คืน '—' ถ้าไม่มีค่า
 const fmtDate = (iso) => {
@@ -408,10 +464,44 @@ const availableRoles = computed(() => {
   return roles.value.filter(r => r.name !== 'admin')
 })
 
+const fetchHRData = async () => {
+  try {
+    const [deptsRes, jobsRes] = await Promise.all([
+      api.get('/hr/departments'),
+      api.get('/hr/job-titles')
+    ])
+    departments.value = deptsRes.data.map(d => ({ 
+      id: d.id, 
+      name: d.name, 
+      value: d.value,
+      label: d.name // mapping name to label for compatibility
+    }))
+    
+    // Convert flat job titles list to a grouped object for existing logic compatibility
+    const grouped = {}
+    jobsRes.data.forEach(job => {
+      // Find the department value (slug) for this title
+      const deptObj = departments.value.find(d => d.id === job.department_id)
+      if (deptObj) {
+        if (!grouped[deptObj.value]) grouped[deptObj.value] = []
+        grouped[deptObj.value].push(job.name)
+      }
+    })
+    jobTitlesByDept.value = grouped
+    
+    // If we have job title objects (raw from API) we might need them for the management UI
+    rawJobTitles.value = jobsRes.data
+  } catch (e) {
+    console.error('Error fetching HR data:', e)
+  }
+}
+
+const rawJobTitles = ref([])
+
 const fetchData = async () => {
   isLoading.value = true
-  const token = localStorage.getItem('token')
   try {
+    await fetchHRData() // Fetch departments/jobs first
     const [usersRes, rolesRes] = await Promise.all([
       api.get('/users/'),
       api.get('/roles/'),
@@ -423,6 +513,62 @@ const fetchData = async () => {
     Swal.fire('Error', 'Failed to load data', 'error')
   } finally {
     isLoading.value = false
+  }
+}
+
+// HR Management Actions
+const saveDept = async () => {
+  if (!newDept.value.name || !newDept.value.value) return
+  try {
+    await api.post('/hr/departments', newDept.value)
+    newDept.value = { name: '', value: '' }
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Department Added', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to add department', 'error')
+  }
+}
+
+const deleteDept = async (id) => {
+  const result = await Swal.fire({
+    title: 'Delete Department?',
+    text: 'This will also remove all job titles linked to it.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33'
+  })
+  if (!result.isConfirmed) return
+  try {
+    await api.delete(`/hr/departments/${id}`)
+    await fetchHRData()
+    Swal.fire('Deleted', 'Department removed', 'success')
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to delete', 'error')
+  }
+}
+
+const saveJT = async () => {
+  if (!newJobTitle.value.name || !selectedDeptId.value) return
+  try {
+    await api.post('/hr/job-titles', {
+      name: newJobTitle.value.name,
+      department_id: selectedDeptId.value
+    })
+    newJobTitle.value.name = ''
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Job Title Added', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to add job title', 'error')
+  }
+}
+
+const deleteJT = async (id) => {
+  try {
+    await api.delete(`/hr/job-titles/${id}`)
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Deleted', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to delete', 'error')
   }
 }
 
@@ -995,6 +1141,83 @@ onMounted(fetchData)
   transition: background 0.15s;
 }
 .popup-close:hover { background: #243447; color: #fff; }
+
+/* HR Settings Section */
+.hr-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.hr-form-add {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+.hr-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #dde3e8;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  outline: none;
+}
+.hr-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.hr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hr-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #edf0f2;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.hr-list-item:hover { border-color: #3b82f6; background: #f8fbff; }
+.hr-list-item.selected { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 4px 12px rgba(59,130,246,0.1); }
+.hr-item-main { display: flex; flex-direction: column; }
+.hr-label { font-weight: 600; font-size: 0.92rem; color: #1a2a3a; }
+.hr-sublabel { font-size: 0.75rem; color: #7a9bb0; }
+.btn-delete-sm {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+.btn-delete-sm:hover { opacity: 1; }
+.hr-empty-hint {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7a9bb0;
+  font-style: italic;
+  font-size: 0.9rem;
+  background: #fff;
+  border-radius: 10px;
+  border: 2px dashed #dde3e8;
+}
+.no-data-hint { text-align: center; padding: 20px; color: #b0c4d0; font-size: 0.82rem; }
+.btn-primary {
+  background: #1a2a3a;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primary:hover { background: #243447; }
 
 /* ═══════════════════════════════════════════════════════
    RESPONSIVE — Tablet + Mobile  (≤ 1024px)

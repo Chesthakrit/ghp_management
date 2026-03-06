@@ -21,12 +21,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
 
     try:
+        # print(f"DEBUG OAUTH2 - Decoding token: {token[:10]}...") 
         # 1. แกะรหัส Token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
+            print("DEBUG OAUTH2 - Username not in payload")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"DEBUG OAUTH2 - JWTError: {e}")
         raise credentials_exception
 
     # 2. เช็คว่ามี User คนนี้ในฐานข้อมูลจริงไหม

@@ -73,6 +73,9 @@ const goToPage = (pageName, userId = null, userData = null) => {
     userRole.value = userData.role
     localStorage.setItem('username', userData.username)
     localStorage.setItem('user_role', userData.role)
+    if (userData.access_token) {
+      localStorage.setItem('token', userData.access_token)
+    }
   }
 
   // ถ้า targetPage ยังเป็น dashboard ให้เปลี่ยนเป็น profile ทันที (เพราะเราเลิกใช้ dashboard แล้ว)

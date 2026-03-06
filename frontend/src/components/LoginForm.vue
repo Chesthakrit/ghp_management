@@ -74,7 +74,8 @@ const handleLogin = async () => {
             const userRes = await api.get('/users/me')
             const userData = {
                 username: username.value,
-                role: userRes.data.role
+                role: userRes.data.role,
+                access_token: response.data.access_token
             }
 
             Swal.fire({

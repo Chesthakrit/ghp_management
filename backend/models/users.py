@@ -56,6 +56,20 @@ class User(Base):
         UniqueConstraint('first_name', 'last_name', name='unique_fullname'),
     )
 
+class Department(Base):
+    __tablename__ = "departments"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)  # Display name e.g., 'Office'
+    value = Column(String, unique=True, index=True) # Value name e.g., 'office'
+    job_titles = relationship("JobTitle", back_populates="department", cascade="all, delete-orphan")
+
+class JobTitle(Base):
+    __tablename__ = "job_titles"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True) # e.g., 'Admin'
+    department_id = Column(Integer, ForeignKey("departments.id"))
+    department = relationship("Department", back_populates="job_titles")
+
 
 class EmployeeProfile(Base):
     """ข้อมูลที่เกี่ยวกับบริษัท (Company / HR Information)"""
