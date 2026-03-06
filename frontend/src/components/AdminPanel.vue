@@ -69,7 +69,7 @@
         <div class="stats-row">
           <div class="stat-card">
             <div class="stat-number">{{ users.length }}</div>
-            <div class="stat-label">ทั้งหมด</div>
+            <div class="stat-label">Total</div>
           </div>
           <div class="stat-card" v-for="dept in departmentStats" :key="dept.name">
             <div class="stat-number">{{ dept.count }}</div>
@@ -211,17 +211,25 @@
             
             <div class="hr-form-add">
               <input v-model="newDept.name" placeholder="Name (e.g. Sales)" class="hr-input" />
-              <input v-model="newDept.value" placeholder="Value (e.g. sales)" class="hr-input" />
               <button class="btn-primary" @click="saveDept">Add Dept</button>
             </div>
 
             <div class="hr-list">
               <div v-for="d in departments" :key="d.id" class="hr-list-item" :class="{ selected: selectedDeptId === d.id }" @click="selectedDeptId = d.id">
-                <div class="hr-item-main">
-                  <span class="hr-label">{{ d.name }}</span>
-                  <span class="hr-sublabel">({{ d.value }})</span>
+                <div v-if="editingDept?.id === d.id" style="display: flex; gap: 8px; width: 100%; align-items: center;" @click.stop>
+                  <input v-model="editingDept.name" class="hr-input" style="flex:1; margin-bottom: 0;" />
+                  <button class="btn-primary-sm" @click="updateDept">Save</button>
+                  <button class="btn-cancel" style="padding: 4px 10px; font-size: 0.75rem;" @click="editingDept = null">Cancel</button>
                 </div>
-                <button class="btn-delete-sm" @click.stop="deleteDept(d.id)">🗑️</button>
+                <template v-else>
+                  <div class="hr-item-main">
+                    <span class="hr-label">{{ d.name }}</span>
+                  </div>
+                  <div class="hr-actions">
+                    <button class="btn-primary-sm mr-2" @click.stop="startEditDept(d)">✏️ Edit</button>
+                    <button class="btn-delete-sm" @click.stop="deleteDept(d.id)">🗑️</button>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -242,45 +250,101 @@
 
             <div class="hr-list" v-if="selectedDeptId">
               <div v-for="jt in rawJobTitles.filter(j => j.department_id === selectedDeptId)" :key="jt.id" class="hr-list-item">
-                <span class="hr-label">{{ jt.name }}</span>
-                <div class="hr-actions">
-                  <button class="btn-primary-sm mr-2" @click="openJDModal(jt)">📋 Job Duties</button>
-                  <button class="btn-delete-sm" @click="deleteJT(jt.id)">🗑️</button>
+                <div v-if="editingJT?.id === jt.id" style="display: flex; gap: 8px; width: 100%; align-items: center;">
+                  <input v-model="editingJT.name" class="hr-input" style="flex:1; margin-bottom: 0;" />
+                  <button class="btn-primary-sm" @click="updateJT">Save</button>
+                  <button class="btn-cancel" style="padding: 4px 10px; font-size: 0.75rem;" @click="editingJT = null">Cancel</button>
                 </div>
+                <template v-else>
+                  <span class="hr-label">{{ jt.name }}</span>
+                  <div class="hr-actions">
+                    <button class="btn-primary-sm mr-2" @click="startEditJT(jt)">✏️ Edit</button>
+                    <button class="btn-primary-sm mr-2" @click="openJDModal(jt)">📋 Duties</button>
+                    <button class="btn-delete-sm" @click="deleteJT(jt.id)">🗑️</button>
+                  </div>
+                </template>
               </div>
               <div v-if="rawJobTitles.filter(j => j.department_id === selectedDeptId).length === 0" class="no-data-hint">
                 No job titles yet for this department
               </div>
             </div>
           </div>
+          
+          <!-- 3. Skills Library -->
+          <div class="section-card">
+            <div class="section-header">
+              <h2>📚 Skills Library</h2>
+            </div>
+            
+            <div class="hr-form-add">
+              <input v-model="newDutyName" placeholder="Enter new skill name..." class="hr-input" @keyup.enter="saveNewDuty" />
+              <button class="btn-primary" @click="saveNewDuty">Add Skill</button>
+            </div>
+
+            <div class="hr-list" style="max-height: 400px; overflow-y: auto;">
+              <div v-for="duty in dutiesPool" :key="duty.id" class="hr-list-item">
+                <span class="hr-label">{{ duty.name }}</span>
+                <div class="hr-actions">
+                  <button class="btn-primary-sm mr-2" @click="openDutyModal(duty)">ℹ️ Details</button>
+                  <button class="btn-delete-sm" @click="deleteDutyFromPool(duty.id)">🗑️</button>
+                </div>
+              </div>
+              <div v-if="dutiesPool.length === 0" class="no-data-hint">
+                No skills defined in the library yet.
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
       </main>
     </div>
 
+    <!-- ─── Edit Duty (Skill) Modal ─── -->
+    <div v-if="showDutyModal" class="modal-overlay" @click.self="closeDutyModal">
+      <div class="modal-box jd-modal">
+        <h3>Skill Details</h3>
+        
+        <div class="form-group" style="margin-top: 20px;">
+          <label>Skill Name</label>
+          <input v-model="selectedDuty.name" class="form-input" />
+        </div>
+        
+        <div class="form-group" style="margin-top: 15px;">
+          <label>Description / Details</label>
+          <textarea v-model="selectedDuty.description" class="form-input" rows="4" placeholder="Explain what this skill requires..."></textarea>
+        </div>
+
+        <div class="modal-actions mt-20" style="display: flex; gap: 10px;">
+          <button class="btn-cancel" style="flex: 1;" @click="closeDutyModal">Cancel</button>
+          <button class="btn-primary" style="flex: 1;" @click="saveDutyDetails">Save Details</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Edit Job Duties (JD) Modal ─── -->
     <div v-if="showJDModal" class="modal-overlay" @click.self="closeJDModal">
       <div class="modal-box jd-modal">
-        <h3>Job Duties for {{ selectedJT?.name }}</h3>
+        <h3>Skills for {{ selectedJT?.name }}</h3>
         
-        <div class="hr-form-add mt-10">
-          <input v-model="newJD" placeholder="Enter duty or responsibility..." class="hr-input" @keyup.enter="saveJD" />
-          <button class="btn-primary" @click="saveJD">Add Duty</button>
+        <p style="color: #64748b; font-size: 0.9em; margin-bottom: 15px;">
+          Select the skills required for this job title from the central library.
+        </p>
+
+        <div class="hr-list jd-list" style="max-height: 400px; overflow-y: auto;">
+          <label v-for="duty in dutiesPool" :key="duty.id" class="hr-list-item" style="cursor: pointer; display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
+            <input type="checkbox" v-model="selectedJT_duties" :value="duty.id" style="width: 18px; height: 18px;" />
+            <span class="hr-label" style="font-weight: normal;">{{ duty.name }}</span>
+          </label>
+          <div v-if="dutiesPool.length === 0" class="no-data-hint">
+            The skills library is empty. Please add skills first.
+          </div>
         </div>
 
-        <div class="hr-list jd-list">
-          <div v-for="jd in selectedJT?.descriptions || []" :key="jd.id" class="hr-list-item">
-            <span class="hr-label jd-text">• {{ jd.description }}</span>
-            <button class="btn-delete-sm" @click="deleteJD(jd.id)">🗑️</button>
-          </div>
-          <div v-if="!(selectedJT?.descriptions?.length)" class="no-data-hint">
-            No duties defined for this job title yet.
-          </div>
-        </div>
-
-        <div class="modal-actions mt-20">
-          <button class="btn-cancel" style="width: 100%" @click="closeJDModal">Done</button>
+        <div class="modal-actions mt-20" style="display: flex; gap: 10px;">
+          <button class="btn-cancel" style="flex: 1;" @click="closeJDModal">Cancel</button>
+          <button class="btn-primary" style="flex: 1;" @click="saveJT_Duties">Save Assignments</button>
         </div>
       </div>
     </div>
@@ -392,12 +456,19 @@ const jobTitlesByDept = ref({})
 
 // For HR Settings Tab management
 const newDept = ref({ name: '', value: '' })
-const newJobTitle = ref({ name: '', department_id: null })
+const newJobTitle = ref({ name: '', level: 1, department_id: null })
 const selectedDeptId = ref(null)
+const editingDept = ref(null)
 
 const showJDModal = ref(false)
 const selectedJT = ref(null)
-const newJD = ref('')
+const editingJT = ref(null)
+const dutiesPool = ref([])
+const newDutyName = ref('')
+const selectedJT_duties = ref([])
+
+const showDutyModal = ref(false)
+const selectedDuty = ref({ id: null, name: '', description: '' })
 
 const form = ref({
   first_name: '',
@@ -499,10 +570,12 @@ const availableRoles = computed(() => {
 
 const fetchHRData = async () => {
   try {
-    const [deptsRes, jobsRes] = await Promise.all([
+    const [deptsRes, jobsRes, dutiesRes] = await Promise.all([
       api.get('/hr/departments'),
-      api.get('/hr/job-titles')
+      api.get('/hr/job-titles'),
+      api.get('/hr/duties')
     ])
+    dutiesPool.value = dutiesRes.data
     departments.value = deptsRes.data.map(d => ({ 
       id: d.id, 
       name: d.name, 
@@ -551,14 +624,43 @@ const fetchData = async () => {
 
 // HR Management Actions
 const saveDept = async () => {
-  if (!newDept.value.name || !newDept.value.value) return
+  if (!newDept.value.name) return
   try {
-    await api.post('/hr/departments', newDept.value)
+    // Generate value automatically: lowercase and replace spaces with underscore
+    const value = newDept.value.name.toLowerCase().trim().replace(/\s+/g, '_')
+    await api.post('/hr/departments', {
+      name: newDept.value.name,
+      value: value
+    })
     newDept.value = { name: '', value: '' }
     await fetchHRData()
     Swal.fire({ icon: 'success', title: 'Department Added', timer: 1000, showConfirmButton: false })
   } catch (e) {
     Swal.fire('Error', e.response?.data?.detail || 'Failed to add department', 'error')
+  }
+}
+
+const startEditDept = (dept) => {
+  editingDept.value = { ...dept }
+}
+
+const updateDept = async () => {
+  if (!editingDept.value) return
+  if (!editingDept.value.name) {
+    Swal.fire('Error', 'Department name cannot be empty', 'warning')
+    return
+  }
+  try {
+    const value = editingDept.value.name.toLowerCase().trim().replace(/\s+/g, '_')
+    await api.put(`/hr/departments/${editingDept.value.id}`, {
+      name: editingDept.value.name,
+      value: value
+    })
+    editingDept.value = null
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Department Updated', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to update department', 'error')
   }
 }
 
@@ -585,13 +687,38 @@ const saveJT = async () => {
   try {
     await api.post('/hr/job-titles', {
       name: newJobTitle.value.name,
+      level: newJobTitle.value.level || 1,
       department_id: selectedDeptId.value
     })
     newJobTitle.value.name = ''
+    newJobTitle.value.level = 1
     await fetchHRData()
     Swal.fire({ icon: 'success', title: 'Job Title Added', timer: 1000, showConfirmButton: false })
   } catch (e) {
     Swal.fire('Error', e.response?.data?.detail || 'Failed to add job title', 'error')
+  }
+}
+
+const startEditJT = (jt) => {
+  editingJT.value = { ...jt }
+}
+
+const updateJT = async () => {
+  if (!editingJT.value) return
+  if (!editingJT.value.name) {
+    Swal.fire('Error', 'Job name cannot be empty', 'warning')
+    return
+  }
+
+  try {
+    await api.put(`/hr/job-titles/${editingJT.value.id}`, {
+      name: editingJT.value.name
+    })
+    editingJT.value = null
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Updated Successfully', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to update job title', 'error')
   }
 }
 
@@ -607,38 +734,75 @@ const deleteJT = async (id) => {
 
 const openJDModal = (jt) => {
   selectedJT.value = jt
+  selectedJT_duties.value = (jt.duties || []).map(d => d.id)
   showJDModal.value = true
 }
+
 const closeJDModal = () => {
   showJDModal.value = false
   selectedJT.value = null
-  newJD.value = ''
+  selectedJT_duties.value = []
 }
-const saveJD = async () => {
-  if (!newJD.value || !selectedJT.value) return
+
+const saveJT_Duties = async () => {
+  if (!selectedJT.value) return
   try {
-    await api.post('/hr/job-descriptions', {
-      description: newJD.value,
-      job_title_id: selectedJT.value.id
+    await api.put(`/hr/job-titles/${selectedJT.value.id}/duties`, {
+      duty_ids: selectedJT_duties.value
     })
-    newJD.value = ''
-    await fetchHRData() // Refresh backend list (important)
-    // Update local modal data live
-    const updatedJT = rawJobTitles.value.find(j => j.id === selectedJT.value.id)
-    if (updatedJT) selectedJT.value = updatedJT 
+    await fetchHRData()
+    closeJDModal()
+    Swal.fire({ icon: 'success', title: 'Skills updated', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to update skills', 'error')
+  }
+}
+
+// Global Skills Library management
+const saveNewDuty = async () => {
+  if (!newDutyName.value) return
+  try {
+    await api.post('/hr/duties', { name: newDutyName.value })
+    newDutyName.value = ''
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Added', timer: 1000, showConfirmButton: false })
   } catch (e) {
     Swal.fire('Error', e.response?.data?.detail || 'Failed to add duty', 'error')
   }
 }
-const deleteJD = async (id) => {
+
+const deleteDutyFromPool = async (id) => {
   try {
-    await api.delete(`/hr/job-descriptions/${id}`)
+    await api.delete(`/hr/duties/${id}`)
     await fetchHRData()
-    // Update local modal data live
-    const updatedJT = rawJobTitles.value.find(j => j.id === selectedJT.value.id)
-    if (updatedJT) selectedJT.value = updatedJT 
+    Swal.fire({ icon: 'success', title: 'Deleted', timer: 1000, showConfirmButton: false })
   } catch (e) {
-    Swal.fire('Error', e.response?.data?.detail || 'Failed to delete', 'error')
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to delete duty', 'error')
+  }
+}
+
+const openDutyModal = (duty) => {
+  selectedDuty.value = { ...duty }
+  showDutyModal.value = true
+}
+
+const closeDutyModal = () => {
+  showDutyModal.value = false
+  selectedDuty.value = { id: null, name: '', description: '' }
+}
+
+const saveDutyDetails = async () => {
+  if (!selectedDuty.value.name) return
+  try {
+    await api.put(`/hr/duties/${selectedDuty.value.id}`, {
+      name: selectedDuty.value.name,
+      description: selectedDuty.value.description
+    })
+    await fetchHRData()
+    closeDutyModal()
+    Swal.fire({ icon: 'success', title: 'Saved successfully', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to update detail', 'error')
   }
 }
 

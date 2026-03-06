@@ -235,7 +235,7 @@ watch([dobDay, dobMonth, dobYear], ([d, m, y]) => {
 const filteredUsers = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return users.value.filter(u => {
-    // กรองเอา admin และแผนก management ออก
+    // Filter out admin and management department
     const isAdmin = u.role === 'admin'
     const isManagement = u.employee_profile?.department === 'management'
     if (isAdmin || isManagement) return false
@@ -298,10 +298,10 @@ const handleFileChange = (e, type) => {
     if (type === 'photo') previewPhoto.value = url
     else previewIdDoc.value = url
   } else {
-    // PDF หรือไฟล์อื่น — ล้าง preview แสดงข้อความแทน
+    // PDF or other file — clear preview and show text instead
     if (type !== 'photo') previewIdDoc.value = '__pdf__'
   }
-  // Reset input ให้เลือกไฟล์เดิมซ้ำได้
+  // Reset input so the same file can be selected again
   e.target.value = ''
 }
 
@@ -350,7 +350,7 @@ const handleUpdate = async () => {
       showConfirmButton: false
     })
 
-    // Refresh + reselect user ที่กำลังแก้
+    // Refresh + reselect the user being edited
     cacheBust.value = Date.now()
     await fetchUsers(currentUserId)
   } catch (e) {

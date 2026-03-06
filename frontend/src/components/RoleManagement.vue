@@ -1,8 +1,8 @@
 <template>
   <div class="role-management-container">
     <div class="header">
-      <h2>จัดการตำแหน่ง (Manage Roles)</h2>
-      <button class="btn-create" @click="openCreateModal">+ สร้างตำแหน่งใหม่</button>
+      <h2>Manage Roles</h2>
+      <button class="btn-create" @click="openCreateModal">+ Create New Role</button>
     </div>
 
     <!-- ตารางแสดง Role -->
@@ -10,9 +10,9 @@
       <thead>
         <tr>
           <th>ID</th>
-          <th>ชื่อตำแหน่ง (Role Name)</th>
-          <th>สิทธิ์การเข้าถึง (Permissions)</th>
-          <th>จัดการ</th>
+          <th>Role Name</th>
+          <th>Permissions</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -26,11 +26,11 @@
               <span v-for="perm in role.permissions" :key="perm" class="perm-tag">
                 {{ perm }}
               </span>
-              <span v-if="role.permissions.length === 0" class="no-perm">- ไม่มีสิทธิ์ -</span>
+              <span v-if="role.permissions.length === 0" class="no-perm">- No Permissions -</span>
             </div>
           </td>
           <td>
-            <button class="btn-edit" @click="openEditModal(role)">แก้ไข</button>
+            <button class="btn-edit" @click="openEditModal(role)">Edit</button>
           </td>
         </tr>
       </tbody>
@@ -39,16 +39,16 @@
     <!-- Modal สร้าง/แก้ไข Role -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
-        <h3>{{ isEditing ? 'แก้ไขตำแหน่ง' : 'สร้างตำแหน่งใหม่' }}</h3>
+        <h3>{{ isEditing ? 'Edit Role' : 'Create New Role' }}</h3>
         
         <div class="form-group">
-          <label>ชื่อตำแหน่ง (Role Name):</label>
-          <input v-model="form.name" type="text" placeholder="เช่น Manager, HR" :disabled="isEditing && form.name === 'admin'">
-          <small v-if="isEditing && form.name === 'admin'" class="text-danger">ไม่สามารถเปลี่ยนชื่อ Admin ได้</small>
+          <label>Role Name:</label>
+          <input v-model="form.name" type="text" placeholder="e.g. Manager, HR" :disabled="isEditing && form.name === 'admin'">
+          <small v-if="isEditing && form.name === 'admin'" class="text-danger">Cannot change admin name</small>
         </div>
 
         <div class="form-group">
-          <label>เลือกสิทธิ์ (Permissions):</label>
+          <label>Select Permissions:</label>
           <div class="permissions-grid">
             <div v-for="perm in availablePermissions" :key="perm.id" class="perm-item">
               <input 
@@ -63,8 +63,8 @@
         </div>
 
         <div class="modal-actions">
-          <button class="btn-cancel" @click="closeModal">ยกเลิก</button>
-          <button class="btn-save" @click="saveRole">บันทึก</button>
+          <button class="btn-cancel" @click="closeModal">Cancel</button>
+          <button class="btn-save" @click="saveRole">Save</button>
         </div>
       </div>
     </div>
@@ -99,7 +99,7 @@ const fetchData = async () => {
     availablePermissions.value = permsRes.data
   } catch (error) {
     console.error(error)
-    Swal.fire('Error', 'ไม่สามารถโหลดข้อมูลได้ (คุณอาจไม่มีสิทธิ์)', 'error')
+    Swal.fire('Error', 'Failed to load data (Permission denied)', 'error')
   }
 }
 
@@ -127,7 +127,7 @@ const closeModal = () => {
 
 const saveRole = async () => {
   const token = localStorage.getItem('token')
-  if (!form.value.name) return Swal.fire('Error', 'กรุณากรอกชื่อตำแหน่ง', 'warning')
+  if (!form.value.name) return Swal.fire('Error', 'Please enter a role name', 'warning')
 
   try {
     if (isEditing.value) {
@@ -137,12 +137,12 @@ const saveRole = async () => {
       await api.post('/roles/', form.value)
     }
     
-    Swal.fire('Success', 'บันทึกเรียบร้อย', 'success')
+    Swal.fire('Success', 'Saved successfully', 'success')
     closeModal()
     fetchData() // Reload
   } catch (error) {
     console.error(error)
-    Swal.fire('Error', 'บันทึกไม่สำเร็จ', 'error')
+    Swal.fire('Error', 'Failed to save', 'error')
   }
 }
 

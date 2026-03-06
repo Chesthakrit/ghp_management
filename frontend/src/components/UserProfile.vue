@@ -55,7 +55,7 @@
         <!-- Loading State -->
         <div v-if="isLoading" class="profile-loading">
           <div class="loader-spinner"></div>
-          <p>กำลังโหลดข้อมูล...</p>
+          <p>Loading data...</p>
         </div>
 
         <template v-else-if="user">
@@ -86,32 +86,32 @@
           <div v-if="activeMenu === 'profile'" class="profile-details-grid">
             <!-- Example stats or details -->
             <div class="detail-card">
-              <h3>ข้อมูลส่วนตัว</h3>
-              <div class="info-row"><span>ชื่อเล่น:</span> <strong>{{ user?.nickname || '-' }}</strong></div>
-              <div class="info-row"><span>ชื่อ-สกุล:</span> <strong>{{ user?.first_name }} {{ user?.last_name }}</strong></div>
-              <div class="info-row"><span>รหัสพนักงาน:</span> <strong>{{ user?.username }}</strong></div>
+              <h3>Personal Information</h3>
+              <div class="info-row"><span>Nickname:</span> <strong>{{ user?.nickname || '-' }}</strong></div>
+              <div class="info-row"><span>Full Name:</span> <strong>{{ user?.first_name }} {{ user?.last_name }}</strong></div>
+              <div class="info-row"><span>Employee ID:</span> <strong>{{ user?.username }}</strong></div>
             </div>
             <div class="detail-card">
-              <h3>ข้อมูลการทำงาน</h3>
-              <div class="info-row"><span>แผนก:</span> <strong>{{ user?.employee_profile?.department }}</strong></div>
-              <div class="info-row"><span>ตำแหน่ง:</span> <strong>{{ user?.employee_profile?.job_title }}</strong></div>
-              <div class="info-row"><span>วันเริ่มงาน:</span> <strong>{{ formatDate(user?.employee_profile?.hire_date) }}</strong></div>
+              <h3>Employment Information</h3>
+              <div class="info-row"><span>Department:</span> <strong>{{ user?.employee_profile?.department }}</strong></div>
+              <div class="info-row"><span>Job Title:</span> <strong>{{ user?.employee_profile?.job_title }}</strong></div>
+              <div class="info-row"><span>Hire Date:</span> <strong>{{ formatDate(user?.employee_profile?.hire_date) }}</strong></div>
             </div>
           </div>
 
           <div v-else class="empty-content-state">
             <i :class="currentMenuIcon"></i>
             <h2>{{ currentMenuLabel }}</h2>
-            <p>ขณะนี้ยังไม่มีข้อมูลในส่วนของ {{ currentMenuLabel }}</p>
+            <p>No data available for {{ currentMenuLabel }} at the moment.</p>
           </div>
         </div>
         </template>
 
         <div v-else class="profile-error">
            <i class="fas fa-exclamation-circle"></i>
-           <h2>ไม่พบข้อมูลผู้ใช้</h2>
-           <p>เกิดข้อผิดพลาดในการดึงข้อมูล หรือไม่มีผู้ใช้นี้ในระบบ</p>
-           <button class="btn-retry" @click="fetchUserData">ลองใหม่อีกครั้ง</button>
+           <h2>User Not Found</h2>
+           <p>Error fetching data or user does not exist in the system.</p>
+           <button class="btn-retry" @click="fetchUserData">Try Again</button>
         </div>
       </main>
     </div>
@@ -134,11 +134,11 @@ const isMobile = ref(window.innerWidth <= 768)
 const activeMenu = ref('profile')
 
 const menuItems = [
-  { id: 'profile', label: 'โปรไฟล์', icon: 'fas fa-user-circle' },
-  { id: 'schedule', label: 'ตารางงาน', icon: 'fas fa-calendar-alt' },
-  { id: 'payslip', label: 'ใบแจ้งเงินเดือน', icon: 'fas fa-file-invoice-dollar' },
-  { id: 'attendance', label: 'บันทึกเวลา', icon: 'fas fa-clock' },
-  { id: 'documents', label: 'เอกสารระเบียบ', icon: 'fas fa-book' },
+  { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
+  { id: 'schedule', label: 'Schedule', icon: 'fas fa-calendar-alt' },
+  { id: 'payslip', label: 'Payslip', icon: 'fas fa-file-invoice-dollar' },
+  { id: 'attendance', label: 'Attendance', icon: 'fas fa-clock' },
+  { id: 'documents', label: 'Documents', icon: 'fas fa-book' },
 ]
 
 const currentMenuLabel = computed(() => menuItems.find(m => m.id === activeMenu.value)?.label)

@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, Table
 from sqlalchemy.orm import relationship
 from database import Base
 import json
+
+# Association table for Many-to-Many JobTitles <-> Duties
+job_title_duty_link = Table(
+    'job_title_duty_link',
+    Base.metadata,
+    Column('job_title_id', Integer, ForeignKey('job_titles.id', ondelete="CASCADE"), primary_key=True),
+    Column('duty_id', Integer, ForeignKey('duties.id', ondelete="CASCADE"), primary_key=True)
+)
 
 class Role(Base):
     __tablename__ = "roles"
@@ -67,9 +75,18 @@ class JobTitle(Base):
     __tablename__ = "job_titles"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True) # e.g., 'Admin'
+    level = Column(Integer, default=0) # e.g. 1 for junior, 2 for senior. Higher level implies skills of lower levels.
     department_id = Column(Integer, ForeignKey("departments.id"))
     department = relationship("Department", back_populates="job_titles")
     descriptions = relationship("JobDescription", back_populates="job_title", cascade="all, delete-orphan")
+    duties = relationship("Duty", secondary=job_title_duty_link, back_populates="job_titles")
+
+class Duty(Base):
+    __tablename__ = "duties"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True) # "Skill / Duty name"
+    description = Column(String, nullable=True) # "Skill detailed explanation"
+    job_titles = relationship("JobTitle", secondary=job_title_duty_link, back_populates="duties")
 
 class JobDescription(Base):
     __tablename__ = "job_descriptions"
