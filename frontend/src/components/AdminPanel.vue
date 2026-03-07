@@ -356,7 +356,31 @@
 
         <div class="form-group" style="margin-top: 15px;">
           <label>Description / Details</label>
-          <textarea v-model="selectedDuty.description" class="form-input" rows="4" placeholder="Explain what this skill requires..."></textarea>
+          <textarea v-model="selectedDuty.description" class="form-input" rows="3" placeholder="Explain what this skill requires..."></textarea>
+        </div>
+
+        <!-- Sub-Skill Checklist Management -->
+        <div class="sub-skills-section" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px;">
+          <label style="font-size: 0.8rem; font-weight: 700; color: #1e293b;">เพิ่มสกิลย่อย (CHECKLIST)</label>
+          <div class="add-sub-skill-form" style="display: flex; gap: 10px; margin-top: 10px;">
+            <input 
+              v-model="newSubDutyName" 
+              class="form-input" 
+              placeholder="ชื่อสกิลย่อย..." 
+              @keyup.enter="addSubDuty"
+            />
+            <button class="btn-primary" style="padding: 0 20px;" @click="addSubDuty">เพิ่ม</button>
+          </div>
+
+          <div class="sub-skills-list-admin" style="margin-top: 15px;">
+             <div v-for="sub in selectedDuty.sub_duties" :key="sub.id" class="sub-skill-admin-item">
+                <span>{{ sub.name }}</span>
+                <button class="btn-delete-sm" @click="removeSubDuty(sub.id)">🗑️</button>
+             </div>
+             <div v-if="!selectedDuty.sub_duties?.length" class="no-data-hint">
+               ยังไม่มีสกิลย่อย
+             </div>
+          </div>
         </div>
 
         <div class="modal-actions mt-20" style="display: flex; gap: 10px;">
@@ -515,6 +539,8 @@ const selectedDuty = ref({ id: null, name: '', description: '', category_id: nul
 const dutyCategories = ref([])
 const newDutyCategoryName = ref('')
 const editingDutyCategory = ref(null)
+
+const newSubDutyName = ref('')
 
 const form = ref({
   first_name: '',
@@ -834,9 +860,36 @@ const openDutyModal = (duty) => {
     id: duty.id,
     name: duty.name,
     description: duty.description,
-    category_id: duty.category_id || null
+    category_id: duty.category_id || null,
+    sub_duties: duty.sub_duties || []
   }
   showDutyModal.value = true
+}
+
+const addSubDuty = async () => {
+  if (!newSubDutyName.value || !selectedDuty.value.id) return
+  try {
+    const res = await api.post('/hr/sub-duties', {
+      name: newSubDutyName.value,
+      duty_id: selectedDuty.value.id
+    })
+    if (!selectedDuty.value.sub_duties) selectedDuty.value.sub_duties = []
+    selectedDuty.value.sub_duties.push(res.data)
+    newSubDutyName.value = ''
+    await fetchHRData() // Refresh pool to keep sync
+  } catch (e) {
+    Swal.fire('Error', 'Failed to add sub-skill', 'error')
+  }
+}
+
+const removeSubDuty = async (subId) => {
+  try {
+    await api.delete(`/hr/sub-duties/${subId}`)
+    selectedDuty.value.sub_duties = selectedDuty.value.sub_duties.filter(s => s.id !== subId)
+    await fetchHRData()
+  } catch (e) {
+    Swal.fire('Error', 'Failed to delete sub-skill', 'error')
+  }
 }
 
 const closeDutyModal = () => {
@@ -1442,12 +1495,26 @@ onMounted(fetchData)
   transition: background 0.15s;
 }
 .btn-cancel:hover { background: #e8ecef; }
+/* Sub Skills Styling */
+.sub-skill-admin-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
 .btn-save {
   background: #1a2a3a; color: #a8bcc8; border: none;
   padding: 9px 22px; border-radius: 6px; cursor: pointer;
   font-family: inherit; font-weight: 700; font-size: 0.88rem;
   letter-spacing: 0.03em; transition: background 0.15s;
 }
+
 .btn-save:hover:not(:disabled) { background: #243447; color: #fff; }
 .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
 

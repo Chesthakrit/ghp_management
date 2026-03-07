@@ -285,6 +285,40 @@ def delete_duty(
     db.commit()
     return {"message": "Deleted"}
 
+# ─────────────────────────────────────────────
+#  Sub-Duties (Skill Checklist Items)
+# ─────────────────────────────────────────────
+@router.post("/sub-duties", response_model=schemas.SubDuty)
+def create_sub_duty(
+    sub_duty: schemas.SubDutyCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_sub = models.SubDuty(**sub_duty.dict())
+    db.add(db_sub)
+    db.commit()
+    db.refresh(db_sub)
+    return db_sub
+
+@router.delete("/sub-duties/{sub_id}")
+def delete_sub_duty(
+    sub_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_sub = db.query(models.SubDuty).filter(models.SubDuty.id == sub_id).first()
+    if not db_sub:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(db_sub)
+    db.commit()
+    return {"message": "Deleted"}
+
 @router.put("/job-titles/{jt_id}/duties", response_model=schemas.JobTitle)
 def update_job_title_duties(
     jt_id: int,
@@ -353,6 +387,45 @@ def save_user_evaluation(
         db_eval = models.UserDutyEvaluation(
             **eval_req.dict(),
             evaluated_by_id=current_user.id,
+            updated_at=datetime.now().isoformat()
+        )
+        db.add(db_eval)
+
+    db.commit()
+    db.refresh(db_eval)
+    return db_eval
+
+# ─────────────────────────────────────────────
+#  Sub-Skill Checklist Evaluations
+# ─────────────────────────────────────────────
+@router.get("/sub-evaluations/{user_id}", response_model=List[schemas.UserSubDutyEvaluation])
+def get_user_sub_evaluations(user_id: int, db: Session = Depends(get_db)):
+    return db.query(models.UserSubDutyEvaluation).filter(models.UserSubDutyEvaluation.user_id == user_id).all()
+
+@router.post("/sub-evaluations", response_model=schemas.UserSubDutyEvaluation)
+def save_user_sub_evaluation(
+    eval_req: schemas.UserSubDutyEvaluationCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    # Only admin/manager can check/uncheck
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in current_user.permissions:
+        raise HTTPException(status_code=403, detail="Not authorized to manage checklists")
+
+    from datetime import datetime
+    
+    db_eval = db.query(models.UserSubDutyEvaluation).filter(
+        models.UserSubDutyEvaluation.user_id == eval_req.user_id,
+        models.UserSubDutyEvaluation.sub_duty_id == eval_req.sub_duty_id
+    ).first()
+    
+    if db_eval:
+        db_eval.is_completed = eval_req.is_completed
+        db_eval.updated_at = datetime.now().isoformat()
+    else:
+        db_eval = models.UserSubDutyEvaluation(
+            **eval_req.dict(),
             updated_at=datetime.now().isoformat()
         )
         db.add(db_eval)

@@ -99,37 +99,87 @@
             </div>
           </div>
 
-          <div v-else-if="activeMenu === 'skills'" class="skills-content">
-            <div class="section-card-flat">
-              <div class="skills-grid-wrapper">
+          <div v-else-if="activeMenu === 'skills'" class="skills-view-wrapper">
+            <div class="skills-list-side">
+              <div class="section-card-flat no-shadow">
                 <div v-if="!userSkills || userSkills.length === 0" class="no-skills-notice">
                    <i class="fas fa-info-circle"></i>
                    <p>No skills requirements listed for this job title yet.</p>
                 </div>
                 
-                <div v-else class="skill-category-group" v-for="(skills, catName) in groupedSkills" :key="catName">
-                  <h4 class="category-title"># {{ catName }}</h4>
-                  <div class="skill-items-list">
-                    <div v-for="skill in skills" :key="skill.id" class="skill-item-row">
-                      <div class="skill-info-box">
-                        <div class="skill-name-text">{{ skill.name }}</div>
-                        <div class="skill-desc-text" v-if="skill.description">{{ skill.description }}</div>
-                      </div>
-                      <div class="skill-rating-box">
-                        <div class="stars-row">
-                          <i 
-                            v-for="star in 5" 
-                            :key="star"
-                            class="fa-star"
-                            :class="[getStarClass(skill.id, star), { 'clickable': canEvaluate }]"
-                            @click="handleRate(skill.id, star)"
-                          ></i>
+                <template v-else>
+                  <div class="skill-category-group" v-for="(skills, catName) in groupedSkills" :key="catName">
+                    <h4 class="category-title"># {{ catName }}</h4>
+                    <div class="skill-items-list">
+                      <div 
+                        v-for="skill in skills" 
+                        :key="skill.id" 
+                        class="skill-item-row"
+                        :class="{ 'active-selection': selectedSkill?.id === skill.id }"
+                      >
+                        <div class="skill-info-box" @click="selectSkill(skill)">
+                          <div class="skill-name-text">{{ skill.name }}</div>
                         </div>
-                        <div class="rating-label">{{ getRatingLabel(skill.id) }}</div>
+                        <div class="skill-rating-box">
+                          <div class="stars-row">
+                            <i 
+                              v-if="skill.description" 
+                              class="fas fa-info-circle skill-info-btn-inline" 
+                              @click="selectSkill(skill)"
+                              :class="{ 'active': selectedSkill?.id === skill.id }"
+                              title="View Details"
+                            ></i>
+                            <i 
+                              v-for="star in 5" 
+                              :key="star"
+                              class="fa-star"
+                              :class="[getStarClass(skill.id, star), { 'clickable': canEvaluate }]"
+                              @click="handleRate(skill.id, star)"
+                            ></i>
+                          </div>
+                          <div class="rating-label">{{ getRatingLabel(skill.id) }}</div>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Inline Detail Box (Pane ขวา) -->
+            <div class="skills-detail-side">
+              <div v-if="selectedSkill" class="inline-doc-card">
+                <div class="doc-header-blue-small"></div>
+                <div class="doc-body-inner">
+                  <h1 class="doc-inner-title">{{ selectedSkill.name }}</h1>
+                  <div class="doc-inner-section">
+                    <label class="doc-inner-label">DESCRIPTION / DETAILS</label>
+                    <div class="doc-inner-content-box" style="margin-bottom: 30px;">
+                      {{ selectedSkill.description || 'No detailed description available.' }}
+                    </div>
+
+                    <!-- Checklist Section -->
+                    <label v-if="selectedSkill.sub_duties?.length" class="doc-inner-label">CHECKLIST / REQUIREMENTS</label>
+                    <div v-if="selectedSkill.sub_duties?.length" class="sub-skills-checklist">
+                       <div 
+                         v-for="sub in selectedSkill.sub_duties" 
+                         :key="sub.id" 
+                         class="checklist-item"
+                         :class="{ 'is-checked': !!subEvaluations[sub.id], 'can-toggle': canEvaluate }"
+                         @click="canEvaluate && toggleSubDuty(sub.id)"
+                       >
+                         <div class="checkbox-box">
+                           <i v-if="subEvaluations[sub.id]" class="fas fa-check"></i>
+                         </div>
+                         <span class="sub-skill-name">{{ sub.name }}</span>
+                       </div>
+                    </div>
+                  </div>
                 </div>
+              </div>
+              <div v-else class="no-selection-placeholder">
+                <i class="fas fa-book-open"></i>
+                <p>เลือก Skill เพื่อดูรายละเอียดการทำงาน</p>
               </div>
             </div>
           </div>
@@ -157,6 +207,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '../api'
+import Swal from 'sweetalert2'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout'])
@@ -171,6 +222,12 @@ const activeMenu = ref('profile')
 const userSkills = ref([])
 const userEvaluations = ref({})
 const isEvaluating = ref(false)
+const selectedSkill = ref(null)
+const subEvaluations = ref({}) // subDutyId -> boolean
+
+const selectSkill = (skill) => {
+  selectedSkill.value = skill
+}
 
 const menuItems = [
   { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
@@ -223,20 +280,24 @@ const fetchUserData = async () => {
     const res = await api.get(endpoint)
     user.value = res.data
 
-    // Fetch Skills & Evaluations (Wrap in individual try-catch to avoid total hang)
     let evalsRes = { data: [] }
+    let subEvalsRes = { data: [] }
     let jobsRes = { data: [] }
+    let deptsRes = { data: [] }
     
     try {
-      evalsRes = await api.get(`/hr/evaluations/${finalUserId}`)
+      const [eRes, seRes, jRes, dRes] = await Promise.all([
+        api.get(`/hr/evaluations/${user.value.id}`),
+        api.get(`/hr/sub-evaluations/${user.value.id}`),
+        api.get('/hr/job-titles'),
+        api.get('/hr/departments')
+      ])
+      evalsRes = eRes
+      subEvalsRes = seRes
+      jobsRes = jRes
+      deptsRes = dRes
     } catch (e) {
-      console.warn('Evaluations not found or inaccessible')
-    }
-
-    try {
-      jobsRes = await api.get('/hr/job-titles')
-    } catch (e) {
-      console.error('Job titles could not be fetched', e)
+      console.warn('Individual HR data fetch failed, attempting partial load', e)
     }
 
     // 1. Process Evaluations
@@ -248,12 +309,36 @@ const fetchUserData = async () => {
     }
     userEvaluations.value = evMap
 
+    // 1.1 Process Sub Evaluations
+    const subMap = {}
+    if (subEvalsRes.data) {
+      subEvalsRes.data.forEach(sev => {
+        subMap[sev.sub_duty_id] = sev.is_completed
+      })
+    }
+    subEvaluations.value = subMap
+
     // 2. Process Skills for this user's Job Title
-    const userJT = user.value.employee_profile?.job_title
+    const userJT = (user.value.employee_profile?.job_title || '').trim().toLowerCase()
+    const userDeptSlug = (user.value.employee_profile?.department || '').trim().toLowerCase()
+    
     if (userJT && jobsRes.data) {
-      const matchedJob = jobsRes.data.find(j => j.name === userJT)
+      // Find the department ID first to disambiguate
+      const matchedDept = deptsRes.data?.find(d => d.value.trim().toLowerCase() === userDeptSlug)
+      
+      const matchedJob = jobsRes.data.find(j => {
+        const nameMatch = (j.name || '').trim().toLowerCase() === userJT
+        if (matchedDept) {
+          return nameMatch && j.department_id === matchedDept.id
+        }
+        return nameMatch
+      })
+
       if (matchedJob) {
         userSkills.value = matchedJob.duties || []
+        console.log(`Matched Job Title: ${matchedJob.name}`, userSkills.value)
+      } else {
+        console.warn(`No match found for job title: "${userJT}" in department: "${userDeptSlug}"`)
       }
     }
 
@@ -261,6 +346,20 @@ const fetchUserData = async () => {
     console.error('Error fetching user profile:', err)
   } finally {
     isLoading.value = false
+  }
+}
+
+const toggleSubDuty = async (subId) => {
+  const newState = !subEvaluations.value[subId]
+  try {
+    await api.post('/hr/sub-evaluations', {
+      user_id: user.value.id,
+      sub_duty_id: subId,
+      is_completed: newState
+    })
+    subEvaluations.value[subId] = newState
+  } catch (err) {
+    Swal.fire('Error', 'Failed to update checklist', 'error')
   }
 }
 
@@ -813,18 +912,37 @@ onMounted(() => {
   font-size: 1rem;
 }
 
-.skill-desc-text {
-  font-size: 0.825rem;
-  color: #64748b;
-  margin-top: 4px;
+.skill-info-popup-btn {
+  font-size: 0.8rem;
+  color: #3b82f6;
+  margin-right: 10px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.2s;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skill-info-popup-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 .skill-rating-box {
   text-align: right;
-  min-width: 140px;
+  min-width: 160px;
 }
 
 .stars-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   font-size: 1.15rem;
   margin-bottom: 4px;
 }
@@ -866,5 +984,190 @@ onMounted(() => {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Skills Tab Split View ─── */
+.skills-view-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: flex-start;
+  animation: fadeIn 0.3s ease;
+}
+
+@media (max-width: 1200px) {
+  .skills-view-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skills-list-side {
+  display: flex;
+  flex-direction: column;
+}
+
+.no-shadow { box-shadow: none !important; }
+
+.skill-info-btn-inline {
+  font-size: 0.8rem;
+  color: #3b82f6;
+  margin-right: 10px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: all 0.2s;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skill-info-btn-inline:hover, .skill-info-btn-inline.active {
+  opacity: 1;
+  background: #3b82f6;
+  color: #fff;
+}
+
+.skill-item-row.active-selection {
+  border: 2px solid #3b82f6;
+  background: #fff;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.skills-detail-side {
+  position: sticky;
+  top: 0;
+}
+
+.inline-doc-card {
+  background: #fff;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.doc-header-blue-small {
+  height: 40px;
+  background: #004fb1;
+}
+
+.doc-body-inner {
+  padding: 40px;
+}
+
+.doc-inner-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.doc-inner-section {
+  text-align: left;
+}
+
+.doc-inner-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  display: block;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 4px;
+}
+
+.doc-inner-content-box {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #334155;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.no-selection-placeholder {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.5);
+  border: 4px dashed #e2e8f0;
+  border-radius: 20px;
+}
+
+.no-selection-placeholder i {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+/* Checklist Styles */
+.sub-skills-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.checklist-item.can-toggle {
+  cursor: pointer;
+}
+
+.checklist-item.can-toggle:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.checklist-item.is-checked {
+  background: #f0fdf4;
+  border-color: #22c55e;
+}
+
+.checkbox-box {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.is-checked .checkbox-box {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.is-checked .sub-skill-name {
+  color: #166534;
+  font-weight: 500;
+}
+
+.sub-skill-name {
+  font-size: 0.95rem;
+  color: #475569;
 }
 </style>

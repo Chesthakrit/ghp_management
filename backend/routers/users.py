@@ -1,19 +1,23 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+import os
+import shutil
+from datetime import date
+from typing import List
+
+from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+
 from database import get_db
 from models import users as models
 from schemas import users as schemas
 from hashing import Hash
 import oauth2
-from typing import List
 
 router = APIRouter(
     prefix="/users",
     tags=["Users"]
 )
 
-import os
-
+# Configuration for uploads
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
 os.makedirs(os.path.join(UPLOAD_DIR, "photos"),  exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIR, "id_docs"), exist_ok=True)
@@ -271,26 +275,6 @@ def update_employee_profile(
     db.commit()
     db.refresh(user)
     return user
-
-
-# ─────────────────────────────────────────────
-#  (Legacy) Update Role only
-# ─────────────────────────────────────────────
-from pydantic import BaseModel
-class UserRoleUpdate(BaseModel):
-    role: str
-
-@router.put("/{user_id}/role")
-def update_user_role(user_id: int, request: UserRoleUpdate, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    new_role = db.query(models.Role).filter(models.Role.name == request.role).first()
-    if not new_role:
-        raise HTTPException(status_code=400, detail="Invalid role name")
-    user.role = new_role
-    db.commit()
-    return {"message": "Role updated successfully"}
 
 
 # ─────────────────────────────────────────────

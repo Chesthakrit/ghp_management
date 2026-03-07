@@ -68,14 +68,18 @@ class User(Base):
 class Department(Base):
     __tablename__ = "departments"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)  # Display name e.g., 'Office'
+    name = Column(String, unique=True, index=True)  # Display name EN
+    name_th = Column(String, nullable=True)         # Thai
+    name_v3 = Column(String, nullable=True)         # Third Language
     value = Column(String, unique=True, index=True) # Value name e.g., 'office'
     job_titles = relationship("JobTitle", back_populates="department", cascade="all, delete-orphan")
 
 class JobTitle(Base):
     __tablename__ = "job_titles"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True) # e.g., 'Admin'
+    name = Column(String, index=True) # EN
+    name_th = Column(String, nullable=True)
+    name_v3 = Column(String, nullable=True)
     level = Column(Integer, default=0) # e.g. 1 for junior, 2 for senior. Higher level implies skills of lower levels.
     department_id = Column(Integer, ForeignKey("departments.id"))
     department = relationship("Department", back_populates="job_titles")
@@ -85,22 +89,41 @@ class JobTitle(Base):
 class DutyCategory(Base):
     __tablename__ = "duty_categories"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True) # "SketchUp Skill", "Handtool Skill"
+    name = Column(String, unique=True, index=True) # EN
+    name_th = Column(String, nullable=True)
+    name_v3 = Column(String, nullable=True)
     duties = relationship("Duty", back_populates="category", cascade="all, delete-orphan")
 
 class Duty(Base):
     __tablename__ = "duties"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True) # "Skill / Duty name"
-    description = Column(String, nullable=True) # "Skill detailed explanation"
+    name = Column(String, unique=True, index=True) # EN
+    name_th = Column(String, nullable=True)
+    name_v3 = Column(String, nullable=True)
+    description = Column(String, nullable=True)    # EN
+    description_th = Column(String, nullable=True) # TH
+    description_v3 = Column(String, nullable=True) # V3
     category_id = Column(Integer, ForeignKey("duty_categories.id"), nullable=True)
     category = relationship("DutyCategory", back_populates="duties")
     job_titles = relationship("JobTitle", secondary=job_title_duty_link, back_populates="duties")
+    sub_duties = relationship("SubDuty", back_populates="duty", cascade="all, delete-orphan")
+
+class SubDuty(Base):
+    __tablename__ = "sub_duties"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True) # EN
+    name_th = Column(String, nullable=True)
+    name_v3 = Column(String, nullable=True)
+    duty_id = Column(Integer, ForeignKey("duties.id", ondelete="CASCADE"))
+    
+    duty = relationship("Duty", back_populates="sub_duties")
 
 class JobDescription(Base):
     __tablename__ = "job_descriptions"
     id = Column(Integer, primary_key=True, index=True)
-    description = Column(String) # the actual text of the duty
+    description = Column(String)    # EN
+    description_th = Column(String, nullable=True)
+    description_v3 = Column(String, nullable=True)
     job_title_id = Column(Integer, ForeignKey("job_titles.id"))
     job_title = relationship("JobTitle", back_populates="descriptions")
 
@@ -116,6 +139,17 @@ class UserDutyEvaluation(Base):
     user = relationship("User", foreign_keys=[user_id], back_populates="duty_evaluations")
     duty = relationship("Duty", backref="user_evaluations")
     evaluator = relationship("User", foreign_keys=[evaluated_by_id])
+
+class UserSubDutyEvaluation(Base):
+    __tablename__ = "user_sub_duty_evaluations"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    sub_duty_id = Column(Integer, ForeignKey("sub_duties.id", ondelete="CASCADE"))
+    is_completed = Column(Boolean, default=False)
+    updated_at = Column(String, nullable=True)
+
+    user = relationship("User", backref="sub_duty_evaluations")
+    sub_duty = relationship("SubDuty", backref="user_evaluations")
 
 class EmployeeProfile(Base):
     """ข้อมูลที่เกี่ยวกับบริษัท (Company / HR Information)"""
