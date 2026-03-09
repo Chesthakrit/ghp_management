@@ -10,9 +10,6 @@
         <span class="brand-name">MANAGEMENT</span>
       </div>
       <div class="header-right">
-        <button v-if="hasAdminModulesAccess" class="admin-panel-btn" @click="$emit('go-to-admin')">
-          <i class="fas fa-tools"></i> System Settings
-        </button>
         <button class="logout-btn" @click="handleLogout">
           <i class="fas fa-sign-out-alt"></i> Logout
         </button>
@@ -191,6 +188,15 @@
             />
           </div>
 
+          <!-- Embedded Admin Panel for HR, Salary, and Access tabs -->
+          <div v-else-if="['hr', 'salary', 'access'].includes(activeMenu)" class="embedded-admin-tab" style="padding: 20px;">
+            <AdminPanel 
+              :embedded="activeMenu"
+              @view-profile="(id) => $emit('view-profile', id)"
+              @go-to-identity="(id) => $emit('go-to-identity', id)"
+            />
+          </div>
+
           <div v-else class="empty-content-state">
             <i :class="currentMenuIcon"></i>
             <h2>{{ currentMenuLabel }}</h2>
@@ -216,6 +222,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import api from '../api'
 import Swal from 'sweetalert2'
 import UserManagement from './UserManagement.vue'
+import AdminPanel from './AdminPanel.vue'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
@@ -253,19 +260,21 @@ const menuItems = computed(() => {
     baseItems.push({ id: 'user_management', label: 'User Management', icon: 'fas fa-users-cog' })
   }
   
-  // Add Admin Panel link if user has HR, Salary, or Access permissions
-  if (hasAdminModulesAccess.value) {
-    baseItems.push({ id: 'admin_panel', label: 'System Settings', icon: 'fas fa-tools' })
+  // Add explicit Admin Modules directly inside user profile menu
+  if (perms.includes('page.hr') || isAdmin.value) {
+    baseItems.push({ id: 'hr', label: 'HR Settings', icon: 'fas fa-sliders-h' })
+  }
+  if (perms.includes('page.salary') || isAdmin.value) {
+    baseItems.push({ id: 'salary', label: 'Salary Config', icon: 'fas fa-money-check-alt' })
+  }
+  if (perms.includes('page.access') || isAdmin.value) {
+    baseItems.push({ id: 'access', label: 'Access Control', icon: 'fas fa-user-shield' })
   }
 
   return baseItems
 })
 
 const handleMenuClick = (item) => {
-  if (item.id === 'admin_panel') {
-    emit('go-to-admin')
-    return
-  }
   activeMenu.value = item.id
   if (isMobile.value) isSidebarOpen.value = false
 }

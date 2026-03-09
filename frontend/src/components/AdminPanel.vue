@@ -1,8 +1,8 @@
 <template>
-  <div class="admin-panel">
+  <div :class="['admin-panel', { 'is-embedded': embedded }]">
 
     <!-- ─── Sidebar (Desktop / iPad) ─── -->
-    <aside class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
+    <aside v-if="!embedded" class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
       <div class="sidebar-logo">
         <span>Admin Panel</span>
         <!-- Mobile: close X -->
@@ -60,13 +60,13 @@
     </aside>
 
     <!-- Mobile Overlay -->
-    <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false"></div>
+    <div v-if="sidebarOpen && !embedded" class="sidebar-overlay" @click="sidebarOpen = false"></div>
 
     <!-- ─── Main Content Area ─── -->
     <div class="main-wrapper">
       
       <!-- Mobile Top Bar -->
-      <div class="mobile-topbar">
+      <div v-if="!embedded" class="mobile-topbar">
         <button class="mobile-menu-btn" @click="sidebarOpen = true">☰</button>
         <span class="mobile-title">
           {{ 
@@ -580,9 +580,16 @@ import UserManagement from './UserManagement.vue'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
+const props = defineProps({
+  embedded: {
+    type: String,
+    default: null
+  }
+})
+
 const emit = defineEmits(['logout', 'go-to-identity', 'go-to-profile', 'view-profile'])
 
-const activeTab = ref('users')
+const activeTab = ref(props.embedded || 'users')
 const sidebarOpen = ref(false)
 const currentUser = ref(null)
 const isLoading = ref(false)
@@ -602,6 +609,10 @@ const hasPerm = (p) => {
 // Set active tab based on first available permission
 watch(currentUser, (newVal) => {
   if (newVal) {
+    if (props.embedded) {
+       activeTab.value = props.embedded
+       return
+    }
     if (isAdmin.value || hasPerm('page.usermanagement')) activeTab.value = 'users'
     else if (hasPerm('page.hr')) activeTab.value = 'hr'
     else if (hasPerm('page.salary')) activeTab.value = 'salary'
@@ -2036,5 +2047,19 @@ onMounted(fetchData)
   background: #e0f2fe !important;
   border: 2px dashed #38bdf8 !important;
   border-radius: 8px;
+}
+
+/* Embedded Mode Styles */
+.admin-panel.is-embedded {
+  min-height: auto;
+}
+.admin-panel.is-embedded .main-wrapper {
+  margin-left: 0 !important;
+  padding: 0 !important;
+  min-height: auto;
+}
+.admin-panel.is-embedded .admin-content {
+  padding: 0;
+  margin: 0;
 }
 </style>
