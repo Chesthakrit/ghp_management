@@ -124,6 +124,7 @@ const handleLogout = () => {
       :username="username"
       :userId="selectedUserId"
       @go-back="isAdminOnly() ? goToPage('admin') : handleLogout()"
+      @go-to-admin="goToPage('admin')"
       @view-profile="(id) => goToPage('profile', id)"
       @go-to-identity="(id) => goToPage('identity', id)"
       @logout="handleLogout"

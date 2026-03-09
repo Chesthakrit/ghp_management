@@ -10,8 +10,8 @@
         <span class="brand-name">MANAGEMENT</span>
       </div>
       <div class="header-right">
-        <button v-if="isAdmin" class="admin-panel-btn" @click="handleBack">
-          <i class="fas fa-tools"></i> Admin Panel
+        <button v-if="hasAdminModulesAccess" class="admin-panel-btn" @click="$emit('go-to-admin')">
+          <i class="fas fa-tools"></i> System Settings
         </button>
         <button class="logout-btn" @click="handleLogout">
           <i class="fas fa-sign-out-alt"></i> Logout
@@ -218,7 +218,7 @@ import Swal from 'sweetalert2'
 import UserManagement from './UserManagement.vue'
 
 const props = defineProps(['username', 'userId'])
-const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile'])
+const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const user = ref(null)
@@ -252,11 +252,20 @@ const menuItems = computed(() => {
   if (perms.includes('page.usermanagement') || isAdmin.value) {
     baseItems.push({ id: 'user_management', label: 'User Management', icon: 'fas fa-users-cog' })
   }
+  
+  // Add Admin Panel link if user has HR, Salary, or Access permissions
+  if (hasAdminModulesAccess.value) {
+    baseItems.push({ id: 'admin_panel', label: 'System Settings', icon: 'fas fa-tools' })
+  }
 
   return baseItems
 })
 
 const handleMenuClick = (item) => {
+  if (item.id === 'admin_panel') {
+    emit('go-to-admin')
+    return
+  }
   activeMenu.value = item.id
   if (isMobile.value) isSidebarOpen.value = false
 }
@@ -273,6 +282,11 @@ const isAdmin = computed(() => {
   const role = (localStorage.getItem('user_role') || '').toLowerCase()
   const uname = (localStorage.getItem('username') || '').toLowerCase()
   return role === 'admin' || uname === 'admin'
+})
+
+const hasAdminModulesAccess = computed(() => {
+  const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
+  return isAdmin.value || perms.some(p => ['page.hr', 'page.salary', 'page.access'].includes(p))
 })
 
 const canEvaluate = computed(() => {
