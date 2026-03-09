@@ -238,8 +238,13 @@ const user = ref(null)
 const isLoading = ref(false)
 const isSidebarOpen = ref(window.innerWidth > 768)
 const isMobile = ref(window.innerWidth <= 768)
-const activeMenu = ref('profile')
+const activeMenu = ref(props.userId ? 'profile' : (localStorage.getItem('profile_active_menu') || 'profile'))
 
+watch(activeMenu, (n) => {
+  if (!props.userId) {
+    localStorage.setItem('profile_active_menu', n)
+  }
+})
 const userSkills = ref([])
 const userEvaluations = ref({})
 const isEvaluating = ref(false)

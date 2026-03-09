@@ -115,7 +115,7 @@ const handleLogout = () => {
     <EmployeeIdentityEditor
       v-else-if="currentView === 'identity'"
       :initialUserId="selectedUserId"
-      @go-back="goToPage('admin')"
+      @go-back="isAdminOnly() ? goToPage('admin') : goToPage('profile')"
     />
 
     <UserProfile
