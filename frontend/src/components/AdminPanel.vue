@@ -100,7 +100,7 @@
             </div>
             
             <!-- Global Add Dept -->
-            <div class="hr-form-add main-add">
+            <div class="hr-form-add main-add" v-if="hasPerm('action.hr.add_dept')">
               <input v-model="newDept.name" placeholder="New Department Name (e.g. Finance)" class="hr-input" @keyup.enter="saveDept" />
               <button class="btn-primary" @click="saveDept">+ Add Dept</button>
             </div>
@@ -130,8 +130,8 @@
                         <span class="dept-title">{{ d.name }}</span>
                       </div>
                       <div class="dept-actions" @click.stop>
-                        <button class="action-icon-btn" @click="startEditDept(d)" title="Edit Dept">✏️</button>
-                        <button class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
+                        <button v-if="hasPerm('action.hr.edit_name')" class="action-icon-btn" @click="startEditDept(d)" title="Edit Dept">✏️</button>
+                        <button v-if="hasPerm('action.hr.delete')" class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
                       </div>
                     </div>
                   </div>
@@ -161,10 +161,9 @@
                             <span class="jt-name">{{ jt.name }}</span>
                           </div>
                           <div class="jt-actions" @click.stop>
-                            <button class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
-                            <button class="btn-action-pill" @click="openPageAccessModal(jt)">Access</button>
-                            <button class="action-icon-btn" @click="startEditJT(jt)">✏️</button>
-                            <button class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
+                            <button v-if="hasPerm('action.hr.manage_jt_skills')" class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
+                            <button v-if="hasPerm('action.hr.edit_name')" class="action-icon-btn" @click="startEditJT(jt)">✏️</button>
+                            <button v-if="hasPerm('action.hr.delete')" class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
                           </div>
                         </div>
                         <!-- Skill Preview under JT -->
@@ -183,7 +182,7 @@
                     </draggable>
 
                     <!-- Quick Add JT for this Dept -->
-                    <div class="quick-add-jt">
+                    <div class="quick-add-jt" v-if="hasPerm('action.hr.add_jt')">
                       <input 
                         v-model="newJobTitle.name" 
                         v-if="selectedDeptId === d.id"
@@ -218,7 +217,7 @@
             </div>
             
             <!-- Global Add Tag -->
-            <div class="hr-form-add main-add">
+            <div class="hr-form-add main-add" v-if="hasPerm('action.hr.add_tag')">
               <input v-model="newDutyCategoryName" placeholder="New Skill Tag (e.g. Software)" class="hr-input" @keyup.enter="saveDutyCategory" />
               <button class="btn-primary" @click="saveDutyCategory">+ Add Tag</button>
             </div>
@@ -240,8 +239,8 @@
                              <span class="jt-name">{{ duty.name }}</span>
                           </div>
                           <div class="jt-actions" @click.stop>
-                             <button class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
-                             <button class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
+                             <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
+                             <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
                           </div>
                        </div>
                        <!-- Sub-skills & Desc -->
@@ -270,8 +269,8 @@
                       <span class="dept-title">{{ cat.name }}</span>
                     </div>
                     <div class="dept-actions" @click.stop>
-                      <button class="action-icon-btn" @click="startEditDutyCategory(cat)" title="Edit Tag">✏️</button>
-                      <button class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
+                      <button v-if="hasPerm('action.hr.edit_tag')" class="action-icon-btn" @click="startEditDutyCategory(cat)" title="Edit Tag">✏️</button>
+                      <button v-if="hasPerm('action.hr.delete_tag')" class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
                     </div>
                   </div>
                 </div>
@@ -285,8 +284,8 @@
                           <span class="jt-name">{{ duty.name }}</span>
                        </div>
                        <div class="jt-actions" @click.stop>
-                          <button class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
-                          <button class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
+                          <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
+                          <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
                        </div>
                     </div>
                     <!-- Sub-skills & Desc -->
@@ -299,7 +298,7 @@
                   </div>
 
                   <!-- Quick Add Skill for this Tag -->
-                  <div class="quick-add-jt">
+                  <div class="quick-add-jt" v-if="hasPerm('action.hr.add_skill')">
                     <input 
                       v-model="newDutyName" 
                       v-if="editingDutyCategory?.id === null && selectedDeptId === 'tag_' + cat.id"

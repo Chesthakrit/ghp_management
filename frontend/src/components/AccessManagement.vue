@@ -93,79 +93,57 @@
             </div>
           </div>
 
-          <!-- Section: System & HR Modules -->
+          <!-- Section: HR Management -->
           <div class="perm-section">
-            <div class="section-badge">Admin Modules</div>
-            <h4><i class="fas fa-tools"></i> System Configuration</h4>
-            <div class="perm-grid-lite" style="margin-top: 15px;">
-              <div class="action-item">
+            <div class="section-badge">Module</div>
+            <div class="accordion-header" @click="hrSectionExpanded = !hrSectionExpanded" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+              <h4 style="margin: 0;"><i class="fas fa-sitemap"></i> HR Settings Page</h4>
+              <span class="toggle-icon">{{ hrSectionExpanded ? '▼' : '▶' }}</span>
+            </div>
+            
+            <div v-if="hrSectionExpanded" style="margin-top: 15px;">
+              <div class="perm-row page-level">
                 <label class="switch-label">
                   <input type="checkbox" v-model="selectedPerms" value="page.hr" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">HR Settings</span>
+                  <span class="slider"></span>
+                  <span class="label-text">Allow Access to HR Settings Page</span>
                 </label>
-                <div style="font-size: 0.75rem; color: #64748b; margin-top: 5px; padding-left: 45px;">Manage Departments, Job Titles, and Skill Library.</div>
-              </div>
-              
-              <div class="action-item">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.salary" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">Salary Config</span>
-                </label>
-                <div style="font-size: 0.75rem; color: #64748b; margin-top: 5px; padding-left: 45px;">Configure salary grids and compensation values.</div>
               </div>
 
-              <div class="action-item">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.access" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">Access Management</span>
-                </label>
-                <div style="font-size: 0.75rem; color: #64748b; margin-top: 5px; padding-left: 45px;">Manage job title permissions and page access.</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: General Pages -->
-          <div class="perm-section">
-            <div class="section-badge">Pages</div>
-            <h4><i class="fas fa-desktop"></i> General Page Access</h4>
-            <div class="perm-grid-lite" style="margin-top: 15px;">
-              <div class="action-item">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.factory" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">Factory Page</span>
-                </label>
-              </div>
-              <div class="action-item">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.sales" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">Sales Page</span>
-                </label>
-              </div>
-              <div class="action-item">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.warehouse" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">Warehouse Page</span>
-                </label>
-              </div>
-              <div class="action-item">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.office" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">Office Page</span>
-                </label>
-              </div>
-              <div class="action-item">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.accounts" />
-                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
-                  <span class="label-text" style="font-size: 0.85rem;">Accounts Page</span>
-                </label>
+              <div class="granular-actions" :class="{ disabled: !selectedPerms.includes('page.hr') }">
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_dept" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add Department
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_jt" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add Job Title
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.edit_name" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Edit Name (Dept / Job Title)
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.delete" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Delete (Dept / Job Title)
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.manage_jt_skills" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Assign Skills to Job Title
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_tag" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add Skill Tag
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.edit_tag" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Edit Skill Tag Name
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.delete_tag" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Delete Skill Tag
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_skill" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add New Skill
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.edit_skill" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Edit Skill Info
+                </label></div>
+                <div class="action-item"><label class="chk-container">
+                  <input type="checkbox" v-model="selectedPerms" value="action.hr.delete_skill" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Delete Skill
+                </label></div>
               </div>
             </div>
           </div>
@@ -187,6 +165,7 @@ const allPermissions = ref([])
 const selectedJT = ref(null)
 const selectedPerms = ref([])
 const expandedDepts = ref([])
+const hrSectionExpanded = ref(true)
 const isLoading = ref(true)
 const isSaving = ref(false)
 
@@ -230,11 +209,26 @@ const hasPageAccess = computed(() => {
   return selectedPerms.value.includes('page.usermanagement')
 })
 
+const hasHRAccess = computed(() => {
+  return selectedPerms.value.includes('page.hr')
+})
+
 // Auto-uncheck granular if page access is lost
 watch(hasPageAccess, (val) => {
   if (!val) {
     const granular = ['action.user.edit_identity', 'action.user.edit_employment', 'action.user.delete', 'action.user.view_profile']
     selectedPerms.value = selectedPerms.value.filter(p => !granular.includes(p))
+  }
+})
+
+watch(hasHRAccess, (val) => {
+  if (!val) {
+    const granularHR = [
+      'action.hr.add_dept', 'action.hr.add_jt', 'action.hr.edit_name', 'action.hr.delete',
+      'action.hr.manage_jt_skills', 'action.hr.add_tag', 'action.hr.edit_tag', 'action.hr.delete_tag',
+      'action.hr.add_skill', 'action.hr.edit_skill', 'action.hr.delete_skill'
+    ]
+    selectedPerms.value = selectedPerms.value.filter(p => !granularHR.includes(p))
   }
 })
 
