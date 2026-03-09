@@ -470,11 +470,15 @@
                       :class="{ selected: salarySelectedJT?.id === jt.id }"
                       @click="salarySelectedJT = jt; salarySelectedDeptId = d.id"
                     >
-                      <div class="hr-item-main">
-                        <span class="hr-label">{{ jt.name }}</span>
-                        <!-- Quick Preview of Salary -->
-                        <div v-if="jt.min_salary_monthly > 0 || jt.max_salary_monthly > 0" class="salary-preview">
-                          M: {{ (jt.min_salary_monthly || 0).toLocaleString() }} - {{ (jt.max_salary_monthly || 0).toLocaleString() }}
+                      <span class="hr-label">{{ jt.name }}</span>
+                      
+                      <!-- Salary Preview Aligned Right -->
+                      <div class="salary-preview-right">
+                        <div v-if="jt.min_salary_monthly > 0 || jt.max_salary_monthly > 0" class="salary-tag monthly">
+                          {{ (jt.min_salary_monthly || 0).toLocaleString() }} - {{ (jt.max_salary_monthly || 0).toLocaleString() }} M
+                        </div>
+                        <div v-if="jt.min_salary_daily > 0 || jt.max_salary_daily > 0" class="salary-tag daily">
+                          {{ (jt.min_salary_daily || 0).toLocaleString() }} - {{ (jt.max_salary_daily || 0).toLocaleString() }} D
                         </div>
                       </div>
                     </div>
@@ -2032,13 +2036,23 @@ onMounted(fetchData)
   padding: 8px 12px !important;
   border-radius: 6px !important;
   font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.salary-preview {
+.salary-preview-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+.salary-tag {
   font-size: 0.65rem;
-  color: #10b981;
-  font-weight: 600;
-  margin-top: 2px;
+  font-weight: 700;
+  line-height: 1.2;
 }
+.salary-tag.monthly { color: #059669; }
+.salary-tag.daily { color: #d97706; }
 .no-data-hint-sm {
   font-size: 0.75rem;
   color: #94a3b8;
