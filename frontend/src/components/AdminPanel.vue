@@ -921,15 +921,21 @@ const fetchHRData = async () => {
     ])
     dutiesPool.value = dutiesRes.data
     dutyCategories.value = catsRes.data
-    departments.value = deptsRes.data.map(d => ({ 
+    // Sort departments by display_order explicitly
+    const sortedDepts = [...deptsRes.data].sort((a, b) => (a.display_order || 100) - (b.display_order || 100))
+    
+    departments.value = sortedDepts.map(d => ({ 
       ...d,
       label: d.name
     }))
-    rawDepartments.value = [...deptsRes.data] // เก็บแยกสำหรับ drag-and-drop
+    rawDepartments.value = [...sortedDepts] // เก็บแยกสำหรับ drag-and-drop
     
+    // Sort job titles by display_order explicitly
+    const sortedJobs = [...jobsRes.data].sort((a, b) => (a.display_order || 100) - (b.display_order || 100))
+
     // Convert flat job titles list to a grouped object for existing logic compatibility
     const grouped = {}
-    jobsRes.data.forEach(job => {
+    sortedJobs.forEach(job => {
       // Find the department value (slug) for this title
       const deptObj = departments.value.find(d => d.id === job.department_id)
       if (deptObj) {
@@ -940,7 +946,7 @@ const fetchHRData = async () => {
     jobTitlesByDept.value = grouped
     
     // If we have job title objects (raw from API) we might need them for the management UI
-    rawJobTitles.value = jobsRes.data
+    rawJobTitles.value = sortedJobs
 
     // Fetch Page Permissions
     await fetchPermissions()
