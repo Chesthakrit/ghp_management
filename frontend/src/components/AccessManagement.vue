@@ -52,43 +52,49 @@
           <!-- Section: User Management -->
           <div class="perm-section">
             <div class="section-badge">Module</div>
-            <h4><i class="fas fa-users-cog"></i> User Management Page</h4>
-            <div class="perm-row page-level">
-              <label class="switch-label">
-                <input type="checkbox" v-model="selectedPerms" value="page.usermanagement" />
-                <span class="slider"></span>
-                <span class="label-text">Allow Access to User Management Page</span>
-              </label>
+            <div class="accordion-header" @click="userSectionExpanded = !userSectionExpanded" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+              <h4 style="margin: 0;"><i class="fas fa-users-cog"></i> User Management Page</h4>
+              <span class="toggle-icon">{{ userSectionExpanded ? '▼' : '▶' }}</span>
             </div>
+            
+            <div v-if="userSectionExpanded" style="margin-top: 15px;">
+              <div class="perm-row page-level">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.usermanagement" />
+                  <span class="slider"></span>
+                  <span class="label-text">Allow Access to User Management Page</span>
+                </label>
+              </div>
 
-            <div class="granular-actions" :class="{ disabled: !selectedPerms.includes('page.usermanagement') }">
-              <div class="action-item">
-                <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.edit_identity" :disabled="!selectedPerms.includes('page.usermanagement')" />
-                  <span class="checkmark"></span>
-                  Button: Edit Employee Identity
-                </label>
-              </div>
-              <div class="action-item">
-                <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.edit_employment" :disabled="!selectedPerms.includes('page.usermanagement')" />
-                  <span class="checkmark"></span>
-                  Button: Employment & Access Control
-                </label>
-              </div>
-              <div class="action-item">
-                <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.delete" :disabled="!selectedPerms.includes('page.usermanagement')" />
-                  <span class="checkmark"></span>
-                  Button: Delete Employee
-                </label>
-              </div>
-              <div class="action-item">
-                <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.view_profile" :disabled="!selectedPerms.includes('page.usermanagement')" />
-                  <span class="checkmark"></span>
-                  Button: View Profile Page
-                </label>
+              <div class="granular-actions" :class="{ disabled: !selectedPerms.includes('page.usermanagement') }">
+                <div class="action-item">
+                  <label class="chk-container">
+                    <input type="checkbox" v-model="selectedPerms" value="action.user.edit_identity" :disabled="!selectedPerms.includes('page.usermanagement')" />
+                    <span class="checkmark"></span>
+                    Edit Employee Identity
+                  </label>
+                </div>
+                <div class="action-item">
+                  <label class="chk-container">
+                    <input type="checkbox" v-model="selectedPerms" value="action.user.edit_employment" :disabled="!selectedPerms.includes('page.usermanagement')" />
+                    <span class="checkmark"></span>
+                    Employment & Access Control
+                  </label>
+                </div>
+                <div class="action-item">
+                  <label class="chk-container">
+                    <input type="checkbox" v-model="selectedPerms" value="action.user.delete" :disabled="!selectedPerms.includes('page.usermanagement')" />
+                    <span class="checkmark"></span>
+                    Delete Employee
+                  </label>
+                </div>
+                <div class="action-item">
+                  <label class="chk-container">
+                    <input type="checkbox" v-model="selectedPerms" value="action.user.view_profile" :disabled="!selectedPerms.includes('page.usermanagement')" />
+                    <span class="checkmark"></span>
+                    View Profile Page
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -165,6 +171,7 @@ const allPermissions = ref([])
 const selectedJT = ref(null)
 const selectedPerms = ref([])
 const expandedDepts = ref([])
+const userSectionExpanded = ref(true)
 const hrSectionExpanded = ref(true)
 const isLoading = ref(true)
 const isSaving = ref(false)
