@@ -222,7 +222,6 @@ const emit = defineEmits(['go-to-identity', 'view-profile'])
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const users = ref([])
-const currentUser = ref(null)
 const departments = ref([])
 const jobTitlesByDept = ref({})
 const isLoading = ref(false)
@@ -319,7 +318,7 @@ const filteredUsers = computed(() => {
     
     // Security: Only 'admin' can see the 'admin' account in the list
     const isTargetAdmin = u.username.toLowerCase() === 'admin' || (u.role || '').toLowerCase() === 'admin'
-    const isViewerAdmin = (localStorage.getItem('username') || '').toLowerCase() === 'admin'
+    const isViewerAdmin = isAdmin.value
     
     if (isTargetAdmin && !isViewerAdmin) return false
     

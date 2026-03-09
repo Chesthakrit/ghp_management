@@ -585,20 +585,9 @@ const emit = defineEmits(['logout', 'go-to-identity', 'go-to-profile', 'view-pro
 
 const activeTab = ref('users')
 const sidebarOpen = ref(false)
-const users = ref([])
 const currentUser = ref(null)
 const isLoading = ref(false)
 const isSaving = ref(false)
-const searchQuery  = ref('')
-const filterDept   = ref('')
-const sortBy       = ref('')       // 'dept' | 'hire_date' | ''
-const sortDir      = ref('asc')    // 'asc' | 'desc'
-const showModal = ref(false)
-const editingUser = ref(null)
-const photoPopup = ref(null)
-
-const openPhoto  = (url) => { photoPopup.value = url }
-const closePhoto = ()    => { photoPopup.value = null }
 
 const isAdmin = computed(() => {
   const role = (currentUser.value?.role || '').toLowerCase()
@@ -621,8 +610,9 @@ watch(currentUser, (newVal) => {
   }
 }, { immediate: true })
 
-const departments = ref([])       // สำหรับ dropdown (แผนก)
-const rawDepartments = ref([])    // สำหรับ drag-and-drop list ใน HR Settings
+const departments = ref([])       
+const rawDepartments = ref([])    
+const rawJobTitles = ref([])      
 const jobTitlesByDept = ref({})
 
 // For HR Settings Tab management
@@ -669,105 +659,6 @@ const toggleJTExpansion = (id) => {
     expandedJTs.value.push(id)
   }
 }
-
-const form = ref({
-  first_name: '',
-  last_name: '',
-  department: '',
-  job_title: '',
-  role: '',
-  is_active: true,
-  hire_date: '',
-  employment_status: 'intern',
-})
-
-// Reset job_title is now handled by @change in template to avoid resetting on modal open
-
-
-const deptLabel = (val) => departments.value.find(d => d.value === val)?.name || val || '—'
-
-// แปลง YYYY-MM-DD → DD/MM/YYYY (คส.) — คืน '—' ถ้าไม่มีค่า
-const fmtDate = (iso) => {
-  if (!iso) return '—'
-  const [y, m, d] = iso.split('-')
-  if (!y || !m || !d) return iso
-  return `${d}/${m}/${y}`
-}
-
-const empStatusLabel = (val) => {
-  const map = { intern: 'Intern', permanent: 'Permanent', terminated: 'Terminated' }
-  return map[val] || '—'
-}
-
-const getInitials = (user) => {
-  if (!user) return '?'
-  const f = user.first_name?.[0] || user.username?.[0] || '?'
-  const l = user.last_name?.[0] || ''
-  return (f + l).toUpperCase()
-}
-
-const departmentStats = computed(() => {
-  const counts = {}
-  for (const u of users.value) {
-    const dept = u.employee_profile?.department
-    if (dept) counts[dept] = (counts[dept] || 0) + 1
-  }
-  return Object.entries(counts).map(([name, count]) => ({ name, count }))
-})
-
-const filteredUsers = computed(() => {
-  let list = users.value.filter(u => {
-    const q = searchQuery.value.toLowerCase()
-    const matchSearch = !q ||
-      u.username.toLowerCase().includes(q) ||
-      (u.first_name || '').toLowerCase().includes(q) ||
-      (u.last_name || '').toLowerCase().includes(q)
-    const matchDept = !filterDept.value || u.employee_profile?.department === filterDept.value
-    
-    // Security: Only 'admin' can see the 'admin' account in the list
-    const isTargetAdmin = u.username.toLowerCase() === 'admin' || (u.role || '').toLowerCase() === 'admin'
-    const isViewerAdmin = currentUser.value?.username.toLowerCase() === 'admin'
-    
-    if (isTargetAdmin && !isViewerAdmin) return false
-    
-    return matchSearch && matchDept
-  })
-
-  // Sorting
-  if (sortBy.value === 'dept') {
-    list = [...list].sort((a, b) => {
-      const da = a.employee_profile?.department || ''
-      const db = b.employee_profile?.department || ''
-      return sortDir.value === 'asc' ? da.localeCompare(db) : db.localeCompare(da)
-    })
-  } else if (sortBy.value === 'hire_date') {
-    list = [...list].sort((a, b) => {
-      const da = a.employee_profile?.hire_date || ''
-      const db = b.employee_profile?.hire_date || ''
-      if (!da && !db) return 0
-      if (!da) return 1
-      if (!db) return -1
-      return sortDir.value === 'asc'
-        ? da.localeCompare(db)
-        : db.localeCompare(da)
-    })
-  }
-
-  return list
-})
-
-// Toggle sort: คลิกซ้ำที่ column เดิม → สลับ asc/desc; column ใหม่ → เริ่มต้น asc
-const toggleSort = (field) => {
-  if (sortBy.value === field) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value  = field
-    sortDir.value = 'asc'
-  }
-}
-
-// ตรวจว่ากำลังแก้ไข admin user หรือไม่
-const isAdminUser = computed(() => editingUser.value?.role === 'admin')
 
 const fetchHRData = async () => {
   try {
@@ -852,16 +743,10 @@ const fetchPermissions = async () => {
   }
 }
 
-const rawJobTitles = ref([])
-
 const fetchData = async () => {
   isLoading.value = true
   try {
     await fetchHRData() // Fetch departments/jobs first
-    const [usersRes] = await Promise.all([
-      api.get('/users/'),
-    ])
-    users.value = usersRes.data
     
     // Fetch current user info to know who is viewing
     const meRes = await api.get('/users/me')
