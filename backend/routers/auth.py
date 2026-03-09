@@ -1,60 +1,52 @@
-# --------------------------------------------------------------------------------
-# ไฟล์: backend/routers/auth.py
-# หน้าที่: จัดการระบบล็อกอิน (Login) และออกใบผ่านทาง (JWT Token)
-# --------------------------------------------------------------------------------
-# รายละเอียด:
-# - รับ Username/Password จากหน้าเว็บ
-# - ตรวจสอบว่ามี User นี้จริงไหม และรหัสผ่านถูกไหม (Verify Password)
-# - ถ้าถูกต้อง จะสร้าง "Access Token" (เหมือนบัตรผ่านเข้างาน) ส่งกลับไปให้หน้าเว็บ
-# - ใช้ Token นี้ยืนยันตัวตนในการเรียกใช้งาน API อื่นๆ ต่อไป
-# --------------------------------------------------------------------------------
+"""
+ไฟล์จัดการระบบการยืนยันตัวตน (Authentication Router)
+ทำหน้าที่ดูแลการเข้าสู่ระบบ (Login) และการสร้าง Token สำหรับเข้าใช้งาน API
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
 from models import users as models
-from hashing import Hash # เรียกใช้ตัวเช็ครหัสผ่านที่เราแก้ชื่อไฟล์ไปเมื่อกี้
+from hashing import Hash 
 from datetime import datetime, timedelta
 from jose import jwt
 
 router = APIRouter(
     prefix="/auth",
-    tags=["Authentication"]
+    tags=["Authentication"] # จัดหมวดหมู่ในหน้า Swagger UI
 )
 
-# --- ตั้งค่าความลับของบัตรผ่าน (JWT Config) ---
-# ในงานจริง โค้ดลับนี้ต้องซ่อนไว้อย่างดี ห้ามให้ใครรู้
-SECRET_KEY = "1900"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 120 # บัตรหมดอายุใน 120 นาที (2 ชม.)
+# --- การตั้งค่าสำหรับการสร้าง Token (JWT Config) ---
+SECRET_KEY = "1900"             # กุญแจลับสำหรับเข้ารหัส
+ALGORITHM = "HS256"              # อัลกอริทึมที่ใช้
+ACCESS_TOKEN_EXPIRE_MINUTES = 120 # ระยะเวลาที่ Token สามารถใช้งานได้ (2 ชม.)
 
-# ฟังก์ชันสร้างบัตรผ่าน (Create Token)
 def create_access_token(data: dict):
+    """ฟังก์ชันสำหรับสร้างรหัส JWT (Access Token)"""
     to_encode = data.copy()
-    # กำหนดเวลาหมดอายุ
+    # กำหนดเวลาหมดอายุของบัตรผ่านใบนี้
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    # สร้างรหัส JWT
+    # เข้ารหัสข้อมูลทั้งหมดเป็นสายอักขระ JWT
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# --- API สำหรับ Login ---
 @router.post("/login")
 def login(request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # 1. พิเศษ: เช็คว่าเป็น "Master Admin" หรือไม่ (User: admin / Pass: admin9999)
+    """API สำหรับการเข้าสู่ระบบ"""
+    
+    # 1. ตรวจสอบกรณีพิเศษ: การล็อกอินด้วยบัญชี Master Admin
+    # (หากระบุ username เป็น admin และ password ตามที่กำหนด)
     if request.username == "admin" and request.password == "admin9999":
-        # เช็คว่ามี User admin ในระบบหรือยัง
         user = db.query(models.User).filter(models.User.username == "admin").first()
         if not user:
-            # ถ้ายังไม่มี ให้สร้างใหม่เลย (Auto-Register Admin)
-            # Find Admin Role
+            # หากยังไม่มี User admin ในฐานข้อมูล ให้สร้างขึ้นมาใหม่อัตโนมัติ
             admin_role = db.query(models.Role).filter(models.Role.name == "admin").first()
-            
             new_admin = models.User(
                 username="admin",
-                password=Hash.bcrypt("admin9999"), # เข้ารหัสก่อนเก็บ
-                role=admin_role, # กำหนดเป็น Admin Role Object
-                email="admin@ghp.com",
+                password=Hash.bcrypt("admin9999"), # เข้ารหัสก่อนบันทึก
+                role=admin_role,
                 first_name="Master",
                 last_name="Admin"
             )
@@ -62,43 +54,37 @@ def login(request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(
             db.commit()
             db.refresh(new_admin)
             user = new_admin 
-        # ถ้ามีแล้ว หรือเพิ่งสร้างเสร็จ ก็ให้ผ่านไปขั้นตอนสร้าง Token ได้เลย
     else:
-        # 1. (ปกติ) ค้นหา User จาก username ที่ส่งมา
+        # 2. กรณีการล็อกอินปกติ: ค้นหาชื่อผู้ใช้จากฐานข้อมูล
         user = db.query(models.User).filter(models.User.username == request.username).first()
 
-        # 2. ถ้าหาไม่เจอ ให้บอกว่าข้อมูลผิด (ไม่บอกว่าผิดที่ username เพื่อความปลอดภัย)
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials")
+        # หากไม่พบผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง (Verify Password)
+        if not user or not Hash.verify(request.password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"
+            )
 
-        # 3. เช็ค Password ว่าตรงกันไหม (ใช้ hashing.py)
-        if not Hash.verify(request.password, user.password):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials")
-
-    # 4. เช็คสถานะการเข้าใช้งาน (Block logic for deactivated or terminated users)
-    # ยกเว้น Master Admin (แต่ถ้าสร้าง user ในระบบอาจจะมี profile ได้)
-    if user.username != "admin": # ปกติ admin หลักควรเข้าได้เสมอ
-        # เช็ค is_active เบื้องต้น
+    # 3. ตรวจสอบสถานะการใช้งานพนักงาน (Block logic)
+    if user.username != "admin": # บัญชี admin หลักจะเข้าได้เสมอ
+        # 3.1 ตรวจสอบว่าบัญชีถูกปิดใช้งาน (Deactivated) หรือไม่
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, 
-                detail="User account is deactivated. Please contact administrator."
+                detail="บัญชีของคุณถูกปิดใช้งานชั่วคราว กรุณาติดต่อผู้ดูแลระบบ"
             )
         
-        # เช็คสถานะ Terminate จาก EmployeeProfile
+        # 3.2 ตรวจสอบสถานะการจ้างงาน (เช่น หากลาออกไปแล้วจะเข้าไม่ได้)
         if user.employee_profile and user.employee_profile.employment_status == 'terminated':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, 
-                detail="Login denied: This employee account has been terminated."
+                detail="ไม่สามารถเข้าสู่ระบบได้ เนื่องจากบัญชีพนักงานนี้ถูกยกเลิกแล้ว"
             )
 
-    # 5. ถ้าผ่านหมด ให้สร้างบัตรผ่าน (Token)
+    # 4. หากผ่านการตรวจสอบทั้งหมด ให้สร้าง Token และส่งกลับไป
     access_token = create_access_token(data={"sub": user.username})
-
-    # 5. ส่งบัตรผ่านกลับไปให้ User
     return {"access_token": access_token, "token_type": "bearer"}
 
-# --- API สำหรับเช็ครหัส Admin (ก่อนสมัครสมาชิก) ---
 from pydantic import BaseModel
 
 class AdminCodeRequest(BaseModel):
@@ -106,12 +92,11 @@ class AdminCodeRequest(BaseModel):
 
 @router.post("/verify-admin-code")
 def verify_admin_code(request: AdminCodeRequest):
-    # รหัสลับสำหรับปลดล็อกหน้าสมัครสมาชิก
+    """API สำหรับตรวจสอบรหัสแอดมินก่อนอนุญาตให้เข้าหน้าสมัครสมาชิก"""
     if request.code == "admin9999":
         return {"valid": True}
     else:
-        # ถ้าผิด ให้ส่ง Error กลับไป
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Invalid Admin Code"
+            detail="รหัสแอดมินไม่ถูกต้อง"
         )

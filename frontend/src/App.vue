@@ -29,19 +29,11 @@ const getInitialView = () => {
   const currentRole = (userRole.value || '').toLowerCase()
   const currentUsername = (username.value || '').toLowerCase()
   
-  console.log("App.vue DEBUG - Initial Load:", { 
-    token: !!token, 
-    role: currentRole, 
-    username: currentUsername 
-  })
-
   if (token) {
     // ถ้าเป็น admin (เช็คจาก Role หรือ Username ก็ได้ เพื่อความชัวร์)
     if (currentRole === 'admin' || currentUsername === 'admin') {
-      console.log("App.vue DEBUG - Redirecting to: admin")
       return 'admin'
     }
-    console.log("App.vue DEBUG - Redirecting to: profile")
     return 'profile'
   }
   
@@ -57,7 +49,6 @@ const selectedUserId = ref(null)
  * @param {String} pageName - ชื่อหน้าที่ต้องการไป
  */
 const goToPage = (pageName, userId = null, userData = null) => {
-  console.log(`App.vue DEBUG - Navigating to ${pageName} for user:`, userId)
   let targetPage = pageName
 
   // ถ้ามีการส่งข้อมูล User มา (เช่น ตอน Login) ให้ตรวจสอบสิทธิ์ตรงนั้นเลย

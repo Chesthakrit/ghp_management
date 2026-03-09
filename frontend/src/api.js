@@ -21,4 +21,20 @@ api.interceptors.request.use((config) => {
     return config
 })
 
+// Interceptor: จัดการ Response (Error Handling)
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // หากได้รับ 401 Unauthorized แสดงว่า Token หมดอายุหรือผิดพลาด
+        if (error.response && error.response.status === 401) {
+            console.warn('Session expired or invalid token.')
+            localStorage.clear()
+            // ถ้าไม่ใช้ window.location.reload() ทันที อาจจะทำให้เกิด loop ในบางกรณี
+            // แต่สำหรับ App.vue นี้ การ reload จะช่วยให้ getInitialView() ทำงานใหม่
+            window.location.reload()
+        }
+        return Promise.reject(error)
+    }
+)
+
 export default api

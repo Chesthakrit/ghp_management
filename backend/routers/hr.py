@@ -1,3 +1,9 @@
+"""
+ไฟล์จัดการระบบบริหารทรัพยากรบุคคล (HR Management Router)
+ครอบคลุมการจัดการแผนก (Departments), ตำแหน่ง (Job Titles), รายละเอียดงาน (JD), 
+คลังทักษะ (Skill Library/Duties) และการประเมินผลพนักงาน (Evaluations)
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -12,21 +18,21 @@ router = APIRouter(
 )
 
 # ─────────────────────────────────────────────
-#  Departments
+#  การจัดการแผนก (Departments)
 # ─────────────────────────────────────────────
+
 @router.get("/departments", response_model=List[schemas.Department])
-def get_departments(db: Session = Depends(get_db)):
+def get_departments(db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    """ดึงรายชื่อแผนกทั้งหมดที่มีในบริษัท"""
     return db.query(models.Department).all()
 
 @router.post("/departments", response_model=schemas.Department)
 def create_department(
     dept: schemas.DepartmentCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    # Only admin can manage master data
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """เพิ่มแผนกใหม่ (เฉพาะ Admin เท่านั้น)"""
         
     db_dept = models.Department(**dept.dict())
     db.add(db_dept)
@@ -39,15 +45,15 @@ def update_department(
     dept_id: int, 
     dept_update: schemas.DepartmentUpdate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """แก้ไขข้อมูลแผนก (เฉพาะ Admin เท่านั้น)"""
         
     db_dept = db.query(models.Department).filter(models.Department.id == dept_id).first()
     if not db_dept:
-        raise HTTPException(status_code=404, detail="Department not found")
+        raise HTTPException(status_code=404, detail="ไม่พบแผนกที่ต้องการ")
         
+    # อัปเดตเฉพาะฟิลด์ที่มีการส่งข้อมูลมา
     for key, value in dept_update.dict(exclude_unset=True).items():
         setattr(db_dept, key, value)
         
@@ -59,23 +65,24 @@ def update_department(
 def delete_department(
     dept_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """ลบแผนก (เฉพาะ Admin เท่านั้น)"""
         
     db_dept = db.query(models.Department).filter(models.Department.id == dept_id).first()
     if not db_dept:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="ไม่พบแผนก")
     db.delete(db_dept)
     db.commit()
-    return {"message": "Deleted"}
+    return {"message": "ลบแผนกเรียบร้อยแล้า"}
 
 # ─────────────────────────────────────────────
-#  Job Titles
+#  การจัดการตำแหน่งงาน (Job Titles)
 # ─────────────────────────────────────────────
+
 @router.get("/job-titles", response_model=List[schemas.JobTitle])
-def get_job_titles(dept_id: Optional[int] = None, db: Session = Depends(get_db)):
+def get_job_titles(dept_id: Optional[int] = None, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    """ดึงรายชื่อตำแหน่งงานทั้งหมด (สามารถเลือกกรองตามแผนกได้)"""
     query = db.query(models.JobTitle)
     if dept_id:
         query = query.filter(models.JobTitle.department_id == dept_id)
@@ -85,10 +92,9 @@ def get_job_titles(dept_id: Optional[int] = None, db: Session = Depends(get_db))
 def create_job_title(
     jt: schemas.JobTitleCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """สร้างตำแหน่งงานใหม่ภายใต้แผนก (เฉพาะ Admin เท่านั้น)"""
         
     db_jt = models.JobTitle(**jt.dict())
     db.add(db_jt)
@@ -101,14 +107,13 @@ def update_job_title(
     jt_id: int, 
     jt_update: schemas.JobTitleUpdate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """แก้ไขข้อมูลตำแหน่งงาน (เฉพาะ Admin)"""
         
     db_jt = db.query(models.JobTitle).filter(models.JobTitle.id == jt_id).first()
     if not db_jt:
-        raise HTTPException(status_code=404, detail="Job title not found")
+        raise HTTPException(status_code=404, detail="ไม่พบตำแหน่งงาน")
         
     for key, value in jt_update.dict(exclude_unset=True).items():
         setattr(db_jt, key, value)
@@ -121,29 +126,28 @@ def update_job_title(
 def delete_job_title(
     jt_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """ลบตำแหน่งงาน (เฉพาะ Admin)"""
         
     db_jt = db.query(models.JobTitle).filter(models.JobTitle.id == jt_id).first()
     if not db_jt:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="ไม่พบตำแหน่งงาน")
     db.delete(db_jt)
     db.commit()
-    return {"message": "Deleted"}
+    return {"message": "ลบตำแหน่งงานเรียบร้อย"}
 
 # ─────────────────────────────────────────────
-#  Job Descriptions
+#  รายละเอียดงาน (Job Descriptions)
 # ─────────────────────────────────────────────
+
 @router.post("/job-descriptions", response_model=schemas.JobDescription)
 def create_job_description(
     jd: schemas.JobDescriptionCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """เพิ่มคำอธิบายรายละเอียดงาน (JD) ให้กับตำแหน่งงาน"""
         
     db_jd = models.JobDescription(**jd.dict())
     db.add(db_jd)
@@ -155,33 +159,33 @@ def create_job_description(
 def delete_job_description(
     jd_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """ลบรายละเอียดงานที่ไม่ได้ใช้ง่าน"""
         
     db_jd = db.query(models.JobDescription).filter(models.JobDescription.id == jd_id).first()
     if not db_jd:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูล")
     db.delete(db_jd)
     db.commit()
-    return {"message": "Deleted"}
+    return {"message": "ลบ JD เรียบร้อย"}
 
 # ─────────────────────────────────────────────
-#  Duty Categories (Skill Tags)
+#  หมวดหมู่ทักษะ (Skill Categories / Tags)
 # ─────────────────────────────────────────────
+
 @router.get("/duty-categories", response_model=List[schemas.DutyCategory])
-def get_duty_categories(db: Session = Depends(get_db)):
+def get_duty_categories(db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    """ดึงหมวดหมู่ทักษะทั้งหมด (เช่น Soft Skill, Hardware, Language)"""
     return db.query(models.DutyCategory).all()
 
 @router.post("/duty-categories", response_model=schemas.DutyCategory)
 def create_duty_category(
     cat: schemas.DutyCategoryCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """เพิ่มหมวดหมู่ทักษะใหม่ (เฉพาะ Admin)"""
         
     db_cat = models.DutyCategory(**cat.dict())
     db.add(db_cat)
@@ -194,14 +198,13 @@ def update_duty_category(
     cat_id: int,
     cat_update: schemas.DutyCategoryUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """แก้ไขหมวดหมู่ทักษะ"""
         
     db_cat = db.query(models.DutyCategory).filter(models.DutyCategory.id == cat_id).first()
     if not db_cat:
-        raise HTTPException(status_code=404, detail="Category not found")
+        raise HTTPException(status_code=404, detail="ไม่พบหมวดหมู่")
         
     for key, value in cat_update.dict(exclude_unset=True).items():
         setattr(db_cat, key, value)
@@ -214,33 +217,33 @@ def update_duty_category(
 def delete_duty_category(
     cat_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """ลบหมวดหมู่ทักษะ"""
         
     db_cat = db.query(models.DutyCategory).filter(models.DutyCategory.id == cat_id).first()
     if not db_cat:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูล")
     db.delete(db_cat)
     db.commit()
-    return {"message": "Deleted"}
+    return {"message": "ลบหมวดหมู่เรียบร้อย"}
 
 # ─────────────────────────────────────────────
-#  Duties (Skill Library)
+#  คลังทักษะหลัก (Duties / Skill Library)
 # ─────────────────────────────────────────────
+
 @router.get("/duties", response_model=List[schemas.Duty])
-def get_duties(db: Session = Depends(get_db)):
+def get_duties(db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    """ดึงรายชื่อทักษะ (Skill) ทั้งหมดที่มีในระบบ"""
     return db.query(models.Duty).all()
 
 @router.post("/duties", response_model=schemas.Duty)
 def create_duty(
     duty: schemas.DutyCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """เพิ่มทักษะใหม่เข้าระบบ (เช่น ความรู้ภาษาอังกฤษ, การใช้ Excel) Outlined"""
         
     db_duty = models.Duty(**duty.dict())
     db.add(db_duty)
@@ -253,14 +256,13 @@ def update_duty(
     duty_id: int, 
     duty_update: schemas.DutyUpdate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """แก้ไขข้อมูลทักษะหลัก Outlined"""
         
     db_duty = db.query(models.Duty).filter(models.Duty.id == duty_id).first()
     if not db_duty:
-        raise HTTPException(status_code=404, detail="Duty not found")
+        raise HTTPException(status_code=404, detail="ไม่พบทักษะ")
         
     for key, value in duty_update.dict(exclude_unset=True).items():
         setattr(db_duty, key, value)
@@ -273,29 +275,28 @@ def update_duty(
 def delete_duty(
     duty_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """ลบทักษะหลักทิ้ง"""
         
     db_duty = db.query(models.Duty).filter(models.Duty.id == duty_id).first()
     if not db_duty:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูล")
     db.delete(db_duty)
     db.commit()
-    return {"message": "Deleted"}
+    return {"message": "ลบทักษะเรียบร้อย"}
 
 # ─────────────────────────────────────────────
-#  Sub-Duties (Skill Checklist Items)
+#  ทักษะปลีกย่อย (Sub-Duties / Checklist Items)
 # ─────────────────────────────────────────────
+
 @router.post("/sub-duties", response_model=schemas.SubDuty)
 def create_sub_duty(
     sub_duty: schemas.SubDutyCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """เพิ่มหัวข้อเช็คลิสต์ย่อยภายใต้ทักษะหลัก (เช่น ทักษะหลัก: Excel -> ทักษะย่อย: VLOOKUP)"""
         
     db_sub = models.SubDuty(**sub_duty.dict())
     db.add(db_sub)
@@ -307,56 +308,59 @@ def create_sub_duty(
 def delete_sub_duty(
     sub_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """ลบทักษะย่อย"""
         
     db_sub = db.query(models.SubDuty).filter(models.SubDuty.id == sub_id).first()
     if not db_sub:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูล")
     db.delete(db_sub)
     db.commit()
-    return {"message": "Deleted"}
+    return {"message": "ลบเรียบร้อย"}
+
+# ─────────────────────────────────────────────
+#  จัดการความสัมพันธ์ทักษะกับตำแหน่งงาน (Job Duties Setup)
+# ─────────────────────────────────────────────
 
 @router.put("/job-titles/{jt_id}/duties", response_model=schemas.JobTitle)
 def update_job_title_duties(
     jt_id: int,
     payload: schemas.JobTitleDutiesUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
+    admin: models.User = Depends(oauth2.check_admin)
 ):
-    if not (current_user.role and current_user.role.name.lower() == 'admin') and not (current_user.username.lower() == 'admin'):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    """กำหนดว่าตำแหน่งงานนี้ จะต้องมีทักษะ/ความรู้เรื่องอะไรบ้าง"""
         
     db_jt = db.query(models.JobTitle).filter(models.JobTitle.id == jt_id).first()
     if not db_jt:
-        raise HTTPException(status_code=404, detail="Job title not found")
+        raise HTTPException(status_code=404, detail="ไม่พบตำแหน่งงาน")
         
-    # Fetch duties
+    # ดึงรายชื่อทักษะตามที่ระบุในรายการ ID
     duties = db.query(models.Duty).filter(models.Duty.id.in_(payload.duty_ids)).all()
     
-    # Assign new list of duties (this replaces the old many-to-many relationship)
+    # อัปเดตความสัมพันธ์ Many-to-Many สำหรับตำแหน่งนี้
     db_jt.duties = duties
     db.commit()
     db.refresh(db_jt)
     return db_jt
 
 # ─────────────────────────────────────────────
-#  Skill Evaluations
+#  ระบบการประเมินทักษะพนักงาน (Skill Evaluations)
 # ─────────────────────────────────────────────
+
 @router.get("/evaluations/{user_id}", response_model=List[schemas.UserDutyEvaluation])
 def get_user_evaluations(
     user_id: int, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    # Only self or admin/manager can view
+    """ดึงคะแนนการประเมินทักษะของพนักงานรายบุคคล (ดูได้เฉพาะแอดมินหรือเจ้าของข้อมูล)"""
     is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
     if not is_admin and current_user.id != user_id:
-        # Check permission for non-admins
+        # หากไม่ใช่แอดมินและไม่ใช่เจ้าของ ต้องเช็คสิทธิ์ 'user.manage' เพิ่มเติม
         if 'user.manage' not in current_user.permissions:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(status_code=403, detail="เข้าไม่ถึงข้อมูลการประเมินของผู้อื่น")
         
     return db.query(models.UserDutyEvaluation).filter(models.UserDutyEvaluation.user_id == user_id).all()
 
@@ -366,24 +370,28 @@ def save_user_evaluation(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    # Only admin/manager can evaluate
-    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
-    if not is_admin and 'user.manage' not in current_user.permissions:
-        raise HTTPException(status_code=403, detail="Not authorized to evaluate skills")
+    """บันทึกผลการประเมินทักษะ (คะแนน 0-5) ให้กับพนักงาน"""
+    # เฉพาะแอดมินหรือหัวหน้างานที่มีสิทธิ์จัดการข้อมูลถึงจะประเมินได้
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
+               (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in (current_user.permissions or []):
+        raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์ในการประเมินพนักงาน")
 
     from datetime import datetime
     
-    # Check if exists
+    # ตรวจสอบว่าเคยมีการประเมินทักษะนี้ไว้แล้วหรือไม่
     db_eval = db.query(models.UserDutyEvaluation).filter(
         models.UserDutyEvaluation.user_id == eval_req.user_id,
         models.UserDutyEvaluation.duty_id == eval_req.duty_id
     ).first()
     
     if db_eval:
+        # ถ้ามีอยู่แล้ว ให้ทำการอัปเดตคะแนนเดิม
         db_eval.score = eval_req.score
-        db_eval.evaluated_by_id = current_user.id
+        db_eval.evaluated_by_id = current_user.id # บันทึกว่าใครเป็นคนประเมินล่าสุด
         db_eval.updated_at = datetime.now().isoformat()
     else:
+        # ถ้ายังไม่เคยประเมิน ให้สร้างรายการใหม่
         db_eval = models.UserDutyEvaluation(
             **eval_req.dict(),
             evaluated_by_id=current_user.id,
@@ -396,10 +404,12 @@ def save_user_evaluation(
     return db_eval
 
 # ─────────────────────────────────────────────
-#  Sub-Skill Checklist Evaluations
+#  ระบบเช็คลิสต์ทักษะย่อย (Sub-Skill Checklist Evaluations)
 # ─────────────────────────────────────────────
+
 @router.get("/sub-evaluations/{user_id}", response_model=List[schemas.UserSubDutyEvaluation])
-def get_user_sub_evaluations(user_id: int, db: Session = Depends(get_db)):
+def get_user_sub_evaluations(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    """ดึงข้อมูลเช็คลิสต์ทักษะย่อยของพนักงาน (ผ่าน/ไม่ผ่าน)"""
     return db.query(models.UserSubDutyEvaluation).filter(models.UserSubDutyEvaluation.user_id == user_id).all()
 
 @router.post("/sub-evaluations", response_model=schemas.UserSubDutyEvaluation)
@@ -408,10 +418,11 @@ def save_user_sub_evaluation(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    # Only admin/manager can check/uncheck
-    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
-    if not is_admin and 'user.manage' not in current_user.permissions:
-        raise HTTPException(status_code=403, detail="Not authorized to manage checklists")
+    """บันทึกการตรวจเช็คทักษะย่อย (ติ๊กเลือกให้พนักงานว่าผ่านหัวข้อนี้แล้ว)"""
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
+               (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in (current_user.permissions or []):
+        raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์จัดการเช็คลิสต์พนักงาน")
 
     from datetime import datetime
     
@@ -433,3 +444,4 @@ def save_user_sub_evaluation(
     db.commit()
     db.refresh(db_eval)
     return db_eval
+

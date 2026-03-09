@@ -25,13 +25,6 @@
           👥 User Management
         </button>
 
-        <!-- 3 Role & Permission -->
-        <button
-          :class="['nav-item', { active: activeTab === 'roles' }]"
-          @click="activeTab = 'roles'; sidebarOpen = false"
-        >
-          🔐 Role & Permission
-        </button>
 
         <!-- 4 HR Settings -->
         <button
@@ -39,6 +32,14 @@
           @click="activeTab = 'hr'; sidebarOpen = false"
         >
           ⚙️ HR Settings
+        </button>
+
+        <!-- 5 Salary Settings -->
+        <button
+          :class="['nav-item', { active: activeTab === 'salary' }]"
+          @click="activeTab = 'salary'; sidebarOpen = false"
+        >
+          💰 Salary Settings
         </button>
       </nav>
       <button class="logout-sidebar-btn" @click="$emit('logout')">
@@ -56,7 +57,11 @@
       <div class="mobile-topbar">
         <button class="mobile-menu-btn" @click="sidebarOpen = true">☰</button>
         <span class="mobile-title">
-          {{ activeTab === 'users' ? 'User Management' : (activeTab === 'roles' ? 'Roles & Permissions' : 'HR Settings') }}
+          {{ 
+            activeTab === 'users' ? 'User Management' : 
+            activeTab === 'roles' ? 'Roles & Permissions' : 
+            activeTab === 'hr' ? 'HR Settings' : 'Salary Settings'
+          }}
         </span>
         <button class="mobile-logout-btn" @click="$emit('logout')" title="Logout">🚪</button>
       </div>
@@ -129,7 +134,6 @@
                     <span class="th-arrow">{{ sortBy === 'dept' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅' }}</span>
                   </th>
                   <th class="hide-mobile">Job Title</th>
-                  <th class="hide-mobile">Role</th>
                   <th class="hide-tablet">Status</th>
                   <th
                     class="hide-tablet sortable-th"
@@ -167,9 +171,6 @@
                     <span v-else class="no-data">—</span>
                   </td>
                   <td class="hide-mobile">{{ user.employee_profile?.job_title || '—' }}</td>
-                  <td class="hide-mobile">
-                    <span class="role-badge">{{ user.role }}</span>
-                  </td>
                   <td class="hide-tablet">
                     <span :class="['emp-status-badge', user.employee_profile?.employment_status || 'intern']">
                       {{ empStatusLabel(user.employee_profile?.employment_status) }}
@@ -194,142 +195,325 @@
         </div>
       </div>
 
-      <!-- TAB: Roles -->
-      <!-- TAB: Roles -->
-      <div v-if="activeTab === 'roles'">
-        <RoleManagement />
-      </div>
 
       <!-- TAB: HR Settings -->
       <div v-if="activeTab === 'hr'">
         <div class="hr-settings-grid">
-          <!-- 1. Departments Management -->
-          <div class="section-card">
+          <!-- 1 & 2. Unified Organization Structure (Compact) -->
+          <div class="section-card org-struct-card">
             <div class="section-header">
-              <h2>🏢 Manage Departments</h2>
+              <h2>🏢 Organization & Job Titles</h2>
             </div>
             
-            <div class="hr-form-add">
-              <input v-model="newDept.name" placeholder="Name (e.g. Sales)" class="hr-input" />
-              <button class="btn-primary" @click="saveDept">Add Dept</button>
+            <!-- Global Add Dept -->
+            <div class="hr-form-add main-add">
+              <input v-model="newDept.name" placeholder="New Department Name (e.g. Finance)" class="hr-input" @keyup.enter="saveDept" />
+              <button class="btn-primary" @click="saveDept">+ Add Dept</button>
             </div>
 
-            <div class="hr-list">
-              <div v-for="d in departments" :key="d.id" class="hr-list-item" :class="{ selected: selectedDeptId === d.id }" @click="selectedDeptId = d.id">
-                <div v-if="editingDept?.id === d.id" style="display: flex; gap: 8px; width: 100%; align-items: center;" @click.stop>
-                  <input v-model="editingDept.name" class="hr-input" style="flex:1; margin-bottom: 0;" />
-                  <button class="btn-primary-sm" @click="updateDept">Save</button>
-                  <button class="btn-cancel" style="padding: 4px 10px; font-size: 0.75rem;" @click="editingDept = null">Cancel</button>
+            <div class="org-tree">
+              <div v-for="d in departments" :key="d.id" class="org-dept-block">
+                <!-- Dept Header -->
+                <div class="dept-row">
+                  <div v-if="editingDept?.id === d.id" class="edit-mode-row">
+                    <input v-model="editingDept.name" class="hr-input-sm" />
+                    <button class="btn-primary-xs" @click="updateDept">Save</button>
+                    <button class="btn-cancel-xs" @click="editingDept = null">Cancel</button>
+                  </div>
+                  <div v-else class="view-mode-row" @click="toggleDeptExpansion(d.id)" style="cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
+                      <span class="dept-title">{{ d.name }}</span>
+                    </div>
+                    <div class="dept-actions" @click.stop>
+                      <button class="action-icon-btn" @click="startEditDept(d)" title="Edit Dept">✏️</button>
+                      <button class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
+                    </div>
+                  </div>
                 </div>
-                <template v-else>
+
+                <!-- Job Titles List under Dept -->
+                <div v-if="expandedDepts.includes(d.id)" class="jt-container">
+                  <div v-for="jt in rawJobTitles.filter(j => j.department_id === d.id)" :key="jt.id" class="jt-block-nested">
+                    <div v-if="editingJT?.id === jt.id" class="edit-mode-row">
+                      <input v-model="editingJT.name" class="hr-input-sm" />
+                      <button class="btn-primary-xs" @click="updateJT">Save</button>
+                      <button class="btn-cancel-xs" @click="editingJT = null">Cancel</button>
+                    </div>
+                    <div v-else class="view-mode-row jt-main-row" @click="toggleJTExpansion(jt.id)" style="cursor: pointer;">
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="toggle-icon-sm">{{ expandedJTs.includes(jt.id) ? '▼' : '▶' }}</span>
+                        <span class="jt-name">{{ jt.name }}</span>
+                      </div>
+                      <div class="jt-actions" @click.stop>
+                        <button class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
+                        <button class="btn-action-pill" @click="openPageAccessModal(jt)">Access</button>
+                        <button class="action-icon-btn" @click="startEditJT(jt)">✏️</button>
+                        <button class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
+                      </div>
+                    </div>
+                    <!-- Skill Preview under JT -->
+                    <div v-if="expandedJTs.includes(jt.id)" class="jt-skill-preview">
+                       <div v-if="jt.duties && jt.duties.length > 0" class="jt-skill-list">
+                          <div v-for="duty in jt.duties" :key="duty.id" class="jt-skill-item">
+                             {{ duty.name }}
+                          </div>
+                       </div>
+                       <div v-else class="no-data-hint-sm" style="font-size: 0.7rem; color: #94a3b8; padding: 4px 10px;">
+                          No skills assigned yet.
+                       </div>
+                    </div>
+                  </div>
+
+                  <!-- Quick Add JT for this Dept -->
+                  <div class="quick-add-jt">
+                    <input 
+                      v-model="newJobTitle.name" 
+                      v-if="selectedDeptId === d.id"
+                      placeholder="Enter job title..." 
+                      class="hr-input-sm"
+                      @keyup.enter="saveJT"
+                      autofocus
+                    />
+                    <button 
+                      v-if="selectedDeptId !== d.id"
+                      class="btn-ghost-add" 
+                      @click="selectedDeptId = d.id; newJobTitle.name = ''"
+                    >
+                      + Add Job Title
+                    </button>
+                    <div v-else class="quick-add-actions">
+                       <button class="btn-primary-xs" @click="saveJT">Add</button>
+                       <button class="btn-cancel-xs" @click="selectedDeptId = null">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3 & 4. Unified Skills Management (Hierarchical) -->
+          <div class="section-card skill-mgmt-card">
+            <div class="section-header">
+              <h2>📚 Skills & Category Library</h2>
+            </div>
+            
+            <!-- Global Add Tag -->
+            <div class="hr-form-add main-add">
+              <input v-model="newDutyCategoryName" placeholder="New Skill Tag (e.g. Software)" class="hr-input" @keyup.enter="saveDutyCategory" />
+              <button class="btn-primary" @click="saveDutyCategory">+ Add Tag</button>
+            </div>
+
+            <div class="org-tree">
+              <!-- Uncategorized Block -->
+              <div v-if="dutiesPool.filter(d => !d.category_id).length > 0" class="org-dept-block uncategorized">
+                 <div class="dept-row" @click="toggleDeptExpansion('uncat_skill')" style="cursor: pointer;">
+                   <div style="display: flex; align-items: center; gap: 8px;">
+                     <span class="toggle-icon">{{ expandedDepts.includes('uncat_skill') ? '▼' : '▶' }}</span>
+                     <span class="dept-title">Uncategorized Skills</span>
+                   </div>
+                 </div>
+                 <div v-if="expandedDepts.includes('uncat_skill')" class="jt-container">
+                    <div v-for="duty in dutiesPool.filter(d => !d.category_id)" :key="duty.id" class="skill-block-nested">
+                       <div class="skill-main-row" @click="expandedDuties.includes(duty.id) ? expandedDuties = expandedDuties.filter(id => id !== duty.id) : expandedDuties.push(duty.id)" style="cursor: pointer;">
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                             <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
+                             <span class="jt-name">{{ duty.name }}</span>
+                          </div>
+                          <div class="jt-actions" @click.stop>
+                             <button class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
+                             <button class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
+                          </div>
+                       </div>
+                       <!-- Sub-skills & Desc -->
+                       <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
+                          <p v-if="duty.description" class="skill-desc-text">{{ duty.description }}</p>
+                          <div class="sub-skills-mini-list">
+                             <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              <!-- Categorized Blocks -->
+              <div v-for="cat in dutyCategories" :key="cat.id" class="org-dept-block">
+                <!-- Tag Header -->
+                <div class="dept-row" @click="toggleDeptExpansion('cat_' + cat.id)" style="cursor: pointer;">
+                  <div v-if="editingDutyCategory?.id === cat.id" class="edit-mode-row" @click.stop>
+                    <input v-model="editingDutyCategory.name" class="hr-input-sm" />
+                    <button class="btn-primary-xs" @click="updateDutyCategory">Save</button>
+                    <button class="btn-cancel-xs" @click="editingDutyCategory = null">Cancel</button>
+                  </div>
+                  <div v-else class="view-mode-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="toggle-icon">{{ expandedDepts.includes('cat_' + cat.id) ? '▼' : '▶' }}</span>
+                      <span class="dept-title">{{ cat.name }}</span>
+                    </div>
+                    <div class="dept-actions" @click.stop>
+                      <button class="action-icon-btn" @click="startEditDutyCategory(cat)" title="Edit Tag">✏️</button>
+                      <button class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Skills List under Tag -->
+                <div v-if="expandedDepts.includes('cat_' + cat.id)" class="jt-container">
+                  <div v-for="duty in dutiesPool.filter(d => d.category_id === cat.id)" :key="duty.id" class="skill-block-nested">
+                    <div class="skill-main-row" @click="expandedDuties.includes(duty.id) ? expandedDuties = expandedDuties.filter(id => id !== duty.id) : expandedDuties.push(duty.id)" style="cursor: pointer;">
+                       <div style="display: flex; align-items: center; gap: 8px;">
+                          <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
+                          <span class="jt-name">{{ duty.name }}</span>
+                       </div>
+                       <div class="jt-actions" @click.stop>
+                          <button class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
+                          <button class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
+                       </div>
+                    </div>
+                    <!-- Sub-skills & Desc -->
+                    <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
+                       <p v-if="duty.description" class="skill-desc-text">{{ duty.description }}</p>
+                       <div class="sub-skills-mini-list">
+                          <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                       </div>
+                    </div>
+                  </div>
+
+                  <!-- Quick Add Skill for this Tag -->
+                  <div class="quick-add-jt">
+                    <input 
+                      v-model="newDutyName" 
+                      v-if="editingDutyCategory?.id === null && selectedDeptId === 'tag_' + cat.id"
+                      placeholder="Enter skill name..." 
+                      class="hr-input-sm"
+                      @keyup.enter="saveNewDutyWithCat(cat.id)"
+                      autofocus
+                    />
+                    <button 
+                      v-if="selectedDeptId !== 'tag_' + cat.id"
+                      class="btn-ghost-add" 
+                      @click="selectedDeptId = 'tag_' + cat.id; newDutyName = ''"
+                    >
+                      + Add Skill to {{ cat.name }}
+                    </button>
+                    <div v-else class="quick-add-actions">
+                       <button class="btn-primary-xs" @click="saveNewDutyWithCat(cat.id)">Add</button>
+                       <button class="btn-cancel-xs" @click="selectedDeptId = null">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB: Salary Settings -->
+      <div v-if="activeTab === 'salary'">
+        <div class="section-card">
+          <div class="section-header">
+            <h2>💰 Salary Grade Settings</h2>
+            <p style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">Define min-max salary range and payment type for each job title.</p>
+          </div>
+
+          <div class="hr-settings-grid" style="margin-top: 20px;">
+            <!-- Left: Select Department & Job Title -->
+            <div class="salary-selection-pane">
+              <label class="form-label-sm">Step 1: Select Department</label>
+              <div class="hr-list" style="margin-bottom: 20px;">
+                <div 
+                  v-for="d in departments" 
+                  :key="d.id" 
+                  class="hr-list-item" 
+                  :class="{ selected: salarySelectedDeptId === d.id }"
+                  @click="salarySelectedDeptId = d.id; salarySelectedJT = null"
+                >
+                  <span class="hr-label">{{ d.name }}</span>
+                </div>
+              </div>
+
+              <label v-if="salarySelectedDeptId" class="form-label-sm">Step 2: Select Job Title</label>
+                <div 
+                  v-for="jt in rawJobTitles.filter(j => j.department_id === salarySelectedDeptId)" 
+                  :key="jt.id" 
+                  class="hr-list-item"
+                  :class="{ selected: salarySelectedJT?.id === jt.id }"
+                  @click="salarySelectedJT = jt"
+                >
                   <div class="hr-item-main">
-                    <span class="hr-label">{{ d.name }}</span>
+                    <span class="hr-label">{{ jt.name }}</span>
+                    <span v-if="jt.min_salary_monthly > 0 || jt.max_salary_monthly > 0 || jt.min_salary_daily > 0 || jt.max_salary_daily > 0" class="hr-sublabel" style="color: #059669; font-weight: 600; font-size: 0.7rem; line-height: 1.2;">
+                      <div v-if="jt.min_salary_monthly || jt.max_salary_monthly">M: {{ (jt.min_salary_monthly || 0).toLocaleString() }} - {{ (jt.max_salary_monthly || 0).toLocaleString() }}</div>
+                      <div v-if="jt.min_salary_daily || jt.max_salary_daily">D: {{ (jt.min_salary_daily || 0).toLocaleString() }} - {{ (jt.max_salary_daily || 0).toLocaleString() }}</div>
+                    </span>
+                    <span v-else class="hr-sublabel" style="opacity: 0.5; font-size: 0.7rem;">
+                      (Not configured)
+                    </span>
                   </div>
-                  <div class="hr-actions">
-                    <button class="btn-primary-sm mr-2" @click.stop="startEditDept(d)">✏️ Edit</button>
-                    <button class="btn-delete-sm" @click.stop="deleteDept(d.id)">🗑️</button>
+                </div>
+            </div>
+
+            <!-- Right: Set Salary Details -->
+            <div class="salary-details-pane">
+              <div v-if="salarySelectedJT" class="section-card" style="border-style: dashed; background: #f8fafc;">
+                <h3 style="margin-bottom: 20px; color: #1a2a3a;">Settings: {{ salarySelectedJT.name }}</h3>
+                
+                <div class="salary-dual-config">
+                  <!-- Monthly Section -->
+                  <div class="salary-config-card" style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h4 style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                      🏢 Monthly Salary Configuration
+                    </h4>
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label>Minimum Monthly</label>
+                        <input type="number" v-model.number="salarySelectedJT.min_salary_monthly" class="form-input" placeholder="0" />
+                      </div>
+                      <div class="form-group">
+                        <label>Maximum Monthly</label>
+                        <input type="number" v-model.number="salarySelectedJT.max_salary_monthly" class="form-input" placeholder="0" />
+                      </div>
+                    </div>
                   </div>
-                </template>
+
+                  <!-- Daily Section -->
+                  <div class="salary-config-card" style="padding: 15px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h4 style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                      ☀️ Daily Wage Configuration
+                    </h4>
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label>Minimum Daily</label>
+                        <input type="number" v-model.number="salarySelectedJT.min_salary_daily" class="form-input" placeholder="0" />
+                      </div>
+                      <div class="form-group">
+                        <label>Maximum Daily</label>
+                        <input type="number" v-model.number="salarySelectedJT.max_salary_daily" class="form-input" placeholder="0" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="skill-based-hint" style="margin-top: 30px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0;">
+                  <h4 style="font-size: 0.8rem; color: #1e293b; margin-bottom: 8px;">ℹ️ Skill-Based Calculation Rule</h4>
+                  <p style="font-size: 0.75rem; color: #64748b; line-height: 1.5;">
+                    Salary will be automatically calculated based on the employee's skill performance for this job title.
+                    (Specific calculation rules will be implemented later.)
+                  </p>
+                </div>
+
+                <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                  <button class="btn-primary" @click="saveSalarySettings" :disabled="isSaving">
+                    {{ isSaving ? 'Saving...' : 'Save Salary Settings' }}
+                  </button>
+                </div>
+              </div>
+              <div v-else class="hr-empty-hint" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 12px; border: 2px dashed #cbd5e1;">
+                Please select a job title on the left to manage salary settings.
               </div>
             </div>
           </div>
-
-          <!-- 2. Job Titles Management -->
-          <div class="section-card">
-            <div class="section-header">
-              <h2>🧑‍💼 Manage Job Titles</h2>
-            </div>
-
-            <div v-if="selectedDeptId" class="hr-form-add">
-              <input v-model="newJobTitle.name" placeholder="Job Name (e.g. Senior Manager)" class="hr-input" />
-              <button class="btn-primary" @click="saveJT">Add Title</button>
-            </div>
-            <div v-else class="hr-empty-hint">
-              Select a department on the left to manage job titles
-            </div>
-
-            <div class="hr-list" v-if="selectedDeptId">
-              <div v-for="jt in rawJobTitles.filter(j => j.department_id === selectedDeptId)" :key="jt.id" class="hr-list-item">
-                <div v-if="editingJT?.id === jt.id" style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                  <input v-model="editingJT.name" class="hr-input" style="flex:1; margin-bottom: 0;" />
-                  <button class="btn-primary-sm" @click="updateJT">Save</button>
-                  <button class="btn-cancel" style="padding: 4px 10px; font-size: 0.75rem;" @click="editingJT = null">Cancel</button>
-                </div>
-                <template v-else>
-                  <span class="hr-label">{{ jt.name }}</span>
-                  <div class="hr-actions">
-                    <button class="btn-primary-sm mr-2" @click="startEditJT(jt)">✏️ Edit</button>
-                    <button class="btn-primary-sm mr-2" @click="openJDModal(jt)">📋 Duties</button>
-                    <button class="btn-delete-sm" @click="deleteJT(jt.id)">🗑️</button>
-                  </div>
-                </template>
-              </div>
-              <div v-if="rawJobTitles.filter(j => j.department_id === selectedDeptId).length === 0" class="no-data-hint">
-                No job titles yet for this department
-              </div>
-            </div>
-          </div>
-
-          <!-- 3. Skill Categories (Tags) -->
-          <div class="section-card">
-            <div class="section-header">
-              <h2>🏷️ Skill Categories</h2>
-            </div>
-            
-            <div class="hr-form-add">
-              <input v-model="newDutyCategoryName" placeholder="Category (e.g. SketchUp)" class="hr-input" @keyup.enter="saveDutyCategory" />
-              <button class="btn-primary" @click="saveDutyCategory">Add Tag</button>
-            </div>
-
-            <div class="hr-list">
-              <div v-for="cat in dutyCategories" :key="cat.id" class="hr-list-item">
-                <div v-if="editingDutyCategory?.id === cat.id" style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                  <input v-model="editingDutyCategory.name" class="hr-input" style="flex:1; margin-bottom: 0;" />
-                  <button class="btn-primary-sm" @click="updateDutyCategory">Save</button>
-                  <button class="btn-cancel" style="padding: 4px 10px; font-size: 0.75rem;" @click="editingDutyCategory = null">Cancel</button>
-                </div>
-                <template v-else>
-                  <span class="hr-label">{{ cat.name }}</span>
-                  <div class="hr-actions">
-                    <button class="btn-primary-sm mr-2" @click="startEditDutyCategory(cat)">✏️ Edit</button>
-                    <button class="btn-delete-sm" @click="deleteDutyCategory(cat.id)">🗑️</button>
-                  </div>
-                </template>
-              </div>
-              <div v-if="dutyCategories.length === 0" class="no-data-hint">
-                No categories defined.
-              </div>
-            </div>
-          </div>
-          
-          <!-- 4. Skills Library -->
-          <div class="section-card">
-            <div class="section-header">
-              <h2>📚 Skills Library</h2>
-            </div>
-            
-            <div class="hr-form-add">
-              <input v-model="newDutyName" placeholder="Enter new skill name..." class="hr-input" @keyup.enter="saveNewDuty" />
-              <button class="btn-primary" @click="saveNewDuty">Add Skill</button>
-            </div>
-
-            <div class="hr-list" style="max-height: 400px; overflow-y: auto;">
-              <div v-for="duty in dutiesPool" :key="duty.id" class="hr-list-item">
-                <div class="hr-item-main">
-                  <span class="hr-label">{{ duty.name }}</span>
-                  <span v-if="duty.category" class="hr-sublabel" style="color: #3b82f6; font-weight: 600;">#{{ duty.category.name }}</span>
-                </div>
-                <div class="hr-actions">
-                  <button class="btn-primary-sm mr-2" @click="openDutyModal(duty)">ℹ️ Details</button>
-                  <button class="btn-delete-sm" @click="deleteDutyFromPool(duty.id)">🗑️</button>
-                </div>
-              </div>
-              <div v-if="dutiesPool.length === 0" class="no-data-hint">
-                No skills defined in the library yet.
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
 
@@ -448,18 +632,18 @@
             </select>
           </div>
           <div class="form-group">
-            <label>System Role</label>
-            <select v-model="form.role" class="form-input" :disabled="isAdminUser">
-              <option v-for="role in availableRoles" :key="role.id" :value="role.name">{{ role.name }}</option>
-            </select>
-            <small v-if="isAdminUser" class="lock-hint">Master Admin role cannot be changed</small>
-          </div>
-          <div class="form-group">
             <label>Employment Status</label>
             <select v-model="form.employment_status" class="form-input">
               <option value="intern">Intern</option>
               <option value="permanent">Permanent</option>
               <option value="terminated">Terminated</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Salary Type</label>
+            <select v-model="form.salary_type" class="form-input">
+              <option value="monthly">Monthly</option>
+              <option value="daily">Daily</option>
             </select>
           </div>
           <div class="form-group" v-if="editingUser?.employee_profile?.termination_date">
@@ -480,6 +664,35 @@
 
   </div>
 
+  <!-- ─── Edit Page Access Modal ─── -->
+  <div v-if="showPageAccessModal" class="modal-overlay" @click.self="showPageAccessModal = false">
+    <div class="modal-box jd-modal">
+      <h3>Page Access for {{ selectedJT?.name }}</h3>
+      
+      <p style="color: #64748b; font-size: 0.9em; margin-bottom: 20px;">
+        Select the pages that employees in this position can access.
+      </p>
+
+      <div class="hr-list jd-list" style="max-height: 400px; overflow-y: auto; padding: 10px;">
+        <label v-for="perm in pagePermissions" :key="perm.id" class="hr-list-item" style="cursor: pointer; display: flex; align-items: center; justify-content: flex-start; gap: 15px; padding: 12px; border-radius: 8px; transition: background 0.2s;">
+          <input type="checkbox" v-model="selectedJT_permissions" :value="perm.id" style="width: 20px; height: 20px;" />
+          <div style="display: flex; flex-direction: column;">
+            <span class="hr-label" style="font-weight: 600; font-size: 0.95rem;">{{ perm.name }}</span>
+            <span style="font-size: 0.75rem; color: #94a3b8;">Key: {{ perm.id }}</span>
+          </div>
+        </label>
+        <div v-if="pagePermissions.length === 0" class="no-data-hint">
+          No page permissions defined in the system.
+        </div>
+      </div>
+
+      <div class="modal-actions mt-20" style="display: flex; gap: 10px;">
+        <button class="btn-cancel" style="flex: 1;" @click="showPageAccessModal = false">Cancel</button>
+        <button class="btn-primary" style="flex: 1;" @click="saveJT_Permissions">Save Page Access</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Photo Popup -->
   <div v-if="photoPopup" class="photo-popup-overlay" @click.self="closePhoto">
     <div class="photo-popup-box">
@@ -495,7 +708,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '../api'
 import Swal from 'sweetalert2'
-import RoleManagement from './RoleManagement.vue'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
@@ -504,7 +716,7 @@ const emit = defineEmits(['logout', 'go-to-identity', 'go-to-profile', 'view-pro
 const activeTab = ref('users')
 const sidebarOpen = ref(false)
 const users = ref([])
-const roles = ref([])
+const currentUser = ref(null)
 const isLoading = ref(false)
 const isSaving = ref(false)
 const searchQuery  = ref('')
@@ -540,7 +752,31 @@ const dutyCategories = ref([])
 const newDutyCategoryName = ref('')
 const editingDutyCategory = ref(null)
 
+const showPageAccessModal = ref(false)
+const selectedJT_permissions = ref([])
+const pagePermissions = ref([])
+
 const newSubDutyName = ref('')
+const expandedDepts = ref([])
+const expandedCats = ref([])
+const expandedDuties = ref([])
+const expandedJTs = ref([])
+
+const toggleDeptExpansion = (id) => {
+  if (expandedDepts.value.includes(id)) {
+    expandedDepts.value = expandedDepts.value.filter(itemId => itemId !== id)
+  } else {
+    expandedDepts.value.push(id)
+  }
+}
+
+const toggleJTExpansion = (id) => {
+  if (expandedJTs.value.includes(id)) {
+    expandedJTs.value = expandedJTs.value.filter(itemId => itemId !== id)
+  } else {
+    expandedJTs.value.push(id)
+  }
+}
 
 const form = ref({
   first_name: '',
@@ -595,6 +831,13 @@ const filteredUsers = computed(() => {
       (u.first_name || '').toLowerCase().includes(q) ||
       (u.last_name || '').toLowerCase().includes(q)
     const matchDept = !filterDept.value || u.employee_profile?.department === filterDept.value
+    
+    // Security: Only 'admin' can see the 'admin' account in the list
+    const isTargetAdmin = u.username.toLowerCase() === 'admin' || (u.role || '').toLowerCase() === 'admin'
+    const isViewerAdmin = currentUser.value?.username.toLowerCase() === 'admin'
+    
+    if (isTargetAdmin && !isViewerAdmin) return false
+    
     return matchSearch && matchDept
   })
 
@@ -634,12 +877,6 @@ const toggleSort = (field) => {
 // ตรวจว่ากำลังแก้ไข admin user หรือไม่
 const isAdminUser = computed(() => editingUser.value?.role === 'admin')
 
-// Role options: ถ้าแก้ไข admin → แสดง admin ด้วย, ถ้าไม่ใช่ → ซ่อน admin
-const availableRoles = computed(() => {
-  if (isAdminUser.value) return roles.value
-  return roles.value.filter(r => r.name !== 'admin')
-})
-
 const fetchHRData = async () => {
   try {
     const [deptsRes, jobsRes, dutiesRes, catsRes] = await Promise.all([
@@ -651,10 +888,8 @@ const fetchHRData = async () => {
     dutiesPool.value = dutiesRes.data
     dutyCategories.value = catsRes.data
     departments.value = deptsRes.data.map(d => ({ 
-      id: d.id, 
-      name: d.name, 
-      value: d.value,
-      label: d.name // mapping name to label for compatibility
+      ...d,
+      label: d.name
     }))
     
     // Convert flat job titles list to a grouped object for existing logic compatibility
@@ -671,8 +906,20 @@ const fetchHRData = async () => {
     
     // If we have job title objects (raw from API) we might need them for the management UI
     rawJobTitles.value = jobsRes.data
+
+    // Fetch Page Permissions
+    await fetchPermissions()
   } catch (e) {
     console.error('Error fetching HR data:', e)
+  }
+}
+
+const fetchPermissions = async () => {
+  try {
+    const res = await api.get('/permissions/')
+    pagePermissions.value = res.data.filter(p => p.id.startsWith('page.'))
+  } catch (e) {
+    console.error('Failed to fetch permissions', e)
   }
 }
 
@@ -682,12 +929,14 @@ const fetchData = async () => {
   isLoading.value = true
   try {
     await fetchHRData() // Fetch departments/jobs first
-    const [usersRes, rolesRes] = await Promise.all([
+    const [usersRes] = await Promise.all([
       api.get('/users/'),
-      api.get('/roles/'),
     ])
     users.value = usersRes.data
-    roles.value = rolesRes.data
+    
+    // Fetch current user info to know who is viewing
+    const meRes = await api.get('/users/me')
+    currentUser.value = meRes.data
   } catch (e) {
     console.error(e)
     Swal.fire('Error', 'Failed to load data', 'error')
@@ -845,6 +1094,22 @@ const saveNewDuty = async () => {
   }
 }
 
+const saveNewDutyWithCat = async (catId) => {
+  if (!newDutyName.value) return
+  try {
+    await api.post('/hr/duties', { 
+      name: newDutyName.value,
+      category_id: catId
+    })
+    newDutyName.value = ''
+    selectedDeptId.value = null
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Added', timer: 1000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to add duty', 'error')
+  }
+}
+
 const deleteDutyFromPool = async (id) => {
   try {
     await api.delete(`/hr/duties/${id}`)
@@ -972,6 +1237,7 @@ const openEdit = (user) => {
     is_active: user.is_active,
     hire_date: user.employee_profile?.hire_date || '',
     employment_status: user.employee_profile?.employment_status || 'intern',
+    salary_type: user.employee_profile?.salary_type || 'monthly',
   }
   showModal.value = true
 }
@@ -987,7 +1253,6 @@ const closeModal = () => {
 
 const saveUser = async () => {
   isSaving.value = true
-  const token = localStorage.getItem('token')
   try {
     // 1. Update Personal Info + Role
     const userRes = await api.put(
@@ -1009,6 +1274,7 @@ const saveUser = async () => {
         job_title: form.value.job_title,
         hire_date: form.value.hire_date,
         employment_status: form.value.employment_status,
+        salary_type: form.value.salary_type,
       }
     )
 
@@ -1045,13 +1311,63 @@ const deleteUser = async (user) => {
   })
   if (!result.isConfirmed) return
 
-  const token = localStorage.getItem('token')
   try {
     await api.delete(`/users/${user.id}`)
     users.value = users.value.filter(u => u.id !== user.id)
-    Swal.fire({ icon: 'success', title: 'Deleted', timer: 1000, showConfirmButton: false })
   } catch (e) {
-    Swal.fire('Error', e.response?.data?.detail || 'Delete failed', 'error')
+    Swal.fire('Error', e.response?.data?.detail || 'Failed to delete user', 'error')
+  }
+}
+
+// Salary Settings Logic
+const salarySelectedDeptId = ref(null)
+const salarySelectedJT = ref(null)
+
+const saveSalarySettings = async () => {
+  if (!salarySelectedJT.value) return
+  isSaving.value = true
+  try {
+    await api.put(`/hr/job-titles/${salarySelectedJT.value.id}`, {
+      min_salary_monthly: salarySelectedJT.value.min_salary_monthly,
+      max_salary_monthly: salarySelectedJT.value.max_salary_monthly,
+      min_salary_daily: salarySelectedJT.value.min_salary_daily,
+      max_salary_daily: salarySelectedJT.value.max_salary_daily
+    })
+    await fetchHRData()
+    Swal.fire({
+      icon: 'success',
+      title: 'Success',
+      text: `Salary settings for ${salarySelectedJT.value.name} updated successfully.`,
+      timer: 1500,
+      showConfirmButton: false
+    })
+  } catch (e) {
+    Swal.fire('Error', 'Failed to save salary settings', 'error')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const openPageAccessModal = (jt) => {
+  selectedJT.value = jt
+  try {
+    selectedJT_permissions.value = jt.permissions ? JSON.parse(jt.permissions) : []
+  } catch (e) {
+    selectedJT_permissions.value = []
+  }
+  showPageAccessModal.value = true
+}
+
+const saveJT_Permissions = async () => {
+  try {
+    await api.put(`/hr/job-titles/${selectedJT.value.id}`, {
+      permissions: JSON.stringify(selectedJT_permissions.value)
+    })
+    await fetchHRData()
+    Swal.fire({ icon: 'success', title: 'Page access updated', timer: 1500, showConfirmButton: false })
+    showPageAccessModal.value = false
+  } catch (e) {
+    Swal.fire('Error', 'Failed to save permissions', 'error')
   }
 }
 
@@ -1598,7 +1914,8 @@ onMounted(fetchData)
   opacity: 0.4;
   transition: opacity 0.2s;
 }
-.btn-delete-sm:hover { opacity: 1; }
+.btn-delete-sm:hover { opacity: 1; color: #e74c3c; }
+
 .hr-empty-hint {
   text-align: center;
   padding: 40px 20px;
@@ -1608,6 +1925,45 @@ onMounted(fetchData)
   background: #fff;
   border-radius: 10px;
   border: 2px dashed #dde3e8;
+}
+
+/* Salary Tab Specific */
+.salary-selection-pane {
+  background: white;
+  padding: 10px;
+}
+.form-label-sm {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+  display: block;
+}
+.salary-type-toggle {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  gap: 4px;
+}
+.toggle-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #64748b;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.toggle-btn.active {
+  background: white;
+  color: #1a2a3a;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 .no-data-hint { text-align: center; padding: 20px; color: #b0c4d0; font-size: 0.82rem; }
 .btn-primary {
@@ -1634,6 +1990,61 @@ onMounted(fetchData)
 .mt-10 { margin-top: 10px; }
 .mt-20 { margin-top: 20px; }
 .mr-2 { margin-right: 8px; }
+
+/* ══════════════ ORG TREE (COMPACT) ══════════════ */
+.org-struct-card { overflow: visible; }
+.org-tree { display: flex; flex-direction: column; gap: 15px; margin-top: 10px; }
+.org-dept-block { background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px; }
+.dept-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px dashed #cbd5e1; margin-bottom: 8px; }
+.dept-title { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
+.toggle-icon { font-size: 0.7rem; color: #64748b; width: 12px; display: inline-block; }
+.jt-container { padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+.jt-row { padding: 6px 10px; border-radius: 6px; transition: background 0.2s; }
+.jt-row:hover { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.jt-name { font-size: 0.88rem; color: #475569; }
+.jt-block-nested { padding: 2px 0; border-bottom: 1px solid rgba(0,0,0,0.02); }
+.jt-block-nested:last-child { border-bottom: none; }
+.jt-main-row { padding: 6px 10px; border-radius: 6px; transition: background 0.2s; }
+.jt-main-row:hover { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.jt-skill-preview { background: #fdfdfd; padding: 4px 0 8px 25px; margin-bottom: 4px; }
+.jt-skill-list { display: flex; flex-direction: column; gap: 2px; }
+.jt-skill-item { font-size: 0.78rem; color: #64748b; position: relative; padding-left: 12px; }
+.jt-skill-item::before { content: '-'; position: absolute; left: 0; color: #cbd5e1; }
+.view-mode-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.edit-mode-row { display: flex; gap: 6px; align-items: center; width: 100%; }
+
+/* Buttons & Inputs (Extra Small) */
+.hr-input-sm { padding: 4px 10px; border: 1px solid #ccd6de; border-radius: 4px; font-size: 0.8rem; flex: 1; }
+.btn-primary-xs { background: #1a2a3a; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+.btn-cancel-xs { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
+
+/* Icon-style Buttons */
+.action-icon-btn { background: transparent; border: none; cursor: pointer; opacity: 0.5; font-size: 0.9rem; transition: opacity 0.2s; padding: 4px; }
+.action-icon-btn:hover { opacity: 1; }
+.action-icon-btn.delete:hover { color: #ef4444; }
+
+/* Action Pille (Small buttons for Access/Skills) */
+.btn-action-pill { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; cursor: pointer; margin-right: 4px; transition: all 0.2s; }
+.btn-action-pill:hover { background: #1a2a3a; color: #fff; border-color: #1a2a3a; }
+
+/* Ghost Add Button */
+.btn-ghost-add { background: transparent; border: 1px dashed #cbd5e1; color: #64748b; padding: 6px 12px; border-radius: 6px; width: 100%; text-align: left; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; margin-top: 5px; }
+.btn-ghost-add:hover { background: #fff; border-color: #3b82f6; color: #3b82f6; }
+.quick-add-jt { display: flex; gap: 8px; align-items: center; margin-top: 5px; }
+.quick-add-actions { display: flex; gap: 4px; }
+
+/* ══════════════ SKILL LIBRARY (HIERARCHICAL) ══════════════ */
+.skill-mgmt-card { overflow: visible; }
+.skill-block-nested { border-bottom: 1px solid #f1f5f9; padding: 4px 0; }
+.skill-block-nested:last-child { border-bottom: none; }
+.skill-main-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; transition: background 0.2s; }
+.skill-main-row:hover { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.toggle-icon-sm { font-size: 0.6rem; color: #94a3b8; width: 10px; display: inline-block; }
+.skill-details-area { background: #fff; padding: 12px; border-radius: 8px; margin: 4px 10px 10px 20px; border: 1px solid #edf2f7; }
+.skill-desc-text { font-size: 0.82rem; color: #64748b; margin-bottom: 8px; line-height: 1.4; }
+.sub-skills-mini-list { display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed #e2e8f0; padding-top: 8px; margin-top: 4px; }
+.sub-skill-pill { background: transparent; color: #475569; border: none; padding: 2px 0; border-radius: 0; font-size: 0.75rem; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.sub-skill-pill::before { content: '•'; color: #3b82f6; font-size: 1.1rem; line-height: 1; }
 
 /* ═══════════════════════════════════════════════════════
    RESPONSIVE — Tablet + Mobile  (≤ 1024px)
