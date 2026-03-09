@@ -74,7 +74,7 @@ def check_can_manage_users(current_user: models.User = Depends(get_current_user)
                (current_user.username.lower() == 'admin')
     
     perms = current_user.permissions or []
-    if not is_admin and 'user.manage' not in perms:
+    if not is_admin and 'user.manage' not in perms and 'page.usermanagement' not in perms:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="ไม่มีสิทธิ์เข้าถึงหรือจัดการข้อมูลพนักงาน"

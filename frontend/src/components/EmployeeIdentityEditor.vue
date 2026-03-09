@@ -180,11 +180,13 @@ import Swal from 'sweetalert2'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
-const props = defineProps({
-  initialUserId: Number
-})
-
 const emit = defineEmits(['go-back'])
+
+const isAdmin = computed(() => {
+  const role = (localStorage.getItem('user_role') || '').toLowerCase()
+  const uname = (localStorage.getItem('username') || '').toLowerCase()
+  return role === 'admin' || uname === 'admin'
+})
 
 const sidebarOpen = ref(false)
 const users = ref([])
@@ -235,14 +237,22 @@ watch([dobDay, dobMonth, dobYear], ([d, m, y]) => {
 const filteredUsers = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return users.value.filter(u => {
-    // Filter out admin and management department
-    const isAdmin = u.role === 'admin'
-    const isManagement = u.employee_profile?.department === 'management'
-    if (isAdmin || isManagement) return false
+    const targetRole = (u.role || '').toLowerCase()
+    const targetDept = (u.employee_profile?.department || '').toLowerCase() || ''
+    const targetJT   = (u.employee_profile?.job_title || '').toLowerCase() || ''
 
-    return u.username.toLowerCase().includes(q) || 
-      (u.first_name || '').toLowerCase().includes(q) ||
-      (u.last_name || '').toLowerCase().includes(q)
+    // Always hide Admin's own account from this specific editor
+    if (targetRole === 'admin') return false
+
+    // If CEO, only Admin can see
+    if (targetJT === 'ceo' && !isAdmin.value) return false
+
+    // If Management dept, only Admin can see
+    if (targetDept === 'management' && !isAdmin.value) return false
+
+    return (u.username || '').toLowerCase().includes(q) ||
+           (u.first_name || '').toLowerCase().includes(q) ||
+           (u.last_name || '').toLowerCase().includes(q)
   })
 })
 

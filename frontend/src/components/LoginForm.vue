@@ -70,13 +70,19 @@ const handleLogin = async () => {
         if (response.data.access_token) {
             localStorage.setItem('token', response.data.access_token)
 
-            // ดึงข้อมูล User ล่าสุดเพื่อดู Role
+            // ดึงข้อมูล User ล่าสุดเพื่อดู Role และ Permissions
             const userRes = await api.get('/users/me')
             const userData = {
                 username: username.value,
                 role: userRes.data.role,
+                permissions: userRes.data.permissions || [],
                 access_token: response.data.access_token
             }
+
+            // เก็บใส่ localStorage เพื่อเอามาใช้งานที่หน้าบ้าน (Frontend)
+            localStorage.setItem('username', userData.username)
+            localStorage.setItem('user_role', userData.role)
+            localStorage.setItem('user_permissions', JSON.stringify(userData.permissions))
 
             Swal.fire({
                 icon: 'success',

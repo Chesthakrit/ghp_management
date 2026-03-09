@@ -24,14 +24,17 @@ const userRole = ref(localStorage.getItem('user_role'))
 const username = ref(localStorage.getItem('username') || '')
 const savedView = localStorage.getItem('last_view') // อ่านค่าหน้าล่าสุดที่เปิดค้างไว้
 
-// ถ้ามี token -> ตรวจสอบ role
-const getInitialView = () => {
+// ถ้ามี token -> ตรวจสอบ role และ permissions
+const isAdminOnly = () => {
   const currentRole = (userRole.value || '').toLowerCase()
   const currentUsername = (username.value || '').toLowerCase()
-  
+  // เป็น Admin เต็มตัวเท่านั้น
+  return currentRole === 'admin' || currentUsername === 'admin'
+}
+
+const getInitialView = () => {
   if (token) {
-    // ถ้าเป็น admin (เช็คจาก Role หรือ Username ก็ได้ เพื่อความชัวร์)
-    if (currentRole === 'admin' || currentUsername === 'admin') {
+    if (isAdminOnly()) {
       return 'admin'
     }
     return 'profile'
@@ -56,14 +59,18 @@ const goToPage = (pageName, userId = null, userData = null) => {
     const role = (userData.role || '').toLowerCase()
     const uName = (userData.username || '').toLowerCase()
     
+    // เฉพาะ Admin เท่านั้นที่ให้วิ่งไป AdminPanel ทันที
     if (role === 'admin' || uName === 'admin') {
       targetPage = 'admin'
+    } else {
+      targetPage = 'profile'
     }
 
     username.value = userData.username
     userRole.value = userData.role
     localStorage.setItem('username', userData.username)
     localStorage.setItem('user_role', userData.role)
+    localStorage.setItem('user_permissions', JSON.stringify(userData.permissions || []))
     if (userData.access_token) {
       localStorage.setItem('token', userData.access_token)
     }
@@ -116,7 +123,9 @@ const handleLogout = () => {
       :key="selectedUserId"
       :username="username"
       :userId="selectedUserId"
-      @go-back="((userRole || '').toLowerCase() === 'admin' || (username || '').toLowerCase() === 'admin') ? goToPage('admin') : handleLogout()"
+      @go-back="isAdminOnly() ? goToPage('admin') : handleLogout()"
+      @view-profile="(id) => goToPage('profile', id)"
+      @go-to-identity="(id) => goToPage('identity', id)"
       @logout="handleLogout"
     />
   </div>

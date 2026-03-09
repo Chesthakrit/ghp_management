@@ -14,44 +14,48 @@
           class="nav-item" 
           @click="$emit('go-to-profile'); sidebarOpen = false"
         >
-          👤 Admin Profile Page
+          <i class="fas fa-id-card-alt"></i> Back to Profile
         </button>
 
         <!-- 2 User Management -->
         <button
+          v-if="isAdmin || hasPerm('page.usermanagement')"
           :class="['nav-item', { active: activeTab === 'users' }]"
           @click="activeTab = 'users'; sidebarOpen = false"
         >
-          👥 User Management
+          <i class="fas fa-users-cog"></i> User Management
         </button>
 
 
         <!-- 4 HR Settings -->
         <button
+          v-if="isAdmin || hasPerm('page.hr')"
           :class="['nav-item', { active: activeTab === 'hr' }]"
           @click="activeTab = 'hr'; sidebarOpen = false"
         >
-          ⚙️ HR Settings
+          <i class="fas fa-sliders-h"></i> HR Settings
         </button>
 
         <!-- 5 Salary Settings -->
         <button
+          v-if="isAdmin || hasPerm('page.salary')"
           :class="['nav-item', { active: activeTab === 'salary' }]"
           @click="activeTab = 'salary'; sidebarOpen = false"
         >
-          💰 Salary Settings
+          <i class="fas fa-money-check-alt"></i> Salary Settings
         </button>
 
         <!-- 6 Access Control -->
         <button
+          v-if="isAdmin || hasPerm('page.access')"
           :class="['nav-item', { active: activeTab === 'access' }]"
           @click="activeTab = 'access'; sidebarOpen = false"
         >
-          🔐 Access Control
+          <i class="fas fa-user-shield"></i> Access Control
         </button>
       </nav>
       <button class="logout-sidebar-btn" @click="$emit('logout')">
-        🚪 Logout System
+        <i class="fas fa-door-open"></i> Logout System
       </button>
     </aside>
 
@@ -79,129 +83,10 @@
 
       <!-- TAB: Users -->
       <div v-if="activeTab === 'users'">
-        <!-- Stats Overview -->
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-number">{{ users.length }}</div>
-            <div class="stat-label">Total</div>
-          </div>
-          <div class="stat-card" v-for="dept in departmentStats" :key="dept.name">
-            <div class="stat-number">{{ dept.count }}</div>
-            <div class="stat-label">{{ deptLabel(dept.name) }}</div>
-          </div>
-        </div>
-
-        <!-- User Table -->
-        <div class="section-card">
-          <div class="section-header">
-            <h2>Employee List</h2>
-            <div class="controls-row">
-              <div class="search-row">
-                <input v-model="searchQuery" placeholder="Search..." class="search-input" />
-                <select v-model="filterDept" class="filter-select">
-                  <option value="">All Dept.</option>
-                  <option v-for="d in departments" :key="d.value" :value="d.value">{{ d.label }}</option>
-                </select>
-              </div>
-              <!-- Sort Controls -->
-              <div class="sort-row">
-                <span class="sort-label">Sort:</span>
-                <button
-                  :class="['sort-btn', { active: sortBy === 'dept' }]"
-                  @click="toggleSort('dept')"
-                >
-                  Department
-                  <span v-if="sortBy === 'dept'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
-                </button>
-                <button
-                  :class="['sort-btn', { active: sortBy === 'hire_date' }]"
-                  @click="toggleSort('hire_date')"
-                >
-                  Hire Date
-                  <span v-if="sortBy === 'hire_date'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
-                </button>
-                <button v-if="sortBy" class="sort-btn clear" @click="sortBy = ''; sortDir = 'asc'">× Clear</button>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="isLoading" class="loading">Loading...</div>
-
-          <!-- ─── Desktop / iPad Table ─── -->
-          <div v-else class="table-wrapper">
-            <table class="user-table">
-              <thead>
-                <tr>
-                  <th>Full Name</th>
-                  <th class="hide-tablet">Username</th>
-                  <th
-                    class="hide-mobile sortable-th"
-                    :class="{ sorted: sortBy === 'dept' }"
-                    @click="toggleSort('dept')"
-                  >
-                    Department
-                    <span class="th-arrow">{{ sortBy === 'dept' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅' }}</span>
-                  </th>
-                  <th class="hide-mobile">Job Title</th>
-                  <th class="hide-tablet">Status</th>
-                  <th
-                    class="hide-tablet sortable-th"
-                    :class="{ sorted: sortBy === 'hire_date' }"
-                    @click="toggleSort('hire_date')"
-                  >
-                    Hire Date
-                    <span class="th-arrow">{{ sortBy === 'hire_date' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅' }}</span>
-                  </th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="user in filteredUsers" :key="user.id">
-                  <td>
-                    <div class="name-cell">
-                      <div class="avatar" :class="{ 'has-photo': user.photo_path }" @click="user.photo_path && openPhoto(`${apiBase}/${user.photo_path}`)">
-                        <img v-if="user.photo_path" :src="`${apiBase}/${user.photo_path}`" class="avatar-img" :alt="getInitials(user)" />
-                        <span v-else>{{ getInitials(user) }}</span>
-                      </div>
-                      <div class="name-info clickable-name" @click="$emit('view-profile', user.id)">
-                        <span class="name-text">{{ user.first_name || '-' }} {{ user.last_name || '' }}</span>
-                        <span v-if="user.nickname" class="nickname-text">({{ user.nickname }})</span>
-                        <!-- Show on mobile only -->
-                        <span class="show-mobile job-title-sub">{{ user.employee_profile?.job_title || '' }}</span>
-                        <span class="show-mobile">
-                          <span v-if="user.employee_profile?.department" class="dept-badge sm">{{ deptLabel(user.employee_profile.department) }}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="hide-tablet username-cell">{{ user.username }}</td>
-                  <td class="hide-mobile">
-                    <span v-if="user.employee_profile?.department" class="dept-badge">{{ deptLabel(user.employee_profile.department) }}</span>
-                    <span v-else class="no-data">—</span>
-                  </td>
-                  <td class="hide-mobile">{{ user.employee_profile?.job_title || '—' }}</td>
-                  <td class="hide-tablet">
-                    <span :class="['emp-status-badge', user.employee_profile?.employment_status || 'intern']">
-                      {{ empStatusLabel(user.employee_profile?.employment_status) }}
-                    </span>
-                  </td>
-                  <td class="hide-tablet date-cell">{{ fmtDate(user.employee_profile?.hire_date) }}</td>
-                  <td class="action-cell">
-                    <template v-if="(user.role || '').toLowerCase() !== 'admin' && (user.username || '').toLowerCase() !== 'admin'">
-                      <button class="btn-id-card" @click="openEditIdentity(user)" title="Identity">🪪</button>
-                      <button class="btn-edit" @click="openEdit(user)" title="Edit">✏️</button>
-                      <button class="btn-delete" @click="deleteUser(user)" title="Delete">🗑️</button>
-                    </template>
-                    <span v-else class="admin-lock-badge">Admin Locked</span>
-                  </td>
-                </tr>
-                <tr v-if="filteredUsers.length === 0">
-                  <td colspan="8" class="empty-row">No records found</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <UserManagement 
+          @go-to-identity="(id) => $emit('go-to-identity', id)"
+          @view-profile="(id) => $emit('view-profile', id)"
+        />
       </div>
 
 
@@ -650,67 +535,6 @@
       </div>
     </div>
 
-    <!-- ─── Edit User Modal ─── -->
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-box">
-        <h3>Employment & Access Control</h3>
-        <div class="modal-user-info">
-          <div class="avatar large">
-            <img v-if="editingUser?.photo_path" :src="`${apiBase}/${editingUser.photo_path}`" class="avatar-img" />
-            <span v-else>{{ getInitials(editingUser) }}</span>
-          </div>
-          <div>
-            <strong>{{ editingUser?.first_name || editingUser?.username }} {{ editingUser?.last_name || '' }}</strong>
-            <span v-if="editingUser?.nickname" class="nickname-text">({{ editingUser.nickname }})</span>
-            <span>{{ editingUser?.username }}</span>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Department</label>
-            <select v-model="form.department" class="form-input" @change="form.job_title = ''">
-              <option value="">— Not specified —</option>
-              <option v-for="d in departments" :key="d.value" :value="d.value">{{ d.label }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Job Title</label>
-            <select v-model="form.job_title" class="form-input" :disabled="!form.department">
-              <option value="">{{ form.department ? '— Select Job Title —' : '— Select Department first —' }}</option>
-              <option v-for="t in (jobTitlesByDept[form.department] || [])" :key="t" :value="t">{{ t }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Employment Status</label>
-            <select v-model="form.employment_status" class="form-input">
-              <option value="intern">Intern</option>
-              <option value="permanent">Permanent</option>
-              <option value="terminated">Terminated</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Salary Type</label>
-            <select v-model="form.salary_type" class="form-input">
-              <option value="monthly">Monthly</option>
-              <option value="daily">Daily</option>
-            </select>
-          </div>
-          <div class="form-group" v-if="editingUser?.employee_profile?.termination_date">
-            <label>Termination Date</label>
-            <input :value="editingUser.employee_profile.termination_date" type="date" class="form-input" disabled />
-            <small class="lock-hint">Set automatically when status changes to Terminated</small>
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="closeModal">Cancel</button>
-          <button class="btn-save" @click="saveUser" :disabled="isSaving">
-            {{ isSaving ? 'Saving...' : 'Save Changes' }}
-          </button>
-        </div>
-      </div>
-    </div>
 
   </div>
 
@@ -743,13 +567,6 @@
     </div>
   </div>
 
-  <!-- Photo Popup -->
-  <div v-if="photoPopup" class="photo-popup-overlay" @click.self="closePhoto">
-    <div class="photo-popup-box">
-      <img :src="photoPopup" class="popup-img" />
-      <button class="popup-close" @click="closePhoto">&times;</button>
-    </div>
-  </div>
 
 </template>
 
@@ -760,6 +577,7 @@ import api from '../api'
 import Swal from 'sweetalert2'
 import draggable from 'vuedraggable'
 import AccessManagement from './AccessManagement.vue'
+import UserManagement from './UserManagement.vue'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
@@ -781,6 +599,27 @@ const photoPopup = ref(null)
 
 const openPhoto  = (url) => { photoPopup.value = url }
 const closePhoto = ()    => { photoPopup.value = null }
+
+const isAdmin = computed(() => {
+  const role = (currentUser.value?.role || '').toLowerCase()
+  const uname = (currentUser.value?.username || '').toLowerCase()
+  return role === 'admin' || uname === 'admin'
+})
+
+const hasPerm = (p) => {
+  if (isAdmin.value) return true
+  return (currentUser.value?.permissions || []).includes(p)
+}
+
+// Set active tab based on first available permission
+watch(currentUser, (newVal) => {
+  if (newVal) {
+    if (isAdmin.value || hasPerm('page.usermanagement')) activeTab.value = 'users'
+    else if (hasPerm('page.hr')) activeTab.value = 'hr'
+    else if (hasPerm('page.salary')) activeTab.value = 'salary'
+    else if (hasPerm('page.access')) activeTab.value = 'access'
+  }
+}, { immediate: true })
 
 const departments = ref([])       // สำหรับ dropdown (แผนก)
 const rawDepartments = ref([])    // สำหรับ drag-and-drop list ใน HR Settings

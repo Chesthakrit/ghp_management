@@ -64,13 +64,37 @@ class User(Base):
 
     @property
     def permissions(self):
-        """Helper function สำหรับแปลงสตริง JSON ของสิทธิ์ให้เป็น List ของ Python"""
+        """Helper function สำหรับดึงสิทธิ์ที่รวมกันระหว่าง Role และ ตำแหน่ง (Job Title)"""
+        from sqlalchemy.orm import object_session
+        perms = []
+        
+        # 1. ดึงสิทธิ์จาก Role (admin/employee)
         if self.role and self.role.permissions:
             try:
-                return json.loads(self.role.permissions)
+                perms.extend(json.loads(self.role.permissions))
             except:
-                return []
-        return []
+                pass
+        
+        # 2. ดึงสิทธิ์จากตำแหน่งงาน (Job Title) ผ่านโปรไฟล์พนักงาน
+        if self.employee_profile and self.employee_profile.job_title:
+            session = object_session(self)
+            if session:
+                # ค้นหา JobTitle ที่ชื่อตรงกันและอยู่ในแผนกเดียวกัน (ถ้ามีระบุแผนก)
+                query = session.query(JobTitle).filter(JobTitle.name == self.employee_profile.job_title)
+                
+                # หากโปรไฟล์ระบุแผนก ให้เช็คแผนกด้วยเพื่อให้ได้ข้อมูลที่ถูกต้องแม่นยำ
+                if self.employee_profile.department:
+                    query = query.join(Department).filter(Department.value == self.employee_profile.department)
+                
+                jt = query.first()
+                if jt and jt.permissions:
+                    try:
+                        perms.extend(json.loads(jt.permissions))
+                    except:
+                        pass
+        
+        # ส่งค่ากลับแบบไม่ซ้ำกัน (Distinct List)
+        return list(set(perms))
 
     # ข้อกำหนดเพิ่มเติม: ชื่อและนามสกุลจริงรวมกันต้องไม่ซ้ำกัน
     __table_args__ = (

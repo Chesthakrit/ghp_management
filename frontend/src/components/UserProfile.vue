@@ -38,7 +38,7 @@
             v-for="item in menuItems" 
             :key="item.id"
             :class="['nav-item', { active: activeMenu === item.id }]"
-            @click="activeMenu = item.id; if (isMobile) isSidebarOpen = false"
+            @click="handleMenuClick(item)"
           >
             <i :class="item.icon"></i>
             <span v-if="isSidebarOpen">{{ item.label }}</span>
@@ -184,6 +184,13 @@
             </div>
           </div>
 
+          <div v-else-if="activeMenu === 'user_management'" class="user-management-tab">
+            <UserManagement 
+              @go-to-identity="(id) => $emit('go-to-identity', id)"
+              @view-profile="(id) => $emit('view-profile', id)"
+            />
+          </div>
+
           <div v-else class="empty-content-state">
             <i :class="currentMenuIcon"></i>
             <h2>{{ currentMenuLabel }}</h2>
@@ -208,9 +215,10 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '../api'
 import Swal from 'sweetalert2'
+import UserManagement from './UserManagement.vue'
 
 const props = defineProps(['username', 'userId'])
-const emit = defineEmits(['go-back', 'logout'])
+const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile'])
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const user = ref(null)
@@ -229,14 +237,29 @@ const selectSkill = (skill) => {
   selectedSkill.value = skill
 }
 
-const menuItems = [
-  { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
-  { id: 'schedule', label: 'Schedule', icon: 'fas fa-calendar-alt' },
-  { id: 'payslip', label: 'Payslip', icon: 'fas fa-file-invoice-dollar' },
-  { id: 'attendance', label: 'Attendance', icon: 'fas fa-clock' },
-  { id: 'documents', label: 'Documents', icon: 'fas fa-book' },
-  { id: 'skills', label: 'Skills', icon: 'fas fa-award' },
-]
+const menuItems = computed(() => {
+  const baseItems = [
+    { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
+    { id: 'schedule', label: 'Schedule', icon: 'fas fa-calendar-alt' },
+    { id: 'payslip', label: 'Payslip', icon: 'fas fa-file-invoice-dollar' },
+    { id: 'attendance', label: 'Attendance', icon: 'fas fa-clock' },
+    { id: 'documents', label: 'Documents', icon: 'fas fa-book' },
+    { id: 'skills', label: 'Skills', icon: 'fas fa-award' },
+  ]
+
+  // Add User Management if user has permission
+  const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
+  if (perms.includes('page.usermanagement') || isAdmin.value) {
+    baseItems.push({ id: 'user_management', label: 'User Management', icon: 'fas fa-users-cog' })
+  }
+
+  return baseItems
+})
+
+const handleMenuClick = (item) => {
+  activeMenu.value = item.id
+  if (isMobile.value) isSidebarOpen.value = false
+}
 
 const currentMenuLabel = computed(() => menuItems.find(m => m.id === activeMenu.value)?.label)
 const currentMenuIcon = computed(() => menuItems.find(m => m.id === activeMenu.value)?.icon)
@@ -432,28 +455,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 .user-profile-layout {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
-  font-family: 'Kanit', sans-serif;
+  background: #f1f5f9;
+  font-family: 'Outfit', 'Kanit', sans-serif;
   color: #1e293b;
 }
 
 /* ─── Header ─── */
 .profile-header {
   height: 64px;
-  background: #0f172a;
-  color: #fff;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f8fafc;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 55;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .header-left {
@@ -482,19 +508,22 @@ onMounted(() => {
 }
 
 .ghp-logo {
-  background: #3b82f6;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   padding: 4px 12px;
   border-radius: 8px;
   font-weight: 800;
   font-size: 1.1rem;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+  letter-spacing: 0.05em;
 }
 
 .brand-name {
-  font-weight: 600;
-  font-size: 0.875rem;
-  letter-spacing: 0.1em;
-  color: #94a3b8;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.15em;
+  color: #f1f5f9;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 .header-right {
   display: flex;
@@ -503,24 +532,26 @@ onMounted(() => {
 }
 
 .admin-panel-btn {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
   padding: 8px 16px;
   border-radius: 10px;
   cursor: pointer;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .admin-panel-btn:hover {
   background: #3b82f6;
-  color: white;
+  color: #fff;
   border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
 }
 
 .logout-btn {
@@ -635,16 +666,28 @@ onMounted(() => {
   color: #64748b;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
-  font-family: inherit;
+  font-family: 'Outfit', 'Kanit', sans-serif;
   font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .nav-item i {
-  font-size: 1.25rem;
   width: 24px;
+  font-size: 1.25rem;
   text-align: center;
+  transition: transform 0.2s;
+}
+
+.nav-item:hover i {
+  transform: scale(1.15);
+  color: #3b82f6;
+}
+
+.nav-item.active i {
+  color: #fff;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
 }
 
 .nav-item:hover {
