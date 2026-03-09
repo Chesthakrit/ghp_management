@@ -85,6 +85,7 @@ class Department(Base):
     name_th = Column(String, nullable=True)         # ชื่อแผนกภาษาไทย
     name_v3 = Column(String, nullable=True)         # ชื่อแผนกภาษาที่สาม
     value = Column(String, unique=True, index=True) # ค่าที่ใช้ในระบบ เช่น 'office', 'production'
+    display_order = Column(Integer, default=100)    # ลำดับการแสดงผล (ใช้สำหรับ Drag & Drop)
     
     # ความสัมพันธ์: หนึ่งแผนกมีได้หลายชื่อตำแหน่ง
     job_titles = relationship("JobTitle", back_populates="department", cascade="all, delete-orphan")
@@ -97,6 +98,7 @@ class JobTitle(Base):
     name_th = Column(String, nullable=True) # ภาษาไทย
     name_v3 = Column(String, nullable=True) # ภาษาที่สาม
     level = Column(Integer, default=0) # ระดับความเชี่ยวชาญ (เช่น 1 = Junior, 2 = Senior)
+    display_order = Column(Integer, default=100)  # ลำดับการแสดงผล (ใช้สำหรับ Drag & Drop)
     
     # เชื่อมกับแผนก (Department)
     department_id = Column(Integer, ForeignKey("departments.id"))

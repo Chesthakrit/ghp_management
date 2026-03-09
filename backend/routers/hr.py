@@ -23,8 +23,8 @@ router = APIRouter(
 
 @router.get("/departments", response_model=List[schemas.Department])
 def get_departments(db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
-    """ดึงรายชื่อแผนกทั้งหมดที่มีในบริษัท"""
-    return db.query(models.Department).all()
+    """ดึงรายชื่อแผนกทั้งหมดที่มีในบริษัท (เรียงตาม display_order)"""
+    return db.query(models.Department).order_by(models.Department.display_order.asc()).all()
 
 @router.post("/departments", response_model=schemas.Department)
 def create_department(
@@ -76,6 +76,20 @@ def delete_department(
     db.commit()
     return {"message": "ลบแผนกเรียบร้อยแล้า"}
 
+@router.put("/departments/reorder", response_model=List[schemas.Department])
+def reorder_departments(
+    payload: schemas.ReorderRequest,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(oauth2.check_admin)
+):
+    """บันทึกลำดับแผนกใหม่หลังการ Drag & Drop"""
+    for item in payload.items:
+        db.query(models.Department).filter(models.Department.id == item.id).update(
+            {"display_order": item.display_order}
+        )
+    db.commit()
+    return db.query(models.Department).order_by(models.Department.display_order.asc()).all()
+
 # ─────────────────────────────────────────────
 #  การจัดการตำแหน่งงาน (Job Titles)
 # ─────────────────────────────────────────────
@@ -83,7 +97,7 @@ def delete_department(
 @router.get("/job-titles", response_model=List[schemas.JobTitle])
 def get_job_titles(dept_id: Optional[int] = None, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
     """ดึงรายชื่อตำแหน่งงานทั้งหมด (สามารถเลือกกรองตามแผนกได้)"""
-    query = db.query(models.JobTitle)
+    query = db.query(models.JobTitle).order_by(models.JobTitle.display_order.asc())
     if dept_id:
         query = query.filter(models.JobTitle.department_id == dept_id)
     return query.all()
@@ -136,6 +150,20 @@ def delete_job_title(
     db.delete(db_jt)
     db.commit()
     return {"message": "ลบตำแหน่งงานเรียบร้อย"}
+
+@router.put("/job-titles/reorder", response_model=List[schemas.JobTitle])
+def reorder_job_titles(
+    payload: schemas.ReorderRequest,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(oauth2.check_admin)
+):
+    """บันทึกลำดับตำแหน่งงานใหม่หลังการ Drag & Drop"""
+    for item in payload.items:
+        db.query(models.JobTitle).filter(models.JobTitle.id == item.id).update(
+            {"display_order": item.display_order}
+        )
+    db.commit()
+    return db.query(models.JobTitle).order_by(models.JobTitle.display_order.asc()).all()
 
 # ─────────────────────────────────────────────
 #  รายละเอียดงาน (Job Descriptions)

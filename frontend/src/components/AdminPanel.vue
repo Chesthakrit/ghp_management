@@ -212,83 +212,108 @@
             </div>
 
             <div class="org-tree">
-              <div v-for="d in departments" :key="d.id" class="org-dept-block">
-                <!-- Dept Header -->
-                <div class="dept-row">
-                  <div v-if="editingDept?.id === d.id" class="edit-mode-row">
-                    <input v-model="editingDept.name" class="hr-input-sm" />
-                    <button class="btn-primary-xs" @click="updateDept">Save</button>
-                    <button class="btn-cancel-xs" @click="editingDept = null">Cancel</button>
-                  </div>
-                  <div v-else class="view-mode-row" @click="toggleDeptExpansion(d.id)" style="cursor: pointer;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
-                      <span class="dept-title">{{ d.name }}</span>
+              <draggable
+                v-model="rawDepartments"
+                item-key="id"
+                handle=".drag-handle"
+                animation="200"
+                ghost-class="drag-ghost"
+                @end="saveDeptOrder"
+              >
+                <template #item="{ element: d }">
+                <div class="org-dept-block">
+                  <!-- Dept Header -->
+                  <div class="dept-row">
+                    <div v-if="editingDept?.id === d.id" class="edit-mode-row">
+                      <input v-model="editingDept.name" class="hr-input-sm" />
+                      <button class="btn-primary-xs" @click="updateDept">Save</button>
+                      <button class="btn-cancel-xs" @click="editingDept = null">Cancel</button>
                     </div>
-                    <div class="dept-actions" @click.stop>
-                      <button class="action-icon-btn" @click="startEditDept(d)" title="Edit Dept">✏️</button>
-                      <button class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Job Titles List under Dept -->
-                <div v-if="expandedDepts.includes(d.id)" class="jt-container">
-                  <div v-for="jt in rawJobTitles.filter(j => j.department_id === d.id)" :key="jt.id" class="jt-block-nested">
-                    <div v-if="editingJT?.id === jt.id" class="edit-mode-row">
-                      <input v-model="editingJT.name" class="hr-input-sm" />
-                      <button class="btn-primary-xs" @click="updateJT">Save</button>
-                      <button class="btn-cancel-xs" @click="editingJT = null">Cancel</button>
-                    </div>
-                    <div v-else class="view-mode-row jt-main-row" @click="toggleJTExpansion(jt.id)" style="cursor: pointer;">
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="toggle-icon-sm">{{ expandedJTs.includes(jt.id) ? '▼' : '▶' }}</span>
-                        <span class="jt-name">{{ jt.name }}</span>
+                    <div v-else class="view-mode-row" @click="toggleDeptExpansion(d.id)" style="cursor: pointer;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="drag-handle" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                        <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
+                        <span class="dept-title">{{ d.name }}</span>
                       </div>
-                      <div class="jt-actions" @click.stop>
-                        <button class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
-                        <button class="btn-action-pill" @click="openPageAccessModal(jt)">Access</button>
-                        <button class="action-icon-btn" @click="startEditJT(jt)">✏️</button>
-                        <button class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
+                      <div class="dept-actions" @click.stop>
+                        <button class="action-icon-btn" @click="startEditDept(d)" title="Edit Dept">✏️</button>
+                        <button class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
                       </div>
-                    </div>
-                    <!-- Skill Preview under JT -->
-                    <div v-if="expandedJTs.includes(jt.id)" class="jt-skill-preview">
-                       <div v-if="jt.duties && jt.duties.length > 0" class="jt-skill-list">
-                          <div v-for="duty in jt.duties" :key="duty.id" class="jt-skill-item">
-                             {{ duty.name }}
-                          </div>
-                       </div>
-                       <div v-else class="no-data-hint-sm" style="font-size: 0.7rem; color: #94a3b8; padding: 4px 10px;">
-                          No skills assigned yet.
-                       </div>
                     </div>
                   </div>
 
-                  <!-- Quick Add JT for this Dept -->
-                  <div class="quick-add-jt">
-                    <input 
-                      v-model="newJobTitle.name" 
-                      v-if="selectedDeptId === d.id"
-                      placeholder="Enter job title..." 
-                      class="hr-input-sm"
-                      @keyup.enter="saveJT"
-                      autofocus
-                    />
-                    <button 
-                      v-if="selectedDeptId !== d.id"
-                      class="btn-ghost-add" 
-                      @click="selectedDeptId = d.id; newJobTitle.name = ''"
+                  <!-- Job Titles List under Dept -->
+                  <div v-if="expandedDepts.includes(d.id)" class="jt-container">
+                    <draggable
+                      :model-value="rawJobTitles.filter(j => j.department_id === d.id)"
+                      @update:model-value="val => updateJTOrder(val, d.id)"
+                      item-key="id"
+                      handle=".drag-handle-jt"
+                      animation="200"
+                      ghost-class="drag-ghost"
+                      @end="evt => saveJTOrder(d.id)"
                     >
-                      + Add Job Title
-                    </button>
-                    <div v-else class="quick-add-actions">
-                       <button class="btn-primary-xs" @click="saveJT">Add</button>
-                       <button class="btn-cancel-xs" @click="selectedDeptId = null">Cancel</button>
+                      <template #item="{ element: jt }">
+                      <div class="jt-block-nested">
+                        <div v-if="editingJT?.id === jt.id" class="edit-mode-row">
+                          <input v-model="editingJT.name" class="hr-input-sm" />
+                          <button class="btn-primary-xs" @click="updateJT">Save</button>
+                          <button class="btn-cancel-xs" @click="editingJT = null">Cancel</button>
+                        </div>
+                        <div v-else class="view-mode-row jt-main-row" @click="toggleJTExpansion(jt.id)" style="cursor: pointer;">
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="drag-handle-jt" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                            <span class="toggle-icon-sm">{{ expandedJTs.includes(jt.id) ? '▼' : '▶' }}</span>
+                            <span class="jt-name">{{ jt.name }}</span>
+                          </div>
+                          <div class="jt-actions" @click.stop>
+                            <button class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
+                            <button class="btn-action-pill" @click="openPageAccessModal(jt)">Access</button>
+                            <button class="action-icon-btn" @click="startEditJT(jt)">✏️</button>
+                            <button class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
+                          </div>
+                        </div>
+                        <!-- Skill Preview under JT -->
+                        <div v-if="expandedJTs.includes(jt.id)" class="jt-skill-preview">
+                           <div v-if="jt.duties && jt.duties.length > 0" class="jt-skill-list">
+                              <div v-for="duty in jt.duties" :key="duty.id" class="jt-skill-item">
+                                 {{ duty.name }}
+                              </div>
+                           </div>
+                           <div v-else class="no-data-hint-sm" style="font-size: 0.7rem; color: #94a3b8; padding: 4px 10px;">
+                              No skills assigned yet.
+                           </div>
+                        </div>
+                      </div>
+                      </template>
+                    </draggable>
+
+                    <!-- Quick Add JT for this Dept -->
+                    <div class="quick-add-jt">
+                      <input 
+                        v-model="newJobTitle.name" 
+                        v-if="selectedDeptId === d.id"
+                        placeholder="Enter job title..." 
+                        class="hr-input-sm"
+                        @keyup.enter="saveJT"
+                        autofocus
+                      />
+                      <button 
+                        v-if="selectedDeptId !== d.id"
+                        class="btn-ghost-add" 
+                        @click="selectedDeptId = d.id; newJobTitle.name = ''"
+                      >
+                        + Add Job Title
+                      </button>
+                      <div v-else class="quick-add-actions">
+                         <button class="btn-primary-xs" @click="saveJT">Add</button>
+                         <button class="btn-cancel-xs" @click="selectedDeptId = null">Cancel</button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+                </template>
+              </draggable>
             </div>
           </div>
 
@@ -708,6 +733,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '../api'
 import Swal from 'sweetalert2'
+import draggable from 'vuedraggable'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
@@ -730,7 +756,8 @@ const photoPopup = ref(null)
 const openPhoto  = (url) => { photoPopup.value = url }
 const closePhoto = ()    => { photoPopup.value = null }
 
-const departments = ref([])
+const departments = ref([])       // สำหรับ dropdown (แผนก)
+const rawDepartments = ref([])    // สำหรับ drag-and-drop list ใน HR Settings
 const jobTitlesByDept = ref({})
 
 // For HR Settings Tab management
@@ -891,6 +918,7 @@ const fetchHRData = async () => {
       ...d,
       label: d.name
     }))
+    rawDepartments.value = [...deptsRes.data] // เก็บแยกสำหรับ drag-and-drop
     
     // Convert flat job titles list to a grouped object for existing logic compatibility
     const grouped = {}
@@ -911,6 +939,36 @@ const fetchHRData = async () => {
     await fetchPermissions()
   } catch (e) {
     console.error('Error fetching HR data:', e)
+  }
+}
+
+// ─── Drag & Drop: อัปเดต rawJobTitles เมื่อลาก job title ใน dept นั้น ───
+const updateJTOrder = (newList, deptId) => {
+  // แทนที่รายการเดิมของ dept นี้ด้วยลำดับใหม่
+  const others = rawJobTitles.value.filter(j => j.department_id !== deptId)
+  rawJobTitles.value = [...others, ...newList]
+}
+
+// ─── Drag & Drop: บันทึกลำดับแผนกใหม่ไปยัง Backend ───
+const saveDeptOrder = async () => {
+  try {
+    const items = rawDepartments.value.map((d, index) => ({ id: d.id, display_order: index + 1 }))
+    await api.put('/hr/departments/reorder', { items })
+    // sync กลับไปยัง departments dropdown ด้วย
+    departments.value = rawDepartments.value.map(d => ({ ...d, label: d.name }))
+  } catch (e) {
+    console.error('Failed to save department order', e)
+  }
+}
+
+// ─── Drag & Drop: บันทึกลำดับ job titles ใหม่ไปยัง Backend ───
+const saveJTOrder = async (deptId) => {
+  try {
+    const deptJTs = rawJobTitles.value.filter(j => j.department_id === deptId)
+    const items = deptJTs.map((jt, index) => ({ id: jt.id, display_order: index + 1 }))
+    await api.put('/hr/job-titles/reorder', { items })
+  } catch (e) {
+    console.error('Failed to save job title order', e)
   }
 }
 
@@ -2143,5 +2201,32 @@ onMounted(fetchData)
   .form-grid { grid-template-columns: 1fr; gap: 12px; }
   .modal-actions { flex-direction: column-reverse; gap: 8px; }
   .btn-cancel, .btn-save { width: 100%; text-align: center; padding: 12px; }
+}
+
+/* ─── Drag & Drop ─── */
+.drag-handle,
+.drag-handle-jt {
+  cursor: grab;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  padding: 0 4px;
+  user-select: none;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.drag-handle:hover,
+.drag-handle-jt:hover {
+  color: #3b82f6;
+}
+.drag-handle:active,
+.drag-handle-jt:active {
+  cursor: grabbing;
+}
+.drag-ghost {
+  opacity: 0.45;
+  background: #e0f2fe !important;
+  border: 2px dashed #38bdf8 !important;
+  border-radius: 8px;
 }
 </style>

@@ -130,6 +130,7 @@ class JobTitle(JobTitleBase):
     """ข้อมูลตำแหน่งงานสำหรับส่งออก (รวมคำอธิบายและทักษะที่ต้องมี)"""
     id: int
     department_id: int
+    display_order: int = 100
     descriptions: List[JobDescription] = []
     duties: List[Duty] = []
     class Config:
@@ -156,9 +157,20 @@ class DepartmentUpdate(BaseModel):
 class Department(DepartmentBase):
     """ข้อมูลแผนกสำหรับส่งออก (รวมรายการตำแหน่งในแผนกนั้นๆ)"""
     id: int
+    display_order: int = 100
     job_titles: List[JobTitle] = []
     class Config:
         from_attributes = True
+
+# --- schemas สำหรับ Drag-and-Drop Reordering ---
+class ReorderItem(BaseModel):
+    """คู่ id และ display_order ที่ต้องการอัปเดต"""
+    id: int
+    display_order: int
+
+class ReorderRequest(BaseModel):
+    """รายการลำดับใหม่ทั้งหมดหลังการ Drag & Drop"""
+    items: List[ReorderItem]
 
 # --- การประเมินทักษะรายบุคคล (User Duty Evaluation) ---
 class UserDutyEvaluationBase(BaseModel):
