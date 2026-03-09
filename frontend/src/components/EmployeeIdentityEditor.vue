@@ -180,6 +180,7 @@ import Swal from 'sweetalert2'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
+const props = defineProps(['initialUserId'])
 const emit = defineEmits(['go-back'])
 
 const isAdmin = computed(() => {
@@ -262,8 +263,10 @@ const fetchUsers = async (reselectId = null) => {
     const res = await api.get('/users/')
     users.value = res.data
 
-    // reselect ตาม id ที่ส่งมา หรือ initialUserId
-    const targetId = reselectId || props.initialUserId
+    // ใช้วิธีป้องกัน event object ที่อาจถูกส่งมาจาก Vue lifecycle (ทำให้เป็น object แทนที่จะเป็นตัวเลข)
+    const validReselectId = typeof reselectId === 'number' || typeof reselectId === 'string' ? reselectId : null
+    const targetId = validReselectId || props.initialUserId
+    
     if (targetId) {
       const u = users.value.find(user => user.id === targetId)
       if (u) selectUser(u)
