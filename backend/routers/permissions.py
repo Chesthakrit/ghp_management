@@ -21,12 +21,20 @@ AVAILABLE_PERMISSIONS = [
     {"id": "role.manage", "name": "จัดการตำแหน่งและสิทธิ์การใช้งาน (Manage Roles)"},
     {"id": "project.view_all", "name": "ดูโปรเจกต์ของทุกคน (View All Projects)"},
     {"id": "project.delete", "name": "ลบโปรเจกต์ (Delete Projects)"},
-    # สิทธิ์การเข้าถึงหน้าเพจหลัก (Page Access)
-    {"id": "page.factory", "name": "เข้าถึงหน้า: ฝ่ายผลิต (Factory Page)"},
-    {"id": "page.sales", "name": "เข้าถึงหน้า: ฝ่ายขาย (Sales Page)"},
-    {"id": "page.warehouse", "name": "เข้าถึงหน้า: คลังสินค้า (Warehouse Page)"},
-    {"id": "page.office", "name": "เข้าถึงหน้า: สำนักงาน (Office Page)"},
-    {"id": "page.accounts", "name": "เข้าถึงหน้า: การเงินและบัญชี (Accounts Page)"},
+
+    # --- User Management Page & Granular Actions ---
+    {"id": "page.usermanagement", "name": "หน้า: จัดการพนักงาน (User Management Page)"},
+    {"id": "action.user.edit_identity", "name": "ปุ่ม: แก้ไขข้อมูลตัวตน (Edit Employee Identity)"},
+    {"id": "action.user.edit_employment", "name": "ปุ่ม: จัดการการจ้างงานและสิทธิ์ (Employment & Access Control)"},
+    {"id": "action.user.delete", "name": "ปุ่ม: ลบพนักงาน (Delete User)"},
+    {"id": "action.user.view_profile", "name": "ปุ่ม: ดูหน้าโปรไฟล์พนักงาน (View Profile Page)"},
+
+    # --- Other Page Access ---
+    {"id": "page.factory", "name": "หน้า: ฝ่ายผลิต (Factory Page)"},
+    {"id": "page.sales", "name": "หน้า: ฝ่ายขาย (Sales Page)"},
+    {"id": "page.warehouse", "name": "หน้า: คลังสินค้า (Warehouse Page)"},
+    {"id": "page.office", "name": "หน้า: สำนักงาน (Office Page)"},
+    {"id": "page.accounts", "name": "หน้า: การเงินและบัญชี (Accounts Page)"},
     # สามารถเพิ่มสิทธิ์ใหม่ๆ เข้าไปในอนาคตได้ที่นี่
 ]
 

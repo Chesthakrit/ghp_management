@@ -41,6 +41,14 @@
         >
           💰 Salary Settings
         </button>
+
+        <!-- 6 Access Control -->
+        <button
+          :class="['nav-item', { active: activeTab === 'access' }]"
+          @click="activeTab = 'access'; sidebarOpen = false"
+        >
+          🔐 Access Control
+        </button>
       </nav>
       <button class="logout-sidebar-btn" @click="$emit('logout')">
         🚪 Logout System
@@ -59,8 +67,9 @@
         <span class="mobile-title">
           {{ 
             activeTab === 'users' ? 'User Management' : 
-            activeTab === 'roles' ? 'Roles & Permissions' : 
-            activeTab === 'hr' ? 'HR Settings' : 'Salary Settings'
+            activeTab === 'hr' ? 'HR Settings' : 
+            activeTab === 'salary' ? 'Salary Settings' : 
+            activeTab === 'access' ? 'Access Control' : 'Dashboard'
           }}
         </span>
         <button class="mobile-logout-btn" @click="$emit('logout')" title="Logout">🚪</button>
@@ -552,6 +561,11 @@
           </div>
         </div>
       </div>
+      
+      <!-- TAB: Access Control -->
+      <div v-if="activeTab === 'access'">
+        <AccessManagement />
+      </div>
 
       </main>
     </div>
@@ -745,6 +759,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import api from '../api'
 import Swal from 'sweetalert2'
 import draggable from 'vuedraggable'
+import AccessManagement from './AccessManagement.vue'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
