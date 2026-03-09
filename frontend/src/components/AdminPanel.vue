@@ -443,40 +443,47 @@
           </div>
 
           <div class="hr-settings-grid" style="margin-top: 20px;">
-            <!-- Left: Select Department & Job Title -->
+            <!-- Left: Select Department & Job Title (Accordion Style) -->
             <div class="salary-selection-pane">
-              <label class="form-label-sm">Step 1: Select Department</label>
-              <div class="hr-list" style="margin-bottom: 20px;">
-                <div 
-                  v-for="d in departments" 
-                  :key="d.id" 
-                  class="hr-list-item" 
-                  :class="{ selected: salarySelectedDeptId === d.id }"
-                  @click="salarySelectedDeptId = d.id; salarySelectedJT = null"
-                >
-                  <span class="hr-label">{{ d.name }}</span>
-                </div>
-              </div>
+              <label class="form-label-sm">Select Department & Job Title</label>
+              
+              <div class="hr-list salary-accordion">
+                <div v-for="d in rawDepartments" :key="d.id" class="salary-dept-group">
+                  <!-- Department Header -->
+                  <div 
+                    class="hr-list-item dept-header" 
+                    :class="{ 'is-expanded': expandedDepts.includes(d.id) }"
+                    @click="toggleDeptExpansion(d.id)"
+                  >
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
+                      <span class="hr-label" style="font-weight: 700;">{{ d.name }}</span>
+                    </div>
+                  </div>
 
-              <label v-if="salarySelectedDeptId" class="form-label-sm">Step 2: Select Job Title</label>
-                <div 
-                  v-for="jt in rawJobTitles.filter(j => j.department_id === salarySelectedDeptId)" 
-                  :key="jt.id" 
-                  class="hr-list-item"
-                  :class="{ selected: salarySelectedJT?.id === jt.id }"
-                  @click="salarySelectedJT = jt"
-                >
-                  <div class="hr-item-main">
-                    <span class="hr-label">{{ jt.name }}</span>
-                    <span v-if="jt.min_salary_monthly > 0 || jt.max_salary_monthly > 0 || jt.min_salary_daily > 0 || jt.max_salary_daily > 0" class="hr-sublabel" style="color: #059669; font-weight: 600; font-size: 0.7rem; line-height: 1.2;">
-                      <div v-if="jt.min_salary_monthly || jt.max_salary_monthly">M: {{ (jt.min_salary_monthly || 0).toLocaleString() }} - {{ (jt.max_salary_monthly || 0).toLocaleString() }}</div>
-                      <div v-if="jt.min_salary_daily || jt.max_salary_daily">D: {{ (jt.min_salary_daily || 0).toLocaleString() }} - {{ (jt.max_salary_daily || 0).toLocaleString() }}</div>
-                    </span>
-                    <span v-else class="hr-sublabel" style="opacity: 0.5; font-size: 0.7rem;">
-                      (Not configured)
-                    </span>
+                  <!-- Job Titles Nested -->
+                  <div v-if="expandedDepts.includes(d.id)" class="jt-nested-list">
+                    <div 
+                      v-for="jt in rawJobTitles.filter(j => j.department_id === d.id)" 
+                      :key="jt.id" 
+                      class="hr-list-item jt-item"
+                      :class="{ selected: salarySelectedJT?.id === jt.id }"
+                      @click="salarySelectedJT = jt; salarySelectedDeptId = d.id"
+                    >
+                      <div class="hr-item-main">
+                        <span class="hr-label">{{ jt.name }}</span>
+                        <!-- Quick Preview of Salary -->
+                        <div v-if="jt.min_salary_monthly > 0 || jt.max_salary_monthly > 0" class="salary-preview">
+                          M: {{ (jt.min_salary_monthly || 0).toLocaleString() }} - {{ (jt.max_salary_monthly || 0).toLocaleString() }}
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="!rawJobTitles.filter(j => j.department_id === d.id).length" class="no-data-hint-sm">
+                      No job titles defined
+                    </div>
                   </div>
                 </div>
+              </div>
             </div>
 
             <!-- Right: Set Salary Details -->
@@ -1990,6 +1997,49 @@ onMounted(fetchData)
   background: white;
   padding: 10px;
 }
+.salary-accordion {
+  margin-top: 10px;
+}
+.salary-dept-group {
+  margin-bottom: 5px;
+}
+.dept-header {
+  background: #f8fafc !important;
+  border-left: 4px solid #cbd5e1;
+  padding: 10px 16px !important;
+  transition: all 0.2s;
+}
+.dept-header:hover {
+  background: #f1f5f9 !important;
+}
+.dept-header.is-expanded {
+  border-left-color: #3b82f6;
+  background: #f1f5f9 !important;
+}
+.jt-nested-list {
+  padding: 5px 0 5px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.jt-item {
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  font-size: 0.85rem;
+}
+.salary-preview {
+  font-size: 0.65rem;
+  color: #10b981;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.no-data-hint-sm {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  padding: 8px 12px;
+  font-style: italic;
+}
+
 .form-label-sm {
   font-size: 0.7rem;
   font-weight: 700;
