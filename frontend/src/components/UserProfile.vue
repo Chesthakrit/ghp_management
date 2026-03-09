@@ -10,6 +10,12 @@
         <span class="brand-name">MANAGEMENT</span>
       </div>
       <div class="header-right">
+        <button v-if="userId" class="admin-panel-btn" @click="$emit('go-back')" style="background-color: #475569; border-color: #475569; color: white;">
+          <i class="fas fa-arrow-left"></i> Back to Panel
+        </button>
+        <button v-else-if="isAdmin" class="admin-panel-btn" @click="$emit('go-to-admin')">
+          <i class="fas fa-tools"></i> Admin Panel
+        </button>
         <button class="logout-btn" @click="handleLogout">
           <i class="fas fa-sign-out-alt"></i> Logout
         </button>
