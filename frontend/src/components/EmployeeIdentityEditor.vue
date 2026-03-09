@@ -238,11 +238,12 @@ const filteredUsers = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return users.value.filter(u => {
     const targetRole = (u.role || '').toLowerCase()
+    const targetUname = (u.username || '').toLowerCase()
     const targetDept = (u.employee_profile?.department || '').toLowerCase() || ''
     const targetJT   = (u.employee_profile?.job_title || '').toLowerCase() || ''
 
-    // Always hide Admin's own account from this specific editor
-    if (targetRole === 'admin') return false
+    // Prevent non-admins from seeing or editing the Admin account identity
+    if ((targetRole === 'admin' || targetUname === 'admin') && !isAdmin.value) return false
 
     // If CEO, only Admin can see
     if (targetJT === 'ceo' && !isAdmin.value) return false
