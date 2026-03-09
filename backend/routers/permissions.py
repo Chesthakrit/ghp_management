@@ -22,12 +22,16 @@ AVAILABLE_PERMISSIONS = [
     {"id": "project.view_all", "name": "ดูโปรเจกต์ของทุกคน (View All Projects)"},
     {"id": "project.delete", "name": "ลบโปรเจกต์ (Delete Projects)"},
 
-    # --- User Management Page & Granular Actions ---
     {"id": "page.usermanagement", "name": "หน้า: จัดการพนักงาน (User Management Page)"},
     {"id": "action.user.edit_identity", "name": "ปุ่ม: แก้ไขข้อมูลตัวตน (Edit Employee Identity)"},
     {"id": "action.user.edit_employment", "name": "ปุ่ม: จัดการการจ้างงานและสิทธิ์ (Employment & Access Control)"},
     {"id": "action.user.delete", "name": "ปุ่ม: ลบพนักงาน (Delete User)"},
     {"id": "action.user.view_profile", "name": "ปุ่ม: ดูหน้าโปรไฟล์พนักงาน (View Profile Page)"},
+
+    # --- Admin Panel Pages ---
+    {"id": "page.hr", "name": "หน้า: ตั้งค่าระบบ HR (HR Settings)"},
+    {"id": "page.salary", "name": "หน้า: ตั้งค่าฐานเงินเดือน (Salary Settings)"},
+    {"id": "page.access", "name": "หน้า: กำหนดสิทธิ์การเข้าถึง (Access Control)"},
 
     # --- Other Page Access ---
     {"id": "page.factory", "name": "หน้า: ฝ่ายผลิต (Factory Page)"},

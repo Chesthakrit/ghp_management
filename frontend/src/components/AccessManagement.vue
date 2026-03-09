@@ -52,7 +52,7 @@
           <!-- Section: User Management -->
           <div class="perm-section">
             <div class="section-badge">Module</div>
-            <h4>👤 User Management Page</h4>
+            <h4><i class="fas fa-users-cog"></i> User Management Page</h4>
             <div class="perm-row page-level">
               <label class="switch-label">
                 <input type="checkbox" v-model="selectedPerms" value="page.usermanagement" />
@@ -61,37 +61,115 @@
               </label>
             </div>
 
-            <div class="granular-actions" :class="{ disabled: !hasPageAccess }">
+            <div class="granular-actions" :class="{ disabled: !selectedPerms.includes('page.usermanagement') }">
               <div class="action-item">
                 <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.edit_identity" :disabled="!hasPageAccess" />
+                  <input type="checkbox" v-model="selectedPerms" value="action.user.edit_identity" :disabled="!selectedPerms.includes('page.usermanagement')" />
                   <span class="checkmark"></span>
                   Button: Edit Employee Identity
                 </label>
               </div>
               <div class="action-item">
                 <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.edit_employment" :disabled="!hasPageAccess" />
+                  <input type="checkbox" v-model="selectedPerms" value="action.user.edit_employment" :disabled="!selectedPerms.includes('page.usermanagement')" />
                   <span class="checkmark"></span>
                   Button: Employment & Access Control
                 </label>
               </div>
               <div class="action-item">
                 <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.delete" :disabled="!hasPageAccess" />
+                  <input type="checkbox" v-model="selectedPerms" value="action.user.delete" :disabled="!selectedPerms.includes('page.usermanagement')" />
                   <span class="checkmark"></span>
                   Button: Delete Employee
                 </label>
               </div>
               <div class="action-item">
                 <label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.user.view_profile" :disabled="!hasPageAccess" />
+                  <input type="checkbox" v-model="selectedPerms" value="action.user.view_profile" :disabled="!selectedPerms.includes('page.usermanagement')" />
                   <span class="checkmark"></span>
                   Button: View Profile Page
                 </label>
               </div>
             </div>
           </div>
+
+          <!-- Section: System & HR Modules -->
+          <div class="perm-section">
+            <div class="section-badge">Admin Modules</div>
+            <h4><i class="fas fa-tools"></i> System Configuration</h4>
+            <div class="perm-grid-lite" style="margin-top: 15px;">
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.hr" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">HR Settings</span>
+                </label>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 5px; padding-left: 45px;">Manage Departments, Job Titles, and Skill Library.</div>
+              </div>
+              
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.salary" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">Salary Config</span>
+                </label>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 5px; padding-left: 45px;">Configure salary grids and compensation values.</div>
+              </div>
+
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.access" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">Access Management</span>
+                </label>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 5px; padding-left: 45px;">Manage job title permissions and page access.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: General Pages -->
+          <div class="perm-section">
+            <div class="section-badge">Pages</div>
+            <h4><i class="fas fa-desktop"></i> General Page Access</h4>
+            <div class="perm-grid-lite" style="margin-top: 15px;">
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.factory" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">Factory Page</span>
+                </label>
+              </div>
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.sales" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">Sales Page</span>
+                </label>
+              </div>
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.warehouse" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">Warehouse Page</span>
+                </label>
+              </div>
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.office" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">Office Page</span>
+                </label>
+              </div>
+              <div class="action-item">
+                <label class="switch-label">
+                  <input type="checkbox" v-model="selectedPerms" value="page.accounts" />
+                  <span class="slider" style="transform: scale(0.8); margin-right: -10px;"></span>
+                  <span class="label-text" style="font-size: 0.85rem;">Accounts Page</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
