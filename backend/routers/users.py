@@ -181,7 +181,8 @@ def read_user(
     
     if not is_admin and current_user.id != user_id:
         # เช็ค perms เพิ่มเติม
-        if 'user.manage' not in (current_user.permissions or []):
+        perms = current_user.permissions or []
+        if not any(p in perms for p in ['user.manage', 'page.usermanagement', 'action.user.view_profile']):
             raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ใช้อื่น")
         
     user = db.query(models.User).filter(models.User.id == user_id).first()

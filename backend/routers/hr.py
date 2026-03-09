@@ -386,8 +386,9 @@ def get_user_evaluations(
     """ดึงคะแนนการประเมินทักษะของพนักงานรายบุคคล (ดูได้เฉพาะแอดมินหรือเจ้าของข้อมูล)"""
     is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
     if not is_admin and current_user.id != user_id:
-        # หากไม่ใช่แอดมินและไม่ใช่เจ้าของ ต้องเช็คสิทธิ์ 'user.manage' เพิ่มเติม
-        if 'user.manage' not in current_user.permissions:
+        # หากไม่ใช่แอดมินและไม่ใช่เจ้าของ ต้องเช็คสิทธิ์ เพิ่มเติม
+        perms = current_user.permissions or []
+        if not any(p in perms for p in ['user.manage', 'page.usermanagement', 'action.user.view_profile']):
             raise HTTPException(status_code=403, detail="เข้าไม่ถึงข้อมูลการประเมินของผู้อื่น")
         
     return db.query(models.UserDutyEvaluation).filter(models.UserDutyEvaluation.user_id == user_id).all()
