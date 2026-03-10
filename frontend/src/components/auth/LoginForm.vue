@@ -43,9 +43,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
-import logo from '../assets/ghp-logo.png'
+import logo from '../../assets/ghp-logo.png'
 
 const emit = defineEmits(['go-to-register', 'go-to-dashboard'])
 

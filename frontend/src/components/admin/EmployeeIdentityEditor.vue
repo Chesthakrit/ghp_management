@@ -175,7 +175,7 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'

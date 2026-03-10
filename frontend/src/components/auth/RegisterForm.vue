@@ -149,7 +149,7 @@
 
 <script setup>
 import { reactive, ref, watch } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
 
 defineEmits(['go-to-login'])

@@ -11,11 +11,11 @@
  * การอิมพอร์ต (Import [การนำเข้า]) สิ่งที่จำเป็น
  */
 import { ref } from 'vue'
-import LoginForm from './components/LoginForm.vue'
-import RegisterForm from './components/RegisterForm.vue'
-import AdminPanel from './components/AdminPanel.vue'
-import EmployeeIdentityEditor from './components/EmployeeIdentityEditor.vue'
-import UserProfile from './components/UserProfile.vue'
+import LoginForm from './components/auth/LoginForm.vue'
+import RegisterForm from './components/auth/RegisterForm.vue'
+import AdminPanel from './components/admin/AdminPanel.vue'
+import EmployeeIdentityEditor from './components/admin/EmployeeIdentityEditor.vue'
+import UserProfile from './components/user/UserProfile.vue'
 
 // ตัวแปรควบคุมหน้าจอ: 'login' หรือ 'register'
 // ตรวจสอบ Token ใน localStorage เพื่อคงสถานะล็อกอิน

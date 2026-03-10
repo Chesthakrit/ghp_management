@@ -162,7 +162,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
 
 const rawDepartments = ref([])

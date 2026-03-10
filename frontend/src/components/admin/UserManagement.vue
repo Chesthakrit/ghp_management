@@ -215,7 +215,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
 
 const emit = defineEmits(['go-to-identity', 'view-profile'])

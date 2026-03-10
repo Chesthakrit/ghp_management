@@ -102,90 +102,17 @@
             </div>
           </div>
 
-          <div v-else-if="activeMenu === 'skills'" class="skills-view-wrapper">
-            <div class="skills-list-side">
-              <div class="section-card-flat no-shadow">
-                <div v-if="!userSkills || userSkills.length === 0" class="no-skills-notice">
-                   <i class="fas fa-info-circle"></i>
-                   <p>No skills requirements listed for this job title yet.</p>
-                </div>
-                
-                <template v-else>
-                  <div class="skill-category-group" v-for="(skills, catName) in groupedSkills" :key="catName">
-                    <h4 class="category-title"># {{ catName }}</h4>
-                    <div class="skill-items-list">
-                      <div 
-                        v-for="skill in skills" 
-                        :key="skill.id" 
-                        class="skill-item-row"
-                        :class="{ 'active-selection': selectedSkill?.id === skill.id }"
-                      >
-                        <div class="skill-info-box" @click="selectSkill(skill)">
-                          <div class="skill-name-text">{{ skill.name }}</div>
-                        </div>
-                        <div class="skill-rating-box">
-                          <div class="stars-row">
-                            <i 
-                              v-if="skill.description" 
-                              class="fas fa-info-circle skill-info-btn-inline" 
-                              @click="selectSkill(skill)"
-                              :class="{ 'active': selectedSkill?.id === skill.id }"
-                              title="View Details"
-                            ></i>
-                            <i 
-                              v-for="star in 5" 
-                              :key="star"
-                              class="fa-star"
-                              :class="[getStarClass(skill.id, star), { 'clickable': canEvaluate }]"
-                              @click="handleRate(skill.id, star)"
-                            ></i>
-                          </div>
-                          <div class="rating-label">{{ getRatingLabel(skill.id) }}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </div>
-
-            <!-- Inline Detail Box (Pane ขวา) -->
-            <div class="skills-detail-side">
-              <div v-if="selectedSkill" class="inline-doc-card">
-                <div class="doc-header-blue-small"></div>
-                <div class="doc-body-inner">
-                  <h1 class="doc-inner-title">{{ selectedSkill.name }}</h1>
-                  <div class="doc-inner-section">
-                    <label class="doc-inner-label">DESCRIPTION / DETAILS</label>
-                    <div class="doc-inner-content-box" style="margin-bottom: 30px;">
-                      {{ selectedSkill.description || 'No detailed description available.' }}
-                    </div>
-
-                    <!-- Checklist Section -->
-                    <label v-if="selectedSkill.sub_duties?.length" class="doc-inner-label">CHECKLIST / REQUIREMENTS</label>
-                    <div v-if="selectedSkill.sub_duties?.length" class="sub-skills-checklist">
-                       <div 
-                         v-for="sub in selectedSkill.sub_duties" 
-                         :key="sub.id" 
-                         class="checklist-item"
-                         :class="{ 'is-checked': !!subEvaluations[sub.id], 'can-toggle': canEvaluate }"
-                         @click="canEvaluate && toggleSubDuty(sub.id)"
-                       >
-                         <div class="checkbox-box">
-                           <i v-if="subEvaluations[sub.id]" class="fas fa-check"></i>
-                         </div>
-                         <span class="sub-skill-name">{{ sub.name }}</span>
-                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="no-selection-placeholder">
-                <i class="fas fa-book-open"></i>
-                <p>เลือก Skill เพื่อดูรายละเอียดการทำงาน</p>
-              </div>
-            </div>
-          </div>
+          <SkillViewer
+            v-else-if="activeMenu === 'skills'"
+            :userSkills="userSkills"
+            :userEvaluations="userEvaluations"
+            :subEvaluations="subEvaluations"
+            :selectedSkill="selectedSkill"
+            :canEvaluate="canEvaluate"
+            @select-skill="selectSkill"
+            @toggle-sub-duty="toggleSubDuty"
+            @handle-rate="handleRate"
+          />
 
           <div v-else-if="activeMenu === 'user_management'" class="user-management-tab">
             <UserManagement 
@@ -225,10 +152,11 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
-import UserManagement from './UserManagement.vue'
-import AdminPanel from './AdminPanel.vue'
+import UserManagement from '../admin/UserManagement.vue'
+import AdminPanel from '../admin/AdminPanel.vue'
+import SkillViewer from './SkillViewer.vue'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
@@ -258,10 +186,6 @@ const selectSkill = (skill) => {
 const menuItems = computed(() => {
   const baseItems = [
     { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
-    { id: 'schedule', label: 'Schedule', icon: 'fas fa-calendar-alt' },
-    { id: 'payslip', label: 'Payslip', icon: 'fas fa-file-invoice-dollar' },
-    { id: 'attendance', label: 'Attendance', icon: 'fas fa-clock' },
-    { id: 'documents', label: 'Documents', icon: 'fas fa-book' },
     { id: 'skills', label: 'Skills', icon: 'fas fa-award' },
   ]
 
@@ -1113,138 +1037,5 @@ onMounted(() => {
   background: #fff;
   transform: scale(1.02);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-}
-
-.skills-detail-side {
-  position: sticky;
-  top: 0;
-}
-
-.inline-doc-card {
-  background: #fff;
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  border: 1px solid #e2e8f0;
-}
-
-.doc-header-blue-small {
-  height: 40px;
-  background: #004fb1;
-}
-
-.doc-body-inner {
-  padding: 40px;
-}
-
-.doc-inner-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1e293b;
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.doc-inner-section {
-  text-align: left;
-}
-
-.doc-inner-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #64748b;
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
-  display: block;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 4px;
-}
-
-.doc-inner-content-box {
-  font-size: 1rem;
-  line-height: 1.8;
-  color: #334155;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.no-selection-placeholder {
-  height: 400px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.5);
-  border: 4px dashed #e2e8f0;
-  border-radius: 20px;
-}
-
-.no-selection-placeholder i {
-  font-size: 3rem;
-  margin-bottom: 16px;
-  opacity: 0.3;
-}
-
-/* Checklist Styles */
-.sub-skills-checklist {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.checklist-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  transition: all 0.2s;
-  user-select: none;
-}
-
-.checklist-item.can-toggle {
-  cursor: pointer;
-}
-
-.checklist-item.can-toggle:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
-}
-
-.checklist-item.is-checked {
-  background: #f0fdf4;
-  border-color: #22c55e;
-}
-
-.checkbox-box {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #cbd5e1;
-  border-radius: 4px;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.2s;
-}
-
-.is-checked .checkbox-box {
-  background: #22c55e;
-  border-color: #22c55e;
-  color: #fff;
-}
-
-.is-checked .sub-skill-name {
-  color: #166534;
-  font-weight: 500;
-}
-
-.sub-skill-name {
-  font-size: 0.95rem;
-  color: #475569;
 }
 </style>

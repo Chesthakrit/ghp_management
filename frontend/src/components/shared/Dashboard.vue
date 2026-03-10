@@ -123,9 +123,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
-import UserManagement from './UserManagement.vue'
+import UserManagement from '../admin/UserManagement.vue'
 import RoleManagement from './RoleManagement.vue'
 
 const emit = defineEmits(['go-to-login', 'go-to-admin', 'go-to-profile'])

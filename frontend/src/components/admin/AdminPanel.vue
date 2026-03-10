@@ -572,7 +572,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import api from '../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
 import draggable from 'vuedraggable'
 import AccessManagement from './AccessManagement.vue'
