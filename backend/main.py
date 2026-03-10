@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 from models import users as model_users
 from models import projects as model_projects
-from routers import users, auth, projects, permissions, hr
+from routers import users, auth, projects, permissions, hr, attendance
 
 # สร้างอินสแตนซ์ของ FastAPI
 app = FastAPI()
@@ -48,6 +48,7 @@ app.include_router(auth.router)        # เกี่ยวกับการล
 app.include_router(projects.router)    # เกี่ยวกับโครงการ
 app.include_router(permissions.router) # เกี่ยวกับสิทธิ์การเข้าถึง
 app.include_router(hr.router)          # เกี่ยวกับฝ่ายบุคคลและทักษะพนักงาน
+app.include_router(attendance.router)  # เกี่ยวกับการลงเวลาเข้าทำงาน
 
 # หน้าแรกของ API สำหรับทดสอบสถานะระบบ
 @app.get("/")

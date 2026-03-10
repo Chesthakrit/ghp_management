@@ -114,6 +114,8 @@
             @handle-rate="handleRate"
           />
 
+          <AttendancePanel v-else-if="activeMenu === 'attendance'" />
+
           <div v-else-if="activeMenu === 'user_management'" class="user-management-tab">
             <UserManagement 
               @go-to-identity="(id) => $emit('go-to-identity', id)"
@@ -157,6 +159,7 @@ import Swal from 'sweetalert2'
 import UserManagement from '../admin/UserManagement.vue'
 import AdminPanel from '../admin/AdminPanel.vue'
 import SkillViewer from './SkillViewer.vue'
+import AttendancePanel from './AttendancePanel.vue'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
@@ -186,6 +189,7 @@ const selectSkill = (skill) => {
 const menuItems = computed(() => {
   const baseItems = [
     { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
+    { id: 'attendance', label: 'Check IN', icon: 'fas fa-clock' },
     { id: 'skills', label: 'Skills', icon: 'fas fa-award' },
   ]
 
