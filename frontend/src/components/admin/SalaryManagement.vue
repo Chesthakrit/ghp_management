@@ -388,17 +388,19 @@ const saveSalarySettings = async () => {
   color: #854d0e;
 }
 
-.jt-item.selected .salary-tag {
+
+.jt-block-nested.selected .salary-tag {
   background: rgba(255, 255, 255, 0.2);
   color: white;
 }
 
 /* RIGHT: Details Pane */
 .detail-config-card {
-  border-style: dashed; 
-  background: #f8fafc; 
-  padding: 20px; 
+  border: 1px solid #e2e8f0; 
+  background: #ffffff; 
+  padding: 24px; 
   border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .detail-title {
