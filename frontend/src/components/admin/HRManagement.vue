@@ -290,8 +290,8 @@
     </div>
   </div>
 </template>
-
 <script setup>
+
 import { ref, watch, onMounted } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
@@ -306,12 +306,6 @@ const props = defineProps({
 
 const emit = defineEmits(['refresh'])
 
-// Local copies for sorting/UI
-const localDepartments = ref([...props.departments])
-const localJobTitles = ref([...props.jobTitles])
-
-watch(() => props.departments, (newVal) => { localDepartments.value = [...newVal] })
-watch(() => props.jobTitles, (newVal) => { localJobTitles.value = [...newVal] })
 
 const hasPerm = (p) => {
   if (props.isAdmin) return true
@@ -322,6 +316,19 @@ const hasPerm = (p) => {
 const expandedDepts = ref([])
 const expandedJTs = ref([])
 const expandedDuties = ref([])
+
+// Shared refs across tabs, but local to this component for DND
+const localDepartments = ref([...props.departments])
+const localJobTitles = ref([...props.jobTitles])
+
+watch(() => props.departments, (newVal) => {
+  localDepartments.value = [...newVal]
+}, { deep: true })
+
+watch(() => props.jobTitles, (newVal) => {
+  localJobTitles.value = [...newVal]
+}, { deep: true })
+
 const selectedDeptId = ref(null)
 const newDept = ref({ name: '' })
 const editingDept = ref(null)
@@ -434,10 +441,21 @@ const deleteJT = async (id) => {
 
 const saveDeptOrder = async () => {
   try {
-    const items = localDepartments.value.map((d, index) => ({ id: d.id, display_order: index + 1 }))
+    const rawList = JSON.parse(JSON.stringify(localDepartments.value))
+    const items = rawList
+      .filter(d => d && d.id)
+      .map((d, index) => ({ 
+        id: Number(d.id), 
+        display_order: index + 1 
+      }))
+    if (items.length === 0) return
     await api.put('/hr/departments/reorder', { items })
+    Swal.fire({ title: 'Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
     emit('refresh')
-  } catch (e) { console.error(e) }
+  } catch (e) { 
+    console.error(e)
+    Swal.fire('Error', 'Failed to save order', 'error')
+  }
 }
 
 const updateJTOrder = (newList, deptId) => {
@@ -447,11 +465,20 @@ const updateJTOrder = (newList, deptId) => {
 
 const saveJTOrder = async (deptId) => {
   try {
-    const deptJTs = localJobTitles.value.filter(j => j.department_id === deptId)
-    const items = deptJTs.map((jt, index) => ({ id: jt.id, display_order: index + 1 }))
+    const rawList = JSON.parse(JSON.stringify(localJobTitles.value))
+    const deptJTs = rawList.filter(j => j.department_id === deptId && j.id)
+    const items = deptJTs.map((jt, index) => ({ 
+      id: Number(jt.id), 
+      display_order: index + 1 
+    }))
+    if (items.length === 0) return
     await api.put('/hr/job-titles/reorder', { items })
+    Swal.fire({ title: 'Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
     emit('refresh')
-  } catch (e) { console.error(e) }
+  } catch (e) { 
+    console.error(e)
+    Swal.fire('Error', 'Failed to save order', 'error')
+  }
 }
 
 const saveDutyCategory = async () => {
@@ -1126,6 +1153,24 @@ const saveJT_Duties = async () => {
 }
 
 /* Misc */
+.drag-handle, .drag-handle-jt {
+  cursor: grab;
+  color: #94a3b8;
+  padding: 4px 8px;
+  margin-right: 8px;
+  font-size: 1.2rem;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.drag-handle:hover, .drag-handle-jt:hover {
+  color: #64748b;
+}
+
+.drag-handle:active, .drag-handle-jt:active {
+  cursor: grabbing;
+}
+
 .drag-ghost {
   opacity: 0.4;
   background: #e0f2fe !important;

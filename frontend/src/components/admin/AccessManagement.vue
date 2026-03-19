@@ -7,7 +7,7 @@
         <h3 class="selection-title">📂 Organization Structure</h3>
         <div v-if="isLoading" class="loading-state">Loading...</div>
         <div v-else class="salary-accordion">
-          <div v-for="dept in rawDepartments" :key="dept.id" class="org-dept-block">
+          <div v-for="dept in departments" :key="dept.id" class="org-dept-block">
             <!-- Department Header -->
             <div 
               class="dept-row dept-header-row" 
@@ -23,7 +23,7 @@
             <!-- Job Titles (Nested) -->
             <div v-if="expandedDepts.includes(dept.id)" class="jt-container">
               <div 
-                v-for="jt in rawJobTitles.filter(j => j.department_id === dept.id)" 
+                v-for="jt in jobTitles.filter(j => j.department_id === dept.id)" 
                 :key="jt.id"
                 class="jt-block-nested"
                 :class="{ active: selectedJT?.id === jt.id }"
@@ -33,7 +33,7 @@
                    <span class="jt-name">{{ jt.name }}</span>
                 </div>
               </div>
-              <div v-if="!rawJobTitles.filter(j => j.department_id === dept.id).length" class="no-data-hint">
+              <div v-if="!jobTitles.filter(j => j.department_id === dept.id).length" class="no-data-hint">
                 No positions
               </div>
             </div>
@@ -172,8 +172,15 @@ import { ref, onMounted, computed, watch } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
 
-const rawDepartments = ref([])
-const rawJobTitles = ref([])
+const props = defineProps({
+  departments: { type: Array, default: () => [] },
+  jobTitles: { type: Array, default: () => [] },
+  currentUser: { type: Object, default: null },
+  isAdmin: { type: Boolean, default: false }
+})
+
+const emit = defineEmits(['refresh'])
+
 const allPermissions = ref([])
 const selectedJT = ref(null)
 const selectedPerms = ref([])
@@ -194,14 +201,7 @@ const toggleDeptExpansion = (id) => {
 const fetchData = async () => {
   isLoading.value = true
   try {
-    const [deptsRes, jobsRes, permsRes] = await Promise.all([
-      api.get('/hr/departments'),
-      api.get('/hr/job-titles'),
-      api.get('/permissions/')
-    ])
-    // Sort
-    rawDepartments.value = deptsRes.data.sort((a,b) => (a.display_order||100)-(b.display_order||100))
-    rawJobTitles.value = jobsRes.data.sort((a,b) => (a.display_order||100)-(b.display_order||100))
+    const permsRes = await api.get('/permissions/')
     allPermissions.value = permsRes.data
   } catch (e) {
     console.error('Failed to load access data', e)
@@ -253,12 +253,8 @@ const savePermissions = async () => {
     await api.put(`/hr/job-titles/${selectedJT.value.id}`, {
       permissions: JSON.stringify(selectedPerms.value)
     })
-    // Update local data
-    const idx = rawJobTitles.value.findIndex(j => j.id === selectedJT.value.id)
-    if (idx !== -1) {
-      rawJobTitles.value[idx].permissions = JSON.stringify(selectedPerms.value)
-    }
     Swal.fire({ icon: 'success', title: 'Permissions Saved', timer: 1000, showConfirmButton: false })
+    emit('refresh')
   } catch (e) {
     Swal.fire('Error', 'Failed to save permissions', 'error')
   } finally {

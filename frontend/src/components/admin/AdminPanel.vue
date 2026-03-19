@@ -96,7 +96,13 @@
         
         <!-- TAB: Access Control -->
         <div v-if="activeTab === 'access'">
-          <AccessManagement />
+          <AccessManagement 
+            :departments="departments" 
+            :job-titles="rawJobTitles"
+            :current-user="currentUser"
+            :is-admin="isAdmin"
+            @refresh="fetchHRData"
+          />
         </div>
       </main>
     </div>
