@@ -35,10 +35,9 @@
                   <div class="dept-title-content">
                     <span class="drag-handle" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
                     <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
-                    <span class="dept-title">{{ d.name }}</span>
+                    <span class="dept-title" @dblclick.stop="startEditDept(d)">{{ d.name }}</span>
                   </div>
                   <div class="dept-actions" @click.stop>
-                    <button v-if="hasPerm('action.hr.edit_name')" class="action-icon-btn" @click="startEditDept(d)" title="Edit Dept">✏️</button>
                     <button v-if="hasPerm('action.hr.delete')" class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
                   </div>
                 </div>
@@ -66,12 +65,10 @@
                       <div class="jt-title-content">
                         <span class="drag-handle-jt" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
                         <span class="toggle-icon-sm">{{ expandedJTs.includes(jt.id) ? '▼' : '▶' }}</span>
-                        <span class="jt-name">{{ jt.name }}</span>
+                        <span class="jt-name" @dblclick.stop="startEditJT(jt)">{{ jt.name }}</span>
                       </div>
                       <div class="jt-actions" @click.stop>
                         <button v-if="hasPerm('action.hr.manage_jt_skills')" class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
-                        <button v-if="isAdmin || hasPerm('page.access')" class="btn-action-pill" @click="openPageAccessModal(jt)">Access</button>
-                        <button v-if="hasPerm('action.hr.edit_name')" class="action-icon-btn" @click="startEditJT(jt)">✏️</button>
                         <button v-if="hasPerm('action.hr.delete')" class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
                       </div>
                     </div>
@@ -145,10 +142,9 @@
                    <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
                       <div class="jt-title-content">
                          <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
-                         <span class="jt-name">{{ duty.name }}</span>
+                         <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                       </div>
                       <div class="jt-actions" @click.stop>
-                         <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
                          <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
                       </div>
                    </div>
@@ -175,10 +171,9 @@
               <div v-else class="view-mode-row">
                 <div class="dept-title-content">
                   <span class="toggle-icon">{{ expandedDepts.includes('cat_' + cat.id) ? '▼' : '▶' }}</span>
-                  <span class="dept-title">{{ cat.name }}</span>
+                  <span class="dept-title" @dblclick.stop="startEditDutyCategory(cat)">{{ cat.name }}</span>
                 </div>
                 <div class="dept-actions" @click.stop>
-                  <button v-if="hasPerm('action.hr.edit_tag')" class="action-icon-btn" @click="startEditDutyCategory(cat)" title="Edit Tag">✏️</button>
                   <button v-if="hasPerm('action.hr.delete_tag')" class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
                 </div>
               </div>
@@ -190,10 +185,9 @@
                 <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
                    <div class="jt-title-content">
                       <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
-                      <span class="jt-name">{{ duty.name }}</span>
+                      <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                    </div>
                    <div class="jt-actions" @click.stop>
-                      <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)">✏️</button>
                       <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
                    </div>
                 </div>
@@ -275,22 +269,6 @@
         <div class="modal-actions"><button class="btn-cancel" @click="closeJDModal">Cancel</button><button class="btn-primary" @click="saveJT_Duties">Save Assignments</button></div>
       </div>
     </div>
-
-    <div v-if="showPageAccessModal" class="modal-overlay" @click.self="showPageAccessModal = false">
-      <div class="modal-box jd-modal">
-        <h3 class="modal-title">Page Access for {{ selectedJT?.name }}</h3>
-        <div class="hr-list jd-list scrollable-list-padded">
-          <label v-for="perm in pagePermissions" :key="perm.id" class="hr-list-item perm-assign-item">
-            <input type="checkbox" v-model="selectedJT_permissions" :value="perm.id" class="perm-checkbox" />
-            <div class="perm-info">
-              <span class="hr-label">{{ perm.name }}</span>
-              <div class="perm-key-hint">Key: {{ perm.id }}</div>
-            </div>
-          </label>
-        </div>
-        <div class="modal-actions"><button class="btn-cancel" @click="showPageAccessModal = false">Cancel</button><button class="btn-primary" @click="saveJT_Permissions">Save Page Access</button></div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -345,13 +323,8 @@ const showJDModal = ref(false)
 const selectedJT = ref(null)
 const selectedJT_duties = ref([])
 
-const showPageAccessModal = ref(false)
-const pagePermissions = ref([])
-const selectedJT_permissions = ref([])
-
 onMounted(() => {
   fetchHRData()
-  fetchPermissions()
 })
 
 const fetchHRData = async () => {
@@ -365,12 +338,6 @@ const fetchHRData = async () => {
   } catch (e) { console.error(e) }
 }
 
-const fetchPermissions = async () => {
-  try {
-    const res = await api.get('/permissions/')
-    pagePermissions.value = res.data.filter(p => p.id.startsWith('page.'))
-  } catch (e) { console.error(e) }
-}
 
 // CRUD Methods
 const toggleDeptExpansion = (id) => {
@@ -563,19 +530,6 @@ const saveJT_Duties = async () => {
   } catch (e) { Swal.fire('Error', 'Save failed', 'error') }
 }
 
-// Permissions Modal
-const openPageAccessModal = (jt) => {
-  selectedJT.value = jt
-  selectedJT_permissions.value = jt.permissions ? jt.permissions.map(p => p.id) : []
-  showPageAccessModal.value = true
-}
-const saveJT_Permissions = async () => {
-  try {
-    await api.put(`/hr/job-titles/${selectedJT.value.id}/permissions`, { permission_ids: selectedJT_permissions.value })
-    showPageAccessModal.value = false
-    emit('refresh')
-  } catch (e) { Swal.fire('Error', 'Save failed', 'error') }
-}
 
 </script>
 
@@ -977,27 +931,6 @@ const saveJT_Permissions = async () => {
   height: 18px;
 }
 
-.perm-assign-item {
-  cursor: pointer; 
-  display: flex; 
-  align-items: center; 
-  gap: 15px;
-}
-
-.perm-checkbox {
-  width: 20px; 
-  height: 20px;
-}
-
-.perm-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.perm-key-hint {
-  font-size: 0.75rem; 
-  color: #94a3b8;
-}
 
 .modal-actions {
   display: flex;
