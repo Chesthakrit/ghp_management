@@ -6,31 +6,35 @@
         <p class="header-subtitle">Define min-max salary range and payment type for each job title.</p>
       </div>
 
+
       <div class="hr-settings-grid salary-main-grid">
         <!-- Left: Select Department & Job Title -->
         <div class="salary-selection-pane">
-          <label class="form-label-sm">Select Department & Job Title</label>
-          <div class="hr-list salary-accordion">
-            <div v-for="d in departments" :key="d.id" class="salary-dept-group">
-              <div class="hr-list-item dept-header" :class="{ 'is-expanded': expandedDepts.includes(d.id) }" @click="toggleDeptExpansion(d.id)">
-                <div class="dept-title-wrapper">
+          <h3 class="selection-title">📂 Organization Structure</h3>
+          <div class="salary-accordion">
+            <div v-for="d in departments" :key="d.id" class="org-dept-block">
+              <div class="dept-row dept-header-row" :class="{ 'is-expanded': expandedDepts.includes(d.id) }" @click="toggleDeptExpansion(d.id)">
+                <div class="dept-title-content">
                   <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
-                  <span class="hr-label dept-name-label">{{ d.name }}</span>
+                  <span class="dept-title">{{ d.name }}</span>
                 </div>
               </div>
-              <div v-if="expandedDepts.includes(d.id)" class="jt-nested-list">
-                <div v-for="jt in jobTitles.filter(j => j.department_id === d.id)" :key="jt.id" class="hr-list-item jt-item" :class="{ selected: salarySelectedJT?.id === jt.id }" @click="selectJobTitle(jt, d.id)">
-                  <span class="hr-label">{{ jt.name }}</span>
-                  <div class="salary-preview-right">
-                    <div v-if="jt.min_salary_monthly > 0 || jt.max_salary_monthly > 0" class="salary-tag monthly">{{ (jt.min_salary_monthly || 0).toLocaleString() }} - {{ (jt.max_salary_monthly || 0).toLocaleString() }} M</div>
-                    <div v-if="jt.min_salary_daily > 0 || jt.max_salary_daily > 0" class="salary-tag daily">{{ (jt.min_salary_daily || 0).toLocaleString() }} - {{ (jt.max_salary_daily || 0).toLocaleString() }} D</div>
+              <div v-if="expandedDepts.includes(d.id)" class="jt-container">
+                <div v-for="jt in jobTitles.filter(j => j.department_id === d.id)" :key="jt.id" class="jt-block-nested" :class="{ selected: salarySelectedJT?.id === jt.id }" @click="selectJobTitle(jt, d.id)">
+                  <div class="jt-main-row">
+                    <span class="jt-name">{{ jt.name }}</span>
+                    <div class="salary-preview-right">
+                      <div v-if="jt.min_salary_monthly > 0 || jt.max_salary_monthly > 0" class="salary-tag monthly">{{ (jt.min_salary_monthly || 0).toLocaleString() }} - {{ (jt.max_salary_monthly || 0).toLocaleString() }} M</div>
+                      <div v-if="jt.min_salary_daily > 0 || jt.max_salary_daily > 0" class="salary-tag daily">{{ (jt.min_salary_daily || 0).toLocaleString() }} - {{ (jt.max_salary_daily || 0).toLocaleString() }} D</div>
+                    </div>
                   </div>
                 </div>
-                <div v-if="!jobTitles.filter(j => j.department_id === d.id).length" class="no-data-hint-sm">No job titles defined</div>
+                <div v-if="!jobTitles.filter(j => j.department_id === d.id).length" class="no-data-hint-sm">No positions defined</div>
               </div>
             </div>
           </div>
         </div>
+
 
         <!-- Right: Set Salary Details -->
         <div class="salary-details-pane">
@@ -250,81 +254,112 @@ const saveSalarySettings = async () => {
   font-weight: 700;
 }
 
-.form-label-sm {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  margin-bottom: 12px;
-  display: block;
+
+.selection-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1a2a3a;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .salary-accordion {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+
+
+.org-dept-block {
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.dept-row {
+  background: white;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dept-header-row {
+  cursor: pointer;
+}
+
+.dept-header-row:hover {
+  background: #f1f5f9;
+}
+
+.dept-title-content {
+  display: flex; 
+  align-items: center; 
   gap: 8px;
 }
 
-.dept-header {
-  background: white;
-  border: 1px solid #e2e8f0;
-  padding: 12px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+
+.dept-title {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.95rem;
 }
 
-.dept-header:hover {
-  border-color: #3b82f6;
+.toggle-icon {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  width: 14px;
+  display: inline-block;
+  text-align: center;
 }
 
-.dept-header.is-expanded {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.jt-nested-list {
-  padding-left: 12px;
+.jt-container {
+  padding: 10px;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 6px;
+  gap: 8px;
 }
 
-.jt-item {
+
+.jt-block-nested {
   background: white;
-  border: 1px solid #f1f5f9;
-  padding: 10px 14px;
+  border: 1px solid #eef2f6;
   border-radius: 8px;
+  overflow: hidden;
   cursor: pointer;
-  font-size: 0.88rem;
   transition: all 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
-.jt-item:hover {
-  background: #f8fafc;
+.jt-block-nested:hover {
+  background: #f1f5f9;
   border-color: #cbd5e1;
 }
 
-.jt-item.selected {
-  background: #3b82f6;
+.jt-block-nested.selected {
+  background: #1a2a3a;
   color: white;
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  border-color: #1a2a3a;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
-.jt-item.selected .hr-label {
-  color: white;
+.jt-main-row {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.hr-label {
-  font-weight: 500;
+.jt-name {
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.jt-block-nested.selected .jt-name {
+  color: white;
 }
 
 /* Salary Tags */
@@ -433,11 +468,12 @@ const saveSalarySettings = async () => {
 .category-title {
   font-size: 0.75rem;
   text-transform: uppercase;
-  color: #64748b;
+  color: #1a2a3a;
   letter-spacing: 0.05em;
-  border-left: 3px solid #3b82f6;
+  border-left: 4px solid #1a2a3a;
   padding-left: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
+  font-weight: 800;
 }
 
 .global-setting-item {
@@ -457,6 +493,7 @@ const saveSalarySettings = async () => {
   background: #f8fafc;
 }
 
+
 .setting-label {
   font-size: 0.88rem;
   font-weight: 600;
@@ -470,25 +507,38 @@ const saveSalarySettings = async () => {
   border-radius: 6px;
   text-align: right;
   font-weight: 700;
-  color: #3b82f6;
+  color: #1a2a3a;
   font-family: inherit;
+  transition: all 0.2s;
+}
+
+.form-input-sm:focus {
+  border-color: #1a2a3a;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26, 42, 58, 0.1);
 }
 
 .form-group label {
   display: block;
   font-size: 0.75rem;
+  font-weight: 700;
   color: #64748b;
   margin-bottom: 6px;
 }
 
 .form-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border: 1px solid #dde3e8;
   border-radius: 8px;
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+}
+
+.form-input:focus {
+  border-color: #1a2a3a;
+  box-shadow: 0 0 0 2px rgba(26, 42, 58, 0.1);
 }
 
 .btn-primary {
@@ -499,28 +549,35 @@ const saveSalarySettings = async () => {
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .btn-primary:hover {
-  background: #243447;
+  background: #2d3d50;
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .hr-empty-hint {
   height: 300px;
-  background: #f1f5f9;
-  border: 2px dashed #cbd5e1;
+  background: #f8fafc;
+  border: 2px dashed #e2e8f0;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
+  color: #94a3b8;
   font-style: italic;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 1024px) {
