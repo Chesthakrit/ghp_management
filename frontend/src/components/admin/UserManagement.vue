@@ -192,6 +192,15 @@
             <input :value="editingUser.employee_profile.termination_date" type="date" class="form-input" disabled />
             <small class="lock-hint">Set automatically when status changes to Terminated</small>
           </div>
+          <!-- Financial Settings -->
+          <div class="form-group">
+            <label>Base Salary / Day Wage</label>
+            <input v-model.number="form.base_salary" type="number" class="form-input" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label>Bank Account No.</label>
+            <input v-model="form.bank_account" type="text" class="form-input" placeholder="XXX-X-XXXXX-X" />
+          </div>
         </div>
 
         <div class="modal-actions">
@@ -244,7 +253,9 @@ const form = ref({
   is_active: true,
   hire_date: '',
   employment_status: 'intern',
-  salary_type: 'monthly'
+  salary_type: 'monthly',
+  base_salary: 0,
+  bank_account: ''
 })
 
 const openPhoto  = (url) => { photoPopup.value = url }
@@ -404,6 +415,8 @@ const openEdit = (user) => {
     hire_date: user.employee_profile?.hire_date || '',
     employment_status: user.employee_profile?.employment_status || 'intern',
     salary_type: user.employee_profile?.salary_type || 'monthly',
+    base_salary: user.employee_profile?.base_salary || 0,
+    bank_account: user.employee_profile?.bank_account || '',
   }
   showModal.value = true
 }
@@ -433,6 +446,8 @@ const saveUser = async () => {
       hire_date: form.value.hire_date,
       employment_status: form.value.employment_status,
       salary_type: form.value.salary_type,
+      base_salary: form.value.base_salary,
+      bank_account: form.value.bank_account,
     })
 
     Swal.fire({ icon: 'success', title: 'Saved successfully!', timer: 1500, showConfirmButton: false })
