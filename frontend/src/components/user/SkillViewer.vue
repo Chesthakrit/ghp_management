@@ -8,6 +8,24 @@
         </div>
         
         <template v-else>
+          <!-- Overall Progress -->
+          <div class="overall-progress-card">
+            <div class="overall-circle">
+              <svg viewBox="0 0 36 36" class="circular-chart">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle-fill" :class="getOverallColor(overallPercent)" :stroke-dasharray="overallPercent + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="overall-pct-text">{{ overallPercent }}%</div>
+            </div>
+            <div class="overall-info">
+              <div class="overall-label">Overall Progress</div>
+              <div class="overall-bar-track">
+                <div class="overall-bar-fill" :class="getOverallColor(overallPercent)" :style="{ width: overallPercent + '%' }"></div>
+              </div>
+              <div class="overall-sub-text">Average of {{ userSkills.length }} skill(s)</div>
+            </div>
+          </div>
+
           <div class="skill-category-group" v-for="(skills, catName) in groupedSkills" :key="catName">
             <h4 class="category-title"># {{ catName }}</h4>
             <div class="skill-items-list">
@@ -20,8 +38,7 @@
                 <div class="skill-info-box" @click="selectSkill(skill)">
                   <div class="skill-name-text">{{ skill.name }}</div>
                 </div>
-                <div class="skill-rating-box">
-                  <div class="stars-row">
+                <div class="skill-progress-box">
                     <i 
                       v-if="skill.description" 
                       class="fas fa-info-circle skill-info-btn-inline" 
@@ -29,15 +46,16 @@
                       :class="{ 'active': selectedSkill?.id === skill.id }"
                       title="View Details"
                     ></i>
-                    <i 
-                      v-for="star in 5" 
-                      :key="star"
-                      class="fa-star"
-                      :class="[getStarClass(skill.id, star), { 'clickable': canEvaluate }]"
-                      @click="handleRate(skill.id, star)"
-                    ></i>
-                  </div>
-                  <div class="rating-label">{{ getRatingLabel(skill.id) }}</div>
+                    <div class="progress-bar-wrapper">
+                      <div class="progress-bar-track">
+                        <div 
+                          class="progress-bar-fill" 
+                          :style="{ width: (userEvaluations[skill.id] || 0) + '%' }"
+                          :class="getProgressColor(skill.id)"
+                        ></div>
+                      </div>
+                      <span class="progress-pct">{{ userEvaluations[skill.id] || 0 }}%</span>
+                    </div>
                 </div>
               </div>
             </div>
@@ -71,7 +89,19 @@
                   <div class="checkbox-box">
                     <i v-if="subEvaluations[sub.id]" class="fas fa-check"></i>
                   </div>
-                  <span class="sub-skill-name">{{ sub.name }}</span>
+                  <div class="sub-skill-content">
+                    <span class="sub-skill-name">{{ sub.name }}</span>
+                    <a 
+                      v-if="sub.tutorial_url" 
+                      :href="sub.tutorial_url" 
+                      target="_blank" 
+                      class="sub-skill-video-link" 
+                      @click.stop
+                      title="รับชมวิดีโอสอนงาน"
+                    >
+                      <i class="fas fa-play-circle"></i> Tutorial
+                    </a>
+                  </div>
                 </div>
             </div>
           </div>
@@ -101,6 +131,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  overallPercent: {
+    type: Number,
+    default: 0
+  },
   selectedSkill: {
     type: Object,
     default: null
@@ -111,7 +145,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select-skill', 'toggle-sub-duty', 'handle-rate'])
+const emit = defineEmits(['select-skill', 'toggle-sub-duty'])
 
 const groupedSkills = computed(() => {
   const groups = {}
@@ -131,25 +165,114 @@ const toggleSubDuty = (subId) => {
   emit('toggle-sub-duty', subId)
 }
 
-const handleRate = (skillId, score) => {
-  emit('handle-rate', skillId, score)
+const getProgressColor = (skillId) => {
+  const pct = props.userEvaluations[skillId] || 0
+  if (pct >= 80) return 'progress-green'
+  if (pct >= 40) return 'progress-blue'
+  if (pct > 0) return 'progress-amber'
+  return ''
 }
 
-const getStarClass = (skillId, starIndex) => {
-  const score = props.userEvaluations[skillId] || 0
-  if (starIndex <= score) return 'fas fa-star text-gold'
-  return 'far fa-star text-muted'
-}
-
-const getRatingLabel = (skillId) => {
-  const score = props.userEvaluations[skillId] || 0
-  if (!score) return 'Pending'
-  const labels = ['Novice', 'Beginner', 'Competent', 'Proficient', 'Expert']
-  return labels[score - 1] || 'Rated'
+const getOverallColor = (pct) => {
+  if (pct >= 80) return 'color-green'
+  if (pct >= 40) return 'color-blue'
+  if (pct > 0) return 'color-amber'
+  return ''
 }
 </script>
 
 <style scoped>
+/* Overall Progress */
+.overall-progress-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.overall-circle {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.circular-chart {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.circle-bg {
+  fill: none;
+  stroke: #e2e8f0;
+  stroke-width: 3;
+}
+
+.circle-fill {
+  fill: none;
+  stroke: #94a3b8;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.circle-fill.color-amber { stroke: #f59e0b; }
+.circle-fill.color-blue { stroke: #3b82f6; }
+.circle-fill.color-green { stroke: #22c55e; }
+
+.overall-pct-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.overall-info {
+  flex: 1;
+}
+
+.overall-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.overall-bar-track {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.overall-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #94a3b8;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.overall-bar-fill.color-amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.overall-bar-fill.color-blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.overall-bar-fill.color-green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+
+.overall-sub-text {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
 /* Skills Section (from UserProfile.vue) */
 .skills-view-wrapper {
   display: flex;
@@ -245,50 +368,55 @@ const getRatingLabel = (skillId) => {
   line-height: 1.4;
 }
 
-.skill-rating-box {
+.skill-progress-box {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   background: #f8fafc;
   padding: 8px 12px;
   border-radius: 8px;
 }
 
-.stars-row {
+.progress-bar-wrapper {
+  flex: 1;
   display: flex;
-  gap: 4px;
   align-items: center;
+  gap: 10px;
 }
 
-.stars-row i {
-  font-size: 0.9rem;
-  transition: transform 0.1s;
+.progress-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
 }
 
-.stars-row i.clickable {
-  cursor: pointer;
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #94a3b8;
 }
 
-.stars-row i.clickable:hover {
-  transform: scale(1.2);
+.progress-bar-fill.progress-amber {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
 }
 
-.text-gold {
-  color: #f59e0b;
-  text-shadow: 0 0 2px rgba(245, 158, 11, 0.3);
+.progress-bar-fill.progress-blue {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
 }
 
-.text-muted {
-  color: #cbd5e0;
+.progress-bar-fill.progress-green {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
 }
 
-.rating-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 2px 8px;
-  border-radius: 12px;
+.progress-pct {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  min-width: 38px;
+  text-align: right;
 }
 
 .skill-info-btn-inline {
@@ -405,11 +533,46 @@ const getRatingLabel = (skillId) => {
   border-color: #22c55e;
 }
 
+.sub-skill-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .sub-skill-name {
   color: #334155;
   font-size: 0.95rem;
   line-height: 1.5;
   padding-top: 2px;
+}
+
+.sub-skill-video-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  border: 1px solid #dbeafe;
+}
+
+.sub-skill-video-link:hover {
+  background: #2563eb;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
+.sub-skill-video-link i {
+  font-size: 0.85rem;
 }
 
 .checklist-item.is-checked .sub-skill-name {

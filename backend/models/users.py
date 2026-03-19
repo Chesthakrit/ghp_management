@@ -175,6 +175,7 @@ class SubDuty(Base):
     name_th = Column(String, nullable=True)
     name_v3 = Column(String, nullable=True)
     duty_id = Column(Integer, ForeignKey("duties.id", ondelete="CASCADE"))
+    tutorial_url = Column(String, nullable=True) # ลิงก์วิดีโอสอน
     
     duty = relationship("Duty", back_populates="sub_duties")
 

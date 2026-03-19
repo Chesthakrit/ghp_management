@@ -105,13 +105,13 @@
           <SkillViewer
             v-else-if="activeMenu === 'skills'"
             :userSkills="userSkills"
-            :userEvaluations="userEvaluations"
+            :userEvaluations="autoPercentRatings"
+            :overallPercent="overallPercent"
             :subEvaluations="subEvaluations"
             :selectedSkill="selectedSkill"
             :canEvaluate="canEvaluate"
             @select-skill="selectSkill"
             @toggle-sub-duty="toggleSubDuty"
-            @handle-rate="handleRate"
           />
 
           <AttendancePanel v-else-if="activeMenu === 'attendance'" />
@@ -178,9 +178,31 @@ watch(activeMenu, (n) => {
 })
 const userSkills = ref([])
 const userEvaluations = ref({})
-const isEvaluating = ref(false)
 const selectedSkill = ref(null)
 const subEvaluations = ref({}) // subDutyId -> boolean
+
+// Auto-calculate percentage (0-100) from sub-duty checklist completion
+const autoPercentRatings = computed(() => {
+  const ratings = {}
+  userSkills.value.forEach(skill => {
+    const subs = skill.sub_duties || []
+    if (subs.length === 0) {
+      ratings[skill.id] = 0
+      return
+    }
+    const completed = subs.filter(s => subEvaluations.value[s.id]).length
+    ratings[skill.id] = Math.round((completed / subs.length) * 100)
+  })
+  return ratings
+})
+
+// Overall average percentage across all skills
+const overallPercent = computed(() => {
+  const skillIds = Object.keys(autoPercentRatings.value)
+  if (skillIds.length === 0) return 0
+  const total = skillIds.reduce((sum, id) => sum + autoPercentRatings.value[id], 0)
+  return Math.round(total / skillIds.length)
+})
 
 const selectSkill = (skill) => {
   selectedSkill.value = skill
@@ -354,32 +376,6 @@ const getStarClass = (skillId, starIndex) => {
   return 'far fa-star text-muted'
 }
 
-const getRatingLabel = (skillId) => {
-  const score = userEvaluations.value[skillId] || 0
-  if (!score) return 'Pending'
-  const labels = ['Novice', 'Beginner', 'Competent', 'Proficient', 'Expert']
-  return labels[score - 1] || 'Rated'
-}
-
-const handleRate = async (skillId, score) => {
-  if (!canEvaluate.value) return
-  if (isEvaluating.value) return
-
-  try {
-    isEvaluating.value = true
-    await api.post('/hr/evaluations', {
-      user_id: user.value.id,
-      duty_id: skillId,
-      score: score
-    })
-    userEvaluations.value[skillId] = score
-    // Optional toast
-  } catch (err) {
-    Swal.fire('Error', 'Failed to update rating', 'error')
-  } finally {
-    isEvaluating.value = false
-  }
-}
 
 // Watch for userId changes so we refresh data if admin switches users
 watch(() => props.userId, () => {

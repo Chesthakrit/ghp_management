@@ -262,13 +262,20 @@
         <div class="sub-skills-section">
           <label class="form-label-checklist">เพิ่มสกิลย่อย (CHECKLIST)</label>
           <div class="add-sub-skill-form">
-            <input v-model="newSubDutyName" class="form-input" placeholder="ชื่อสกิลย่อย..." @keyup.enter="addSubDuty" />
-            <button class="btn-primary" @click="addSubDuty">เพิ่ม</button>
+            <div class="add-sub-inputs">
+              <input v-model="newSubDutyName" class="form-input" placeholder="ชื่อสกิลย่อย..." @keyup.enter="addSubDuty" />
+              <input v-model="newSubDutyUrl" class="form-input form-input-sm" placeholder="🔗 URL วิดีโอสอน (ไม่บังคับ)" />
+            </div>
+            <button class="btn-primary btn-add-sub" @click="addSubDuty">+ เพิ่ม</button>
           </div>
           <div class="sub-skills-list-admin">
              <div v-for="sub in selectedDuty.sub_duties" :key="sub.id" class="sub-skill-admin-item">
-                <span>{{ sub.name }}</span>
-                <button class="btn-delete-sm" @click="removeSubDuty(sub.id)">🗑️</button>
+                <span class="sub-skill-name-text">{{ sub.name }}</span>
+                <div class="sub-skill-actions">
+                  <a v-if="sub.tutorial_url" :href="sub.tutorial_url" target="_blank" class="btn-action-sm btn-video" title="ดูวิดีโอสอน">🎬</a>
+                  <button v-else class="btn-action-sm btn-add-link" @click="promptTutorialUrl(sub)" title="เพิ่มลิงก์วิดีโอ">🔗</button>
+                  <button class="btn-action-sm btn-trash" @click="removeSubDuty(sub.id)" title="ลบ">🗑️</button>
+                </div>
              </div>
           </div>
         </div>
@@ -344,6 +351,7 @@ const editingDutyCategory = ref(null)
 const showDutyModal = ref(false)
 const selectedDuty = ref({ id: null, name: '', description: '', category_id: null, sub_duties: [] })
 const newSubDutyName = ref('')
+const newSubDutyUrl = ref('')
 const selectedSkillCatId = ref(null)
 
 const showJDModal = ref(false)
@@ -548,12 +556,13 @@ const deleteDutyFromPool = async (id) => {
 const addSubDuty = async () => {
   if (!newSubDutyName.value || !selectedDuty.value?.id) return
   try {
-    // Corrected endpoint and payload for backend schema
     await api.post('/hr/sub-duties', { 
       name: newSubDutyName.value, 
-      duty_id: selectedDuty.value.id 
+      duty_id: selectedDuty.value.id,
+      tutorial_url: newSubDutyUrl.value || null
     })
     newSubDutyName.value = ''
+    newSubDutyUrl.value = ''
     // Refresh sub duties list from server
     const res = await api.get(`/hr/duties/${selectedDuty.value.id}`)
     selectedDuty.value.sub_duties = res.data.sub_duties
@@ -567,6 +576,27 @@ const removeSubDuty = async (id) => {
     await api.delete(`/hr/sub-duties/${id}`)
     selectedDuty.value.sub_duties = selectedDuty.value.sub_duties.filter(s => s.id !== id)
   } catch (e) { Swal.fire('Error', 'Delete failed', 'error') }
+}
+
+const promptTutorialUrl = async (sub) => {
+  const { value: url } = await Swal.fire({
+    title: 'เพิ่มลิงก์วิดีโอสอน',
+    input: 'url',
+    inputLabel: `สำหรับ: ${sub.name}`,
+    inputPlaceholder: 'https://www.youtube.com/watch?v=...',
+    inputValue: sub.tutorial_url || '',
+    showCancelButton: true,
+    confirmButtonText: 'บันทึก',
+    cancelButtonText: 'ยกเลิก'
+  })
+  if (!url) return
+  try {
+    await api.put(`/hr/sub-duties/${sub.id}`, { tutorial_url: url })
+    sub.tutorial_url = url
+    Swal.fire({ title: 'บันทึกลิงก์เรียบร้อย!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+  } catch (e) {
+    Swal.fire('Error', 'Failed to save URL', 'error')
+  }
 }
 
 // JD Modal
@@ -1041,22 +1071,36 @@ const saveJT_Duties = async () => {
 .add-sub-skill-form {
   display: flex;
   gap: 10px;
+  align-items: flex-end;
   margin-bottom: 16px;
 }
 
+.add-sub-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .add-sub-skill-form .form-input {
-  flex: 1;
-  width: auto;
+  width: 100%;
   background: white;
 }
 
-.add-sub-skill-form .btn-primary {
+.form-input-sm {
+  font-size: 0.82rem !important;
+  padding: 8px 12px !important;
+}
+
+.btn-add-sub {
   flex-shrink: 0;
+  height: 40px;
+  padding: 0 20px !important;
+  white-space: nowrap;
 }
 
 .sub-skills-list-admin {
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -1069,40 +1113,68 @@ const saveJT_Duties = async () => {
   justify-content: space-between;
   align-items: center;
   background: white;
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
   transition: all 0.2s;
+  gap: 12px;
 }
 
 .sub-skill-admin-item:hover {
   border-color: #cbd5e1;
-  transform: translateX(2px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
 }
 
-.sub-skill-admin-item span {
+.sub-skill-name-text {
   font-size: 0.9rem;
   color: #334155;
   font-weight: 500;
+  flex: 1;
+  line-height: 1.4;
 }
 
-.btn-delete-sm {
-  background: transparent;
-  border: none;
+.sub-skill-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-action-sm {
+  width: 32px;
+  height: 32px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 1.1rem;
-  padding: 4px;
-  border-radius: 6px;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  color: #94a3b8;
+  text-decoration: none;
+  color: #64748b;
 }
 
-.btn-delete-sm:hover {
+.btn-action-sm.btn-video:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #2563eb;
+  transform: scale(1.05);
+}
+
+.btn-action-sm.btn-add-link:hover {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #d97706;
+  transform: scale(1.05);
+}
+
+.btn-action-sm.btn-trash:hover {
   background: #fee2e2;
-  color: #ef4444;
+  border-color: #fca5a5;
+  color: #dc2626;
+  transform: scale(1.05);
 }
 
 .modal-actions {
@@ -1191,5 +1263,12 @@ const saveJT_Duties = async () => {
   .hr-settings-grid {
     grid-template-columns: 1fr;
   }
+}
+</style>
+
+<style>
+/* Global: Force SweetAlert above modals */
+.swal2-container {
+  z-index: 99999 !important;
 }
 </style>

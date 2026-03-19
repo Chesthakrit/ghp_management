@@ -58,10 +58,16 @@ class SubDutyBase(BaseModel):
     name_th: Optional[str] = None
     name_v3: Optional[str] = None
     duty_id: int                        # รหัสทักษะหลักที่สังกัด
+    tutorial_url: Optional[str] = None  # ลิงก์วิดีโอสอน
 
 class SubDutyCreate(SubDutyBase):
     """ใช้รับข้อมูลตอนสร้างทักษะย่อยใหม่"""
     pass
+
+class SubDutyUpdate(BaseModel):
+    """ใช้สำหรับอัปเดตข้อมูลทักษะย่อย (เช่น เพิ่ม tutorial URL)"""
+    name: Optional[str] = None
+    tutorial_url: Optional[str] = None
 
 class SubDuty(SubDutyBase):
     """ข้อมูลทักษะย่อยสำหรับส่งออก"""
