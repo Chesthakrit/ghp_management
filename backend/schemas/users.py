@@ -13,6 +13,8 @@ class EmployeeProfileBase(BaseModel):
     hire_date: Optional[str] = None       # วันเริ่มงาน
     employment_status: Optional[str] = 'intern' # สถานะการจ้างงาน
     salary_type: Optional[str] = 'monthly'      # รูปแบบการจ่ายเงิน
+    base_salary: Optional[int] = 0        # ยอดเงินเดือน/ค่าจ้าง
+    bank_account: Optional[str] = None    # เลขบัญชีธนาคาร (ถ้ามี)
 
 class EmployeeProfileOut(EmployeeProfileBase):
     """ข้อมูลประวัติพนักงานสำหรับส่งออกไปยัง Frontend"""
@@ -57,6 +59,8 @@ class EmployeeProfileUpdate(BaseModel):
     hire_date: Optional[str] = None        # แก้ไขวันเริ่มงาน
     employment_status: Optional[str] = None # แก้ไขสถานะการจ้างงาน
     salary_type: Optional[str] = None       # แก้ไขรูปแบบการจ่ายเงิน
+    base_salary: Optional[int] = None       # แก้ไขยอดเงินเดือน/ค่าจ้าง
+    bank_account: Optional[str] = None      # แก้ไขเลขบัญชีธนาคาร
 
 # --- ข้อมูลผู้ใช้งานสำหรับส่งออก (User Out - ส่งข้อมูลกลับไปยังหน้าจอ) ---
 class UserOut(BaseModel):

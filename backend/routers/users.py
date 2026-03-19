@@ -282,9 +282,13 @@ def update_employee_profile(
         elif request.employment_status != 'terminated':
             profile.termination_date = None
     
-    # Update salary_type if provided
+    # Update salary info if provided
     if request.salary_type is not None:
         profile.salary_type = request.salary_type
+    if request.base_salary is not None:
+        profile.base_salary = request.base_salary
+    if request.bank_account is not None:
+        profile.bank_account = request.bank_account
 
     db.commit()
     db.refresh(user)

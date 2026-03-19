@@ -229,6 +229,8 @@ class EmployeeProfile(Base):
     hire_date = Column(String, nullable=True)              # วันที่เริ่มงาน (YYYY-MM-DD)
     employment_status = Column(String, default='intern')   # สถานะการจ้างงาน (ฝึกงาน, พนักงานประจำ)
     salary_type = Column(String, default='monthly')        # รูปแบบการจ่ายเงิน (monthly, daily)
+    base_salary = Column(Integer, default=0)               # ยอดเงินเดือนพื้นฐาน หรือ ค่าจ้างรายวัน
+    bank_account = Column(String, nullable=True)           # เลขบัญชีธนาคาร (ถ้ามี)
     termination_date = Column(String, nullable=True)       # วันลาออก (ถ้ามี)
 
     user = relationship("User", back_populates="employee_profile")

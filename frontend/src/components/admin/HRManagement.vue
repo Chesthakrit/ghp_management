@@ -4,7 +4,7 @@
       <!-- 1 & 2. Unified Organization Structure (Compact) -->
       <div class="section-card org-struct-card">
         <div class="section-header">
-          <h2>🏢 Organization & Job Titles</h2>
+          <h2 class="header-title">🏢 Organization & Job Titles</h2>
         </div>
         
         <!-- Global Add Dept -->
@@ -31,8 +31,8 @@
                   <button class="btn-primary-xs" @click="updateDept">Save</button>
                   <button class="btn-cancel-xs" @click="editingDept = null">Cancel</button>
                 </div>
-                <div v-else class="view-mode-row" @click="toggleDeptExpansion(d.id)" style="cursor: pointer;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
+                <div v-else class="view-mode-row dept-header-row" @click="toggleDeptExpansion(d.id)">
+                  <div class="dept-title-content">
                     <span class="drag-handle" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
                     <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
                     <span class="dept-title">{{ d.name }}</span>
@@ -62,8 +62,8 @@
                       <button class="btn-primary-xs" @click="updateJT">Save</button>
                       <button class="btn-cancel-xs" @click="editingJT = null">Cancel</button>
                     </div>
-                    <div v-else class="view-mode-row jt-main-row" @click="toggleJTExpansion(jt.id)" style="cursor: pointer;">
-                      <div style="display: flex; align-items: center; gap: 6px;">
+                    <div v-else class="view-mode-row jt-main-row" @click="toggleJTExpansion(jt.id)">
+                      <div class="jt-title-content">
                         <span class="drag-handle-jt" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
                         <span class="toggle-icon-sm">{{ expandedJTs.includes(jt.id) ? '▼' : '▶' }}</span>
                         <span class="jt-name">{{ jt.name }}</span>
@@ -82,7 +82,7 @@
                              {{ duty.name }}
                           </div>
                        </div>
-                       <div v-else class="no-data-hint-sm" style="font-size: 0.7rem; color: #94a3b8; padding: 4px 10px;">
+                       <div v-else class="no-data-hint-sm jt-no-skill-hint">
                           No skills assigned yet.
                        </div>
                     </div>
@@ -122,7 +122,7 @@
       <!-- 3 & 4. Unified Skills Management (Hierarchical) -->
       <div class="section-card skill-mgmt-card">
         <div class="section-header">
-          <h2>📚 Skills & Category Library</h2>
+          <h2 class="header-title">📚 Skills & Category Library</h2>
         </div>
         
         <!-- Global Add Tag -->
@@ -134,16 +134,16 @@
         <div class="org-tree">
           <!-- Uncategorized Block -->
           <div v-if="dutiesPool.filter(d => !d.category_id).length > 0" class="org-dept-block uncategorized">
-             <div class="dept-row" @click="toggleDeptExpansion('uncat_skill')" style="cursor: pointer;">
-               <div style="display: flex; align-items: center; gap: 8px;">
+             <div class="dept-row uncat-skill-row" @click="toggleDeptExpansion('uncat_skill')">
+               <div class="dept-title-content">
                  <span class="toggle-icon">{{ expandedDepts.includes('uncat_skill') ? '▼' : '▶' }}</span>
                  <span class="dept-title">Uncategorized Skills</span>
                </div>
              </div>
              <div v-if="expandedDepts.includes('uncat_skill')" class="jt-container">
                 <div v-for="duty in dutiesPool.filter(d => !d.category_id)" :key="duty.id" class="skill-block-nested">
-                   <div class="skill-main-row" @click="toggleDutyExpansion(duty.id)" style="cursor: pointer;">
-                      <div style="display: flex; align-items: center; gap: 8px;">
+                   <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
+                      <div class="jt-title-content">
                          <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
                          <span class="jt-name">{{ duty.name }}</span>
                       </div>
@@ -166,14 +166,14 @@
           <!-- Categorized Blocks -->
           <div v-for="cat in dutyCategories" :key="cat.id" class="org-dept-block">
             <!-- Tag Header -->
-            <div class="dept-row" @click="toggleDeptExpansion('cat_' + cat.id)" style="cursor: pointer;">
+            <div class="dept-row cat-header-row" @click="toggleDeptExpansion('cat_' + cat.id)">
               <div v-if="editingDutyCategory?.id === cat.id" class="edit-mode-row" @click.stop>
                 <input v-model="editingDutyCategory.name" class="hr-input-sm" />
                 <button class="btn-primary-xs" @click="updateDutyCategory">Save</button>
                 <button class="btn-cancel-xs" @click="editingDutyCategory = null">Cancel</button>
               </div>
               <div v-else class="view-mode-row">
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="dept-title-content">
                   <span class="toggle-icon">{{ expandedDepts.includes('cat_' + cat.id) ? '▼' : '▶' }}</span>
                   <span class="dept-title">{{ cat.name }}</span>
                 </div>
@@ -187,8 +187,8 @@
             <!-- Skills List under Tag -->
             <div v-if="expandedDepts.includes('cat_' + cat.id)" class="jt-container">
               <div v-for="duty in dutiesPool.filter(d => d.category_id === cat.id)" :key="duty.id" class="skill-block-nested">
-                <div class="skill-main-row" @click="toggleDutyExpansion(duty.id)" style="cursor: pointer;">
-                   <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
+                   <div class="jt-title-content">
                       <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
                       <span class="jt-name">{{ duty.name }}</span>
                    </div>
@@ -237,7 +237,7 @@
     <!-- ─── Modals (Skills, JD, Page Access) ─── -->
     <div v-if="showDutyModal" class="modal-overlay" @click.self="closeDutyModal">
       <div class="modal-box jd-modal">
-        <h3>Skill Details</h3>
+        <h3 class="modal-title">Skill Details</h3>
         <div class="form-group"><label>Skill Name</label><input v-model="selectedDuty.name" class="form-input" /></div>
         <div class="form-group"><label>Category / Tag</label>
           <select v-model="selectedDuty.category_id" class="form-input">
@@ -247,7 +247,7 @@
         </div>
         <div class="form-group"><label>Description</label><textarea v-model="selectedDuty.description" class="form-input" rows="3"></textarea></div>
         <div class="sub-skills-section">
-          <label>เพิ่มสกิลย่อย (CHECKLIST)</label>
+          <label class="form-label-checklist">เพิ่มสกิลย่อย (CHECKLIST)</label>
           <div class="add-sub-skill-form">
             <input v-model="newSubDutyName" class="form-input" placeholder="ชื่อสกิลย่อย..." @keyup.enter="addSubDuty" />
             <button class="btn-primary" @click="addSubDuty">เพิ่ม</button>
@@ -265,10 +265,10 @@
 
     <div v-if="showJDModal" class="modal-overlay" @click.self="closeJDModal">
       <div class="modal-box jd-modal">
-        <h3>Skills for {{ selectedJT?.name }}</h3>
-        <div class="hr-list jd-list" style="max-height: 400px; overflow-y: auto;">
-          <label v-for="duty in dutiesPool" :key="duty.id" class="hr-list-item" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
-            <input type="checkbox" v-model="selectedJT_duties" :value="duty.id" style="width: 18px; height: 18px;" />
+        <h3 class="modal-title">Skills for {{ selectedJT?.name }}</h3>
+        <div class="hr-list jd-list scrollable-list">
+          <label v-for="duty in dutiesPool" :key="duty.id" class="hr-list-item skill-assign-item">
+            <input type="checkbox" v-model="selectedJT_duties" :value="duty.id" class="assign-checkbox" />
             <span class="hr-label">{{ duty.name }}</span>
           </label>
         </div>
@@ -278,13 +278,13 @@
 
     <div v-if="showPageAccessModal" class="modal-overlay" @click.self="showPageAccessModal = false">
       <div class="modal-box jd-modal">
-        <h3>Page Access for {{ selectedJT?.name }}</h3>
-        <div class="hr-list jd-list" style="max-height: 400px; overflow-y: auto; padding: 10px;">
-          <label v-for="perm in pagePermissions" :key="perm.id" class="hr-list-item" style="cursor: pointer; display: flex; align-items: center; gap: 15px;">
-            <input type="checkbox" v-model="selectedJT_permissions" :value="perm.id" style="width: 20px; height: 20px;" />
-            <div>
+        <h3 class="modal-title">Page Access for {{ selectedJT?.name }}</h3>
+        <div class="hr-list jd-list scrollable-list-padded">
+          <label v-for="perm in pagePermissions" :key="perm.id" class="hr-list-item perm-assign-item">
+            <input type="checkbox" v-model="selectedJT_permissions" :value="perm.id" class="perm-checkbox" />
+            <div class="perm-info">
               <span class="hr-label">{{ perm.name }}</span>
-              <div style="font-size: 0.75rem; color: #94a3b8;">Key: {{ perm.id }}</div>
+              <div class="perm-key-hint">Key: {{ perm.id }}</div>
             </div>
           </label>
         </div>
@@ -580,62 +580,465 @@ const saveJT_Permissions = async () => {
 </script>
 
 <style scoped>
-/* Copying essential HR styles */
-.section-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; }
-.section-header h2 { margin: 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 10px; }
-.hr-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-.hr-form-add { display: flex; gap: 10px; margin-bottom: 20px; background: #fff; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; }
-.hr-input { flex: 1; padding: 10px 14px; border: 1px solid #dde3e8; border-radius: 8px; font-size: 0.88rem; outline: none; }
-.org-tree { display: flex; flex-direction: column; gap: 15px; }
-.org-dept-block { background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px; }
-.dept-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px dashed #cbd5e1; margin-bottom: 8px; }
-.dept-title { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
-.jt-container { padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
-.jt-block-nested { padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.02); }
-.jt-main-row { padding: 8px 10px; border-radius: 6px; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
-.jt-main-row:hover { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.jt-name { font-size: 0.88rem; color: #444; }
-.jt-skill-preview { background: #fff; padding: 8px; border-radius: 6px; margin: 4px 0 8px 25px; border: 1px solid #f1f5f9; }
-.jt-skill-item { font-size: 0.78rem; color: #64748b; padding-left: 12px; position: relative; }
-.jt-skill-item::before { content: '•'; position: absolute; left: 0; color: #3b82f6; }
+.hr-management-container {
+  padding: 0;
+}
 
-/* Modals */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-.modal-box { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 5px; text-transform: uppercase; font-weight: 700; }
-.form-input { width: 100%; padding: 10px; border: 1px solid #dde3e8; border-radius: 8px; font-size: 0.9rem; }
-.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-.modal-actions button { flex: 1; }
+.hr-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.section-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.section-header {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Forms */
+.hr-form-add {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.hr-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #dde3e8;
+  border-radius: 8px;
+  outline: none;
+  font-size: 0.9rem;
+}
+
+.hr-input:focus {
+  border-color: #3b82f6;
+}
+
+.hr-input-sm {
+  padding: 6px 10px;
+  border: 1px solid #dde3e8;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+/* Tree Structure */
+.org-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.org-dept-block {
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.dept-row {
+  background: white;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dept-header-row {
+  cursor: pointer;
+}
+
+.dept-header-row:hover {
+  background: #f1f5f9;
+}
+
+.dept-title-content {
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
+}
+
+.dept-title {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.view-mode-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edit-mode-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Job Titles */
+.jt-container {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jt-block-nested {
+  background: white;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.jt-main-row {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.jt-main-row:hover {
+  background: #f1f5f9;
+}
+
+.jt-title-content {
+  display: flex; 
+  align-items: center; 
+  gap: 6px;
+}
+
+.jt-name {
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.jt-skill-preview {
+  background: #fdfdfd;
+  padding: 8px 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.jt-skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jt-skill-item {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-weight: 600;
+}
+
+.jt-no-skill-hint {
+  font-size: 0.7rem; 
+  color: #94a3b8; 
+  padding: 4px 10px;
+}
+
+/* Skills Pool */
+.skill-block-nested {
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: white;
+}
+
+.skill-main-row {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: #f8fafc;
+}
+
+.skill-details-area {
+  padding: 10px 14px;
+  background: #fcfcfc;
+  border-top: 1px solid #f1f5f9;
+}
+
+.skill-desc-text {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.sub-skills-mini-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sub-skill-pill {
+  font-size: 0.65rem;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
 
 /* Buttons */
-.btn-primary { background: #1a2a3a; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-.btn-cancel { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; cursor: pointer; }
-.btn-action-pill { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; cursor: pointer; margin-right: 4px; }
-.btn-action-pill:hover { background: #1a2a3a; color: #fff; }
-.action-icon-btn { background: transparent; border: none; cursor: pointer; opacity: 0.5; padding: 4px; }
-.action-icon-btn:hover { opacity: 1; }
-.btn-ghost-add { background: transparent; border: 1px dashed #cbd5e1; color: #64748b; padding: 8px; border-radius: 6px; width: 100%; text-align: left; font-size: 0.8rem; cursor: pointer; }
+.btn-primary {
+  background: #1a2a3a;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
 
-/* Drag & Drop */
-.drag-handle, .drag-handle-jt { cursor: grab; color: #94a3b8; font-size: 1.1rem; padding: 0 4px; }
-.drag-ghost { opacity: 0.45; background: #e0f2fe !important; border: 2px dashed #38bdf8 !important; }
+.btn-primary-xs {
+  background: #1a2a3a;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
 
-/* Skills Section */
-.skill-block-nested { border-bottom: 1px solid #f1f5f9; padding: 4px 0; }
-.skill-main-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; transition: background 0.2s; }
-.skill-main-row:hover { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.skill-details-area { background: #fff; padding: 12px; border-radius: 8px; margin: 4px 10px 10px 20px; border: 1px solid #edf2f7; }
-.skill-desc-text { font-size: 0.82rem; color: #64748b; margin-bottom: 8px; }
-.sub-skill-pill { font-size: 0.75rem; color: #475569; display: flex; align-items: center; gap: 8px; }
-.sub-skill-pill::before { content: '•'; color: #3b82f6; }
+.btn-cancel-xs {
+  background: #cbd5e1;
+  color: #1e293b;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
 
-/* Sub Skills Modal Section */
-.sub-skills-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-.add-sub-skill-form { display: flex; gap: 10px; margin-top: 10px; }
-.sub-skill-admin-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border-radius: 6px; margin-bottom: 6px; border: 1px solid #e2e8f0; }
+.btn-ghost-add {
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  padding: 8px;
+  border-radius: 8px;
+  width: 100%;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-ghost-add:hover {
+  background: white;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.btn-action-pill {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 100px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-action-pill:hover {
+  background: #e2e8f0;
+}
+
+.action-icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.action-icon-btn:hover {
+  opacity: 1;
+}
+
+/* Icons */
+.drag-handle, .drag-handle-jt {
+  cursor: grab;
+  color: #cbd5e1;
+  font-family: serif;
+  font-weight: bold;
+}
+
+.toggle-icon, .toggle-icon-sm {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  width: 14px;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.modal-box {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+.modal-title {
+  margin-bottom: 20px;
+  color: #1e293b;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.form-label-checklist {
+  font-size: 0.75rem; 
+  font-weight: 700; 
+  color: #64748b; 
+  display: block; 
+  margin-bottom: 10px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #dde3e8;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.scrollable-list {
+  max-height: 400px; 
+  overflow-y: auto;
+}
+
+.scrollable-list-padded {
+  max-height: 400px; 
+  overflow-y: auto; 
+  padding: 10px;
+}
+
+.skill-assign-item {
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px;
+}
+
+.assign-checkbox {
+  width: 18px; 
+  height: 18px;
+}
+
+.perm-assign-item {
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  gap: 15px;
+}
+
+.perm-checkbox {
+  width: 20px; 
+  height: 20px;
+}
+
+.perm-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.perm-key-hint {
+  font-size: 0.75rem; 
+  color: #94a3b8;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.btn-cancel {
+  background: #f1f5f9;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Misc */
+.drag-ghost {
+  opacity: 0.4;
+  background: #e0f2fe !important;
+}
+
+.no-data-hint-sm {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: center;
+  padding: 20px;
+}
+
+.uncat-skill-row {
+  cursor: pointer;
+}
+
+.cat-header-row {
+  cursor: pointer;
+}
 
 @media (max-width: 1024px) {
-  .hr-settings-grid { grid-template-columns: 1fr; }
+  .hr-settings-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
