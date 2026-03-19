@@ -43,6 +43,14 @@
         >
           <i class="fas fa-user-shield"></i> Access Control
         </button>
+
+        <button
+          v-if="isAdmin || hasPerm('page.hr')"
+          :class="['nav-item', { active: activeTab === 'policies' }]"
+          @click="activeTab = 'policies'; sidebarOpen = false"
+        >
+          <i class="fas fa-file-contract"></i> Policies Setup
+        </button>
       </nav>
       <button class="logout-sidebar-btn" @click="$emit('logout')">
         <i class="fas fa-door-open"></i> Logout System
@@ -59,7 +67,8 @@
             activeTab === 'users' ? 'User Management' : 
             activeTab === 'hr' ? 'HR Settings' : 
             activeTab === 'salary' ? 'Salary Settings' : 
-            activeTab === 'access' ? 'Access Control' : 'Dashboard'
+            activeTab === 'access' ? 'Access Control' : 
+            activeTab === 'policies' ? 'Policy Management' : 'Dashboard'
           }}
         </span>
         <button class="mobile-logout-btn" @click="$emit('logout')" title="Logout">🚪</button>
@@ -104,6 +113,11 @@
             @refresh="fetchHRData"
           />
         </div>
+
+        <!-- TAB: Policy Management -->
+        <div v-if="activeTab === 'policies'">
+          <PolicyManagement />
+        </div>
       </main>
     </div>
   </div>
@@ -117,6 +131,7 @@ import AccessManagement from './AccessManagement.vue'
 import UserManagement from './UserManagement.vue'
 import SalaryManagement from './SalaryManagement.vue'
 import HRManagement from './HRManagement.vue'
+import PolicyManagement from './PolicyManagement.vue'
 
 const props = defineProps({
   embedded: { type: String, default: null }

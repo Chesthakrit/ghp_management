@@ -116,6 +116,8 @@
 
           <AttendancePanel v-else-if="activeMenu === 'attendance'" />
 
+          <CompanyPolicy v-else-if="activeMenu === 'policy'" />
+
           <div v-else-if="activeMenu === 'user_management'" class="user-management-tab">
             <UserManagement 
               @go-to-identity="(id) => $emit('go-to-identity', id)"
@@ -160,6 +162,7 @@ import UserManagement from '../admin/UserManagement.vue'
 import AdminPanel from '../admin/AdminPanel.vue'
 import SkillViewer from './SkillViewer.vue'
 import AttendancePanel from './AttendancePanel.vue'
+import CompanyPolicy from './CompanyPolicy.vue'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
@@ -213,6 +216,7 @@ const menuItems = computed(() => {
     { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
     { id: 'attendance', label: 'Check IN', icon: 'fas fa-clock' },
     { id: 'skills', label: 'Skills', icon: 'fas fa-award' },
+    { id: 'policy', label: 'Policy & Welfare', icon: 'fas fa-file-contract' },
   ]
 
   // Add User Management if user has permission
