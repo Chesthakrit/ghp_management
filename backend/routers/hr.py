@@ -279,6 +279,14 @@ def create_duty(
     db.refresh(db_duty)
     return db_duty
 
+@router.get("/duties/{duty_id}", response_model=schemas.Duty)
+def get_duty(duty_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    """ดึงข้อมูลทักษะรายตัว (รวมทักษะย่อย)"""
+    db_duty = db.query(models.Duty).filter(models.Duty.id == duty_id).first()
+    if not db_duty:
+        raise HTTPException(status_code=404, detail="ไม่พบทักษะ")
+    return db_duty
+
 @router.put("/duties/{duty_id}", response_model=schemas.Duty)
 def update_duty(
     duty_id: int, 

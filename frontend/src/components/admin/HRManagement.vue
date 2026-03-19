@@ -115,8 +115,6 @@
           </draggable>
         </div>
       </div>
-
-      <!-- 3 & 4. Unified Skills Management (Hierarchical) -->
       <div class="section-card skill-mgmt-card">
         <div class="section-header">
           <h2 class="header-title">📚 Skills & Category Library</h2>
@@ -145,14 +143,24 @@
                          <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                       </div>
                       <div class="jt-actions" @click.stop>
-                         <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
+                         <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
+                         <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
                       </div>
                    </div>
                    <!-- Sub-skills & Desc -->
                    <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
-                      <p v-if="duty.description" class="skill-desc-text">{{ duty.description }}</p>
-                      <div class="sub-skills-mini-list">
-                         <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                      <div class="skill-details-grid">
+                         <div class="skill-desc-container">
+                            <span class="detail-label">Description</span>
+                            <p class="skill-desc-text">{{ duty.description || 'No description provided.' }}</p>
+                         </div>
+                         <div class="skill-sub-container">
+                            <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
+                            <div class="sub-skills-mini-list">
+                               <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                               <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
+                            </div>
+                         </div>
                       </div>
                    </div>
                 </div>
@@ -188,14 +196,25 @@
                       <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                    </div>
                    <div class="jt-actions" @click.stop>
-                      <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)">🗑️</button>
+                      <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
+                      <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
                    </div>
                 </div>
+
                 <!-- Sub-skills & Desc -->
                 <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
-                   <p v-if="duty.description" class="skill-desc-text">{{ duty.description }}</p>
-                   <div class="sub-skills-mini-list">
-                      <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                   <div class="skill-details-grid">
+                      <div class="skill-desc-container">
+                         <span class="detail-label">Description</span>
+                         <p class="skill-desc-text">{{ duty.description || 'No description provided.' }}</p>
+                      </div>
+                      <div class="skill-sub-container">
+                         <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
+                         <div class="sub-skills-mini-list">
+                            <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                            <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
+                         </div>
+                      </div>
                    </div>
                 </div>
               </div>
@@ -204,22 +223,22 @@
               <div class="quick-add-jt" v-if="hasPerm('action.hr.add_skill')">
                 <input 
                   v-model="newDutyName" 
-                  v-if="editingDutyCategory?.id === null && selectedDeptId === 'tag_' + cat.id"
+                  v-if="selectedSkillCatId === 'tag_' + cat.id"
                   placeholder="Enter skill name..." 
                   class="hr-input-sm"
                   @keyup.enter="saveNewDutyWithCat(cat.id)"
                   autofocus
                 />
                 <button 
-                  v-if="selectedDeptId !== 'tag_' + cat.id"
+                  v-if="selectedSkillCatId !== 'tag_' + cat.id"
                   class="btn-ghost-add" 
-                  @click="selectedDeptId = 'tag_' + cat.id; newDutyName = ''"
+                  @click="selectedSkillCatId = 'tag_' + cat.id; newDutyName = ''"
                 >
                   + Add Skill to {{ cat.name }}
                 </button>
                 <div v-else class="quick-add-actions">
                    <button class="btn-primary-xs" @click="saveNewDutyWithCat(cat.id)">Add</button>
-                   <button class="btn-cancel-xs" @click="selectedDeptId = null">Cancel</button>
+                   <button class="btn-cancel-xs" @click="selectedSkillCatId = null">Cancel</button>
                 </div>
               </div>
             </div>
@@ -318,6 +337,7 @@ const editingDutyCategory = ref(null)
 const showDutyModal = ref(false)
 const selectedDuty = ref({ id: null, name: '', description: '', category_id: null, sub_duties: [] })
 const newSubDutyName = ref('')
+const selectedSkillCatId = ref(null)
 
 const showJDModal = ref(false)
 const selectedJT = ref(null)
@@ -465,7 +485,7 @@ const saveNewDutyWithCat = async (catId) => {
   try {
     await api.post('/hr/duties', { name: newDutyName.value, category_id: catId })
     newDutyName.value = ''
-    selectedDeptId.value = null
+    selectedSkillCatId.value = null
     await fetchHRData()
   } catch (e) { Swal.fire('Error', 'Add skill failed', 'error') }
 }
@@ -499,14 +519,21 @@ const deleteDutyFromPool = async (id) => {
 }
 
 const addSubDuty = async () => {
-  if (!newSubDutyName.value) return
+  if (!newSubDutyName.value || !selectedDuty.value?.id) return
   try {
-    await api.post(`/hr/duties/${selectedDuty.value.id}/sub-duties`, { name: newSubDutyName.value })
+    // Corrected endpoint and payload for backend schema
+    await api.post('/hr/sub-duties', { 
+      name: newSubDutyName.value, 
+      duty_id: selectedDuty.value.id 
+    })
     newSubDutyName.value = ''
-    // Refresh sub duties list
+    // Refresh sub duties list from server
     const res = await api.get(`/hr/duties/${selectedDuty.value.id}`)
     selectedDuty.value.sub_duties = res.data.sub_duties
-  } catch (e) { Swal.fire('Error', 'Add sub skill failed', 'error') }
+  } catch (e) { 
+    console.error(e)
+    Swal.fire('Error', 'Add sub skill failed', 'error') 
+  }
 }
 const removeSubDuty = async (id) => {
   try {
@@ -733,31 +760,82 @@ const saveJT_Duties = async () => {
   background: #f8fafc;
 }
 
+
 .skill-details-area {
-  padding: 10px 14px;
-  background: #fcfcfc;
+  padding: 16px;
+  background: #fbfcfe;
   border-top: 1px solid #f1f5f9;
 }
 
+.skill-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
 .skill-desc-text {
-  font-size: 0.8rem;
-  color: #64748b;
-  margin-bottom: 8px;
-  line-height: 1.4;
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .sub-skills-mini-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
 }
 
 .sub-skill-pill {
-  font-size: 0.65rem;
-  background: #f1f5f9;
-  color: #475569;
-  padding: 1px 6px;
-  border-radius: 4px;
+  font-size: 0.72rem;
+  background: white;
+  color: #1e293b;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.no-sub-hint {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  font-style: italic;
+}
+
+.skill-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px dashed #f1f5f9;
+}
+
+.btn-edit-skill {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-edit-skill:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
 }
 
 /* Buttons */
@@ -855,82 +933,150 @@ const saveJT_Duties = async () => {
 }
 
 /* Modals */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(15, 23, 42, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(2px);
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+  padding: 20px;
 }
 
 .modal-box {
   background: white;
   border-radius: 16px;
-  padding: 28px;
-  width: 90%;
+  padding: 32px;
+  width: 100%;
   max-width: 500px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .modal-title {
-  margin-bottom: 20px;
+  margin-top: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
   color: #1e293b;
+  margin-bottom: 24px;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #64748b;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .form-label-checklist {
+  display: block;
   font-size: 0.75rem; 
-  font-weight: 700; 
-  color: #64748b; 
-  display: block; 
-  margin-bottom: 10px;
+  font-weight: 800; 
+  color: #475569; 
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  letter-spacing: 0.025em;
 }
 
 .form-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #dde3e8;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: #1e293b;
+  transition: all 0.2s;
+  background: #f8fafc;
+  box-sizing: border-box;
 }
 
-.scrollable-list {
-  max-height: 400px; 
-  overflow-y: auto;
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
-.scrollable-list-padded {
-  max-height: 400px; 
-  overflow-y: auto; 
-  padding: 10px;
+.sub-skills-section {
+  background: #f1f5f9;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
 }
 
-.skill-assign-item {
-  cursor: pointer; 
-  display: flex; 
-  align-items: center; 
+.add-sub-skill-form {
+  display: flex;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
-.assign-checkbox {
-  width: 18px; 
-  height: 18px;
+
+.add-sub-skill-form .form-input {
+  flex: 1;
+  width: auto;
+  background: white;
 }
 
+.add-sub-skill-form .btn-primary {
+  flex-shrink: 0;
+}
+
+.sub-skills-list-admin {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.sub-skill-admin-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+
+.sub-skill-admin-item:hover {
+  border-color: #cbd5e1;
+  transform: translateX(2px);
+}
+
+.sub-skill-admin-item span {
+  font-size: 0.9rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.btn-delete-sm {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: #94a3b8;
+}
+
+.btn-delete-sm:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
 
 .modal-actions {
   display: flex;
@@ -939,13 +1085,44 @@ const saveJT_Duties = async () => {
   margin-top: 25px;
 }
 
+.scrollable-list {
+  max-height: 400px; 
+  overflow-y: auto;
+}
+
+.skill-assign-item {
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.skill-assign-item:hover {
+  background: #f1f5f9;
+}
+
+.assign-checkbox {
+  width: 18px; 
+  height: 18px;
+  cursor: pointer;
+}
+
 .btn-cancel {
   background: #f1f5f9;
+  color: #475569;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #e2e8f0;
 }
 
 /* Misc */
@@ -961,11 +1138,7 @@ const saveJT_Duties = async () => {
   padding: 20px;
 }
 
-.uncat-skill-row {
-  cursor: pointer;
-}
-
-.cat-header-row {
+.uncat-skill-row, .cat-header-row {
   cursor: pointer;
 }
 
