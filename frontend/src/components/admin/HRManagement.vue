@@ -83,7 +83,8 @@
                           No skills assigned yet.
                        </div>
                  </div>
-                  </template>
+                                    </div>
+                   </template>
                 </draggable>
 
                 <!-- Quick Add JT for this Dept -->
@@ -400,9 +401,11 @@
           Your browser does not support the video tag.
         </video>
       </div>
-      </div>
+    </div>
+    </div>
     </div>
   </div>
+</div>
 
 </template>
 <script setup>
