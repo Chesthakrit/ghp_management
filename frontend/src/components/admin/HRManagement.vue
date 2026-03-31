@@ -1142,7 +1142,7 @@ const saveJT_Duties = async () => {
 }
 
 .jt-main-row:hover {
-  background: #f0fdf4 !important; /* Soft Green like Skill Library */
+  background: #eff6ff !important; /* Soft Blue like Skill Library */
 }
 
 .jt-title-content {
@@ -1158,10 +1158,10 @@ const saveJT_Duties = async () => {
 }
 
 .jt-skill-preview {
-  background: #f0fdf4 !important; /* Soft Green like Skill Library */
+  background: #f1f7ff !important; /* Soft Light Blue */
   padding: 16px 16px 16px 32px !important;
-  border-top: 1px solid #bbf7d0 !important;
-  border-left: 4px solid #22c55e !important;
+  border-top: 1px solid #dbeafe !important;
+  border-left: 4px solid #475569 !important; /* Soft Slate */
   margin-left: 16px !important;
   border-radius: 0 0 8px 8px !important;
 }
@@ -1212,15 +1212,15 @@ const saveJT_Duties = async () => {
 }
 
 .clickable-row:hover {
-  background: #f0fdf4;
+  background: #eff6ff; /* Soft Blue hover */
 }
 
 
 .skill-details-area {
   padding: 16px 16px 16px 32px;
-  background: #f0fdf4;
-  border-top: 1px solid #bbf7d0;
-  border-left: 4px solid #22c55e;
+  background: #f1f7ff; /* Soft Light Blue */
+  border-top: 1px solid #dbeafe;
+  border-left: 4px solid #475569; /* Soft Slate */
   margin-left: 16px;
   border-radius: 0 0 8px 8px;
 }
