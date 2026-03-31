@@ -156,9 +156,38 @@
                          </div>
                          <div class="skill-sub-container">
                             <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
-                            <div class="sub-skills-mini-list">
-                               <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                            <div class="sub-skills-dropdown-list">
+
+                               <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-dropdown-item">
+
+                                 <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
+
+                                   <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
+
+                                   <span class="sub-dd-name">{{ sub.name }}</span>
+
+                                   <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
+
+                                 </div>
+
+                                 <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
+
+                                   <div v-if="sub.tutorial_url" class="sub-dd-video-row">
+
+                                     <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
+
+                                     <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
+
+                                   </div>
+
+                                   <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
+
+                                 </div>
+
+                               </div>
+
                                <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
+
                             </div>
                          </div>
                       </div>
@@ -210,9 +239,38 @@
                       </div>
                       <div class="skill-sub-container">
                          <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
-                         <div class="sub-skills-mini-list">
-                            <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-pill">{{ sub.name }}</div>
+                         <div class="sub-skills-dropdown-list">
+
+                            <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-dropdown-item">
+
+                              <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
+
+                                <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
+
+                                <span class="sub-dd-name">{{ sub.name }}</span>
+
+                                <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
+
+                              </div>
+
+                              <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
+
+                                <div v-if="sub.tutorial_url" class="sub-dd-video-row">
+
+                                  <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
+
+                                  <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
+
+                                </div>
+
+                                <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
+
+                              </div>
+
+                            </div>
+
                             <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
+
                          </div>
                       </div>
                    </div>
@@ -270,10 +328,14 @@
           </div>
           <div class="sub-skills-list-admin">
              <div v-for="sub in selectedDuty.sub_duties" :key="sub.id" class="sub-skill-admin-item">
-                <span class="sub-skill-name-text">{{ sub.name }}</span>
+                <div class="sub-skill-info">
+                  <span class="sub-skill-name-text">{{ sub.name }}</span>
+                  <span v-if="sub.tutorial_url" class="video-status-badge has-video">📹 มีวิดีโอ</span>
+                  <span v-else class="video-status-badge no-video">ไม่มีวิดีโอ</span>
+                </div>
                 <div class="sub-skill-actions">
                   <button v-if="sub.tutorial_url" class="btn-action-sm btn-video" @click="openVideoPlayer(sub.tutorial_url)" title="ดูวิดีโอสอน">🎬</button>
-                  <button v-else class="btn-action-sm btn-add-link" @click="promptTutorialUrl(sub)" title="เพิ่มลิงก์วิดีโอ">🔗</button>
+                  <button class="btn-action-sm btn-edit-link" @click="promptTutorialUrl(sub)" title="แก้ไขลิงก์วิดีโอ">✏️</button>
                   <button class="btn-action-sm btn-trash" @click="removeSubDuty(sub.id)" title="ลบ">🗑️</button>
                 </div>
              </div>
@@ -340,6 +402,7 @@ const hasPerm = (p) => {
 const expandedDepts = ref([])
 const expandedJTs = ref([])
 const expandedDuties = ref([])
+const expandedSubDuties = ref([])
 
 // Shared refs across tabs, but local to this component for DND
 const localDepartments = ref([...props.departments])
@@ -445,6 +508,10 @@ const toggleJTExpansion = (id) => {
 const toggleDutyExpansion = (id) => {
   if (expandedDuties.value.includes(id)) expandedDuties.value = expandedDuties.value.filter(i => i !== id)
   else expandedDuties.value.push(id)
+}
+const toggleSubDutyExpansion = (id) => {
+  if (expandedSubDuties.value.includes(id)) expandedSubDuties.value = expandedSubDuties.value.filter(i => i !== id)
+  else expandedSubDuties.value.push(id)
 }
 
 const saveDept = async () => {
@@ -834,16 +901,40 @@ const saveJT_Duties = async () => {
 }
 
 .org-dept-block {
-  border: 1px solid #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
-  background: #f8fafc;
+  background: #f1f5f9;
+  transition: box-shadow 0.2s;
+  margin-bottom: 8px;
+}
+
+.org-dept-block:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .dept-row {
-  background: white;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  padding: 14px 18px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.dept-row .dept-title {
+  color: #f1f5f9 !important;
+  font-size: 1rem;
+}
+
+.dept-row .toggle-icon {
+  color: #94a3b8 !important;
+}
+
+.dept-row .drag-handle {
+  color: #64748b !important;
+}
+
+.dept-row .action-icon-btn {
+  color: #94a3b8 !important;
+  opacity: 0.8;
 }
 
 .dept-header-row {
@@ -851,7 +942,7 @@ const saveJT_Duties = async () => {
 }
 
 .dept-header-row:hover {
-  background: #f1f5f9;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
 }
 
 .dept-title-content {
@@ -880,26 +971,31 @@ const saveJT_Duties = async () => {
 
 /* Job Titles */
 .jt-container {
-  padding: 10px;
+  padding: 10px 10px 10px 24px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  border-left: 4px solid #334155;
+  margin-left: 12px;
+  background: #f8fafc;
 }
 
 .jt-block-nested {
-  background: white;
-  border: 1px solid #eef2f6;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
 }
 
 .jt-main-row {
-  padding: 8px 12px;
+  padding: 10px 14px;
   cursor: pointer;
+  background: #ffffff;
 }
 
 .jt-main-row:hover {
-  background: #f1f5f9;
+  background: #eff6ff;
 }
 
 .jt-title-content {
@@ -915,45 +1011,53 @@ const saveJT_Duties = async () => {
 }
 
 .jt-skill-preview {
-  background: #fdfdfd;
-  padding: 8px 12px;
-  border-top: 1px solid #f1f5f9;
+  background: #eff6ff;
+  padding: 12px 14px 12px 30px;
+  border-top: 1px solid #bfdbfe;
+  border-left: 4px solid #3b82f6;
+  margin-left: 20px;
+  border-radius: 0 0 8px 8px;
 }
 
 .jt-skill-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .jt-skill-item {
-  background: #e0f2fe;
-  color: #0369a1;
-  font-size: 0.7rem;
-  padding: 2px 8px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  padding: 4px 12px;
   border-radius: 100px;
-  font-weight: 600;
+  font-weight: 700;
+  border: 1px solid #bfdbfe;
+  box-shadow: 0 1px 2px rgba(37,99,235,0.1);
 }
 
 .jt-no-skill-hint {
-  font-size: 0.7rem; 
-  color: #94a3b8; 
+  font-size: 0.75rem; 
+  color: #93c5fd; 
   padding: 4px 10px;
+  font-style: italic;
 }
 
 /* Skills Pool */
 .skill-block-nested {
-  border: 1px solid #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  margin-bottom: 6px;
   background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  margin-bottom: 8px;
 }
 
 .skill-main-row {
-  padding: 10px 14px;
+  padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: white;
 }
 
 .clickable-row {
@@ -961,14 +1065,17 @@ const saveJT_Duties = async () => {
 }
 
 .clickable-row:hover {
-  background: #f8fafc;
+  background: #f0fdf4;
 }
 
 
 .skill-details-area {
-  padding: 16px;
-  background: #fbfcfe;
-  border-top: 1px solid #f1f5f9;
+  padding: 16px 16px 16px 32px;
+  background: #f0fdf4;
+  border-top: 1px solid #bbf7d0;
+  border-left: 4px solid #22c55e;
+  margin-left: 16px;
+  border-radius: 0 0 8px 8px;
 }
 
 .skill-details-grid {
@@ -1310,7 +1417,7 @@ const saveJT_Duties = async () => {
   transform: scale(1.05);
 }
 
-.btn-action-sm.btn-add-link:hover {
+.btn-action-sm.btn-edit-link:hover {
   background: #fef3c7;
   border-color: #fcd34d;
   color: #d97706;
@@ -1322,6 +1429,32 @@ const saveJT_Duties = async () => {
   border-color: #fca5a5;
   color: #dc2626;
   transform: scale(1.05);
+}
+
+.sub-skill-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.video-status-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.video-status-badge.has-video {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.video-status-badge.no-video {
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .modal-actions {
@@ -1496,4 +1629,97 @@ const saveJT_Duties = async () => {
 .swal2-container {
   z-index: 99999 !important;
 }
+
+/* ─── Sub-skill Dropdown List ─── */
+.sub-skills-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sub-skill-dropdown-item {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.sub-skill-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.sub-skill-dropdown-header:hover {
+  background: #f8fafc;
+}
+
+.sub-dd-toggle {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.sub-dd-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  flex: 1;
+}
+
+.sub-dd-video-dot {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.sub-skill-dropdown-body {
+  padding: 12px 16px 12px 40px;
+  background: #f1f5f9;
+  border-top: 1px solid #e2e8f0;
+}
+
+.sub-dd-video-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sub-dd-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.sub-dd-play-btn {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(37,99,235,0.2);
+}
+
+.sub-dd-play-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(37,99,235,0.4);
+}
+
+.sub-dd-no-video {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
 </style>
