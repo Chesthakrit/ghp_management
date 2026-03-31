@@ -290,12 +290,17 @@ def reorder_duties(
     admin: models.User = Depends(oauth2.check_admin)
 ):
     """บันทึกลำดับทักษะหลักหลัง Drag & Drop"""
-    for item in payload.items:
-        db.query(models.Duty).filter(models.Duty.id == item.id).update(
-            {"display_order": item.display_order}
-        )
-    db.commit()
-    return db.query(models.Duty).order_by(models.Duty.display_order.asc()).all()
+    try:
+        for item in payload.items:
+            db.query(models.Duty).filter(models.Duty.id == item.id).update(
+                {"display_order": item.display_order}
+            )
+        db.commit()
+        return db.query(models.Duty).order_by(models.Duty.display_order.asc()).all()
+    except Exception as e:
+        db.rollback()
+        print(f"ERROR in reorder_duties: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/duties/{duty_id}", response_model=schemas.Duty)
 def get_duty(duty_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
@@ -358,6 +363,25 @@ def create_sub_duty(
     db.refresh(db_sub)
     return db_sub
 
+@router.put("/sub-duties/reorder", response_model=List[schemas.SubDuty])
+def reorder_sub_duties(
+    payload: schemas.ReorderRequest,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(oauth2.check_admin)
+):
+    """บันทึกลำดับทักษะย่อยหลัง Drag & Drop"""
+    try:
+        for item in payload.items:
+            db_obj = db.query(models.SubDuty).filter(models.SubDuty.id == item.id).first()
+            if db_obj:
+                db_obj.display_order = item.display_order
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"ERROR reorder_sub_duties: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    return db.query(models.SubDuty).order_by(models.SubDuty.display_order.asc()).all()
+
 @router.put("/sub-duties/{sub_id}", response_model=schemas.SubDuty)
 def update_sub_duty(
     sub_id: int,
@@ -374,20 +398,6 @@ def update_sub_duty(
     db.commit()
     db.refresh(db_sub)
     return db_sub
-
-@router.put("/sub-duties/reorder", response_model=List[schemas.SubDuty])
-def reorder_sub_duties(
-    payload: schemas.ReorderRequest,
-    db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
-):
-    """บันทึกลำดับทักษะย่อยหลัง Drag & Drop"""
-    for item in payload.items:
-        db.query(models.SubDuty).filter(models.SubDuty.id == item.id).update(
-            {"display_order": item.display_order}
-        )
-    db.commit()
-    return db.query(models.SubDuty).order_by(models.SubDuty.display_order.asc()).all()
 
 @router.delete("/sub-duties/{sub_id}")
 def delete_sub_duty(

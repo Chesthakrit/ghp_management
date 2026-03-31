@@ -137,8 +137,8 @@
              </div>
              <div v-if="expandedDepts.includes('uncat_skill')" class="jt-container">
                 <draggable
-                  :model-value="dutiesPool.filter(d => !d.category_id)"
-                  @update:model-value="val => updateDutyOrderLocal(val, null)"
+                  v-model="uncatSkills"
+                  
                   item-key="id"
                   handle=".drag-handle-skill"
                   animation="200"
@@ -169,7 +169,7 @@
                              <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
                              <div class="sub-skills-dropdown-list">
                                 <draggable
-                                  v-model="duty.sub_duties"
+                                  :model-value="duty.sub_duties" @change="evt => onSubDutyChange(evt, duty.id)"
                                   item-key="id"
                                   handle=".drag-handle-sub"
                                   animation="200"
@@ -229,7 +229,7 @@
             <div v-if="expandedDepts.includes('cat_' + cat.id)" class="jt-container">
                 <draggable
                    :model-value="dutiesPool.filter(d => d.category_id === cat.id)"
-                   @update:model-value="val => updateDutyOrderLocal(val, cat.id)"
+                   @change="evt => onDutyChange(evt, cat.id)"
                    item-key="id"
                    handle=".drag-handle-skill"
                    animation="200"
@@ -261,7 +261,7 @@
                          <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
                          <div class="sub-skills-dropdown-list">
                              <draggable
-                               v-model="duty.sub_duties"
+                               :model-value="duty.sub_duties" @change="evt => onSubDutyChange(evt, duty.id)"
                                item-key="id"
                                handle=".drag-handle-sub"
                                animation="200"
@@ -410,7 +410,7 @@
 </template>
 <script setup>
 
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
 import draggable from 'vuedraggable'
@@ -455,6 +455,19 @@ const newJobTitle = ref({ name: '', department_id: null })
 const editingJT = ref(null)
 
 const dutiesPool = ref([])
+const uncatSkills = computed({
+  get: () => dutiesPool.value.filter(d => d.category_id === null || d.category_id === undefined),
+  set: (newList) => {
+    const others = dutiesPool.value.filter(d => d.category_id !== null && d.category_id !== undefined)
+    dutiesPool.value = [...others, ...newList]
+  }
+})
+const catSkills = (catId) => {
+  // Return a non-computed but reactive slice for vuedraggable to mutate?
+  // No, let's use the simplest logic:
+  return dutiesPool.value.filter(d => d.category_id === catId)
+}
+
 const dutyCategories = ref([])
 const newDutyName = ref('')
 const newDutyCategoryName = ref('')
@@ -683,29 +696,68 @@ const saveNewDutyWithCat = async (catId) => {
   } catch (e) { Swal.fire('Error', 'Add skill failed', 'error') }
 }
 
-const updateDutyOrderLocal = (newList, catId) => {
-  // Update only the items for this specific category in the main pool
-  const otherCats = dutiesPool.value.filter(d => d.category_id !== catId)
-  dutiesPool.value = [...otherCats, ...newList]
+const onSubDutyChange = async (evt, dutyId) => {
+  if (evt.moved) {
+    const { newIndex, oldIndex } = evt.moved
+    const dutyIndex = dutiesPool.value.findIndex(d => d.id === dutyId)
+    if (dutyIndex !== -1 && dutiesPool.value[dutyIndex].sub_duties) {
+      // Reorder locally
+      const items = [...dutiesPool.value[dutyIndex].sub_duties]
+      const [moved] = items.splice(oldIndex, 1)
+      items.splice(newIndex, 0, moved)
+      dutiesPool.value[dutyIndex].sub_duties = items
+      
+      // Force reactivity
+      dutiesPool.value = [...dutiesPool.value]
+      
+      // Save
+      try {
+        const payload = {
+          items: items.map((s, idx) => ({ id: parseInt(s.id), display_order: idx + 1 }))
+        }
+        console.log("Saving sub-duty order:", payload)
+        await api.put('/hr/sub-duties/reorder', payload)
+        Swal.fire({ title: 'Sub-skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 })
+      } catch (e) {
+        console.error("Save sub-duty order failed", e)
+        Swal.fire('Error', 'Failed to save sub-skill order', 'error')
+        fetchHRData()
+      }
+    }
+  }
+}
+
+const onDutyChange = (evt, catId) => {
+  if (evt.moved) {
+    const { newIndex, oldIndex } = evt.moved
+    // We need to reorder the local state so it matches what's on screen
+    const catItems = dutiesPool.value.filter(d => d.category_id === catId)
+    const [movedItem] = catItems.splice(oldIndex, 1)
+    catItems.splice(newIndex, 0, movedItem)
+    
+    // Merge back into main pool
+    const others = dutiesPool.value.filter(d => d.category_id !== catId)
+    dutiesPool.value = [...others, ...catItems]
+  }
 }
 
 const saveDutyOrder = async (catId) => {
   try {
-    const rawList = JSON.parse(JSON.stringify(dutiesPool.value))
-    // Only items belonging to THIS category (or null if uncat)
-    const catItems = rawList.filter(d => d.category_id === catId && d.id)
+    const rawList = dutiesPool.value
+    // Filter items matching THIS category explicitly
+    const catItems = rawList.filter(d => d.category_id === catId)
     const items = catItems.map((d, index) => ({ 
       id: Number(d.id), 
       display_order: index + 1 
     }))
     if (items.length === 0) return
     await api.put('/hr/duties/reorder', { items })
-    Swal.fire({ title: 'Skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
-    // fetchHRData() Not strictly needed if local state is OK, but safer
-    await fetchHRData() 
+    Swal.fire({ title: 'Skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 })
+    // No need to fetch immediately as local state is already correct from onDutyChange/uncatSkills
   } catch (e) { 
     console.error(e)
     Swal.fire('Error', 'Failed to save skill order', 'error')
+    fetchHRData() // Revert on error
   }
 }
 
@@ -714,7 +766,7 @@ const saveSubDutyOrder = async (dutyId) => {
     const duty = dutiesPool.value.find(d => d.id === dutyId)
     if (!duty || !duty.sub_duties) return
     const items = duty.sub_duties.map((s, index) => ({ 
-      id: Number(s.id), 
+      id: parseInt(s.id), 
       display_order: index + 1 
     }))
     if (items.length === 0) return
