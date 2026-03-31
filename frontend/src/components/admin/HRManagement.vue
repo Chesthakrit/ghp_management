@@ -33,7 +33,9 @@
                 </div>
                 <div v-else class="view-mode-row dept-header-row" @click="toggleDeptExpansion(d.id)">
                   <div class="dept-title-content">
-                    <span class="drag-handle" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                    <div class="drag-handle" @click.stop title="ลากเพื่อเรียงลำดับ">
+                      <span></span><span></span><span></span>
+                    </div>
                     <span class="toggle-icon">{{ expandedDepts.includes(d.id) ? '▼' : '▶' }}</span>
                     <span class="dept-title" @dblclick.stop="startEditDept(d)">{{ d.name }}</span>
                   </div>
@@ -63,7 +65,9 @@
                     </div>
                     <div v-else class="view-mode-row jt-main-row" @click="toggleJTExpansion(jt.id)">
                       <div class="jt-title-content">
-                        <span class="drag-handle-jt" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                        <div class="drag-handle-jt" @click.stop title="ลากเพื่อเรียงลำดับ">
+                          <span></span><span></span><span></span>
+                        </div>
                         <span class="toggle-icon-sm">{{ expandedJTs.includes(jt.id) ? '▼' : '▶' }}</span>
                         <span class="jt-name" @dblclick.stop="startEditJT(jt)">{{ jt.name }}</span>
                       </div>
@@ -131,6 +135,9 @@
           <div v-if="dutiesPool.filter(d => !d.category_id).length > 0" class="org-dept-block uncategorized">
              <div class="dept-row uncat-skill-row" @click="toggleDeptExpansion('uncat_skill')">
                <div class="dept-title-content">
+                 <div class="drag-handle-skill" @click.stop title="ลากเพื่อเรียงลำดับ">
+                   <span></span><span></span><span></span>
+                 </div>
                  <span class="toggle-icon">{{ expandedDepts.includes('uncat_skill') ? '▼' : '▶' }}</span>
                  <span class="dept-title">Uncategorized Skills</span>
                </div>
@@ -149,7 +156,9 @@
                   <div class="skill-block-nested">
                     <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
                        <div class="jt-title-content">
-                          <span class="drag-handle-skill" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                          <div class="drag-handle-skill" @click.stop title="ลากเพื่อเรียงลำดับ">
+                            <span></span><span></span><span></span>
+                          </div>
                           <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
                           <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                        </div>
@@ -179,7 +188,9 @@
                                   <template #item="{ element: sub }">
                                   <div class="sub-skill-dropdown-item">
                                     <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
-                                      <span class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                                      <div class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">
+                                        <span></span><span></span><span></span>
+                                      </div>
                                       <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
                                       <span class="sub-dd-name">{{ sub.name }}</span>
                                       <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
@@ -225,7 +236,7 @@
               </div>
             </div>
 
-            <!-- Skills List under Tag -->
+            <!-- Skills List under Tag (Nesting the Add Skill button INSIDE) -->
             <div v-if="expandedDepts.includes('cat_' + cat.id)" class="jt-container">
                 <draggable
                    :model-value="dutiesPool.filter(d => d.category_id === cat.id)"
@@ -238,100 +249,91 @@
                 >
                   <template #item="{ element: duty }">
                   <div class="skill-block-nested">
-                <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
-                   <div class="jt-title-content">
-                          <span class="drag-handle-skill" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                    <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
+                       <div class="jt-title-content">
+                          <div class="drag-handle-skill" @click.stop title="ลากเพื่อเรียงลำดับ">
+                            <span></span><span></span><span></span>
+                          </div>
                           <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
-                      <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
-                   </div>
-                   <div class="jt-actions" @click.stop>
-                      <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
-                      <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
-                   </div>
-                </div>
+                          <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
+                       </div>
+                       <div class="jt-actions" @click.stop>
+                          <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
+                          <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
+                       </div>
+                    </div>
 
-                <!-- Sub-skills & Desc -->
-                <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
-                   <div class="skill-details-grid">
-                      <div class="skill-desc-container">
-                         <span class="detail-label">Description</span>
-                         <p class="skill-desc-text">{{ duty.description || 'No description provided.' }}</p>
-                      </div>
-                      <div class="skill-sub-container">
-                         <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
-                         <div class="sub-skills-dropdown-list">
-                             <draggable
-                               :model-value="duty.sub_duties" @change="evt => onSubDutyChange(evt, duty.id)"
-                               item-key="id"
-                               handle=".drag-handle-sub"
-                               animation="200"
-                               ghost-class="drag-ghost"
-                               @end="saveSubDutyOrder(duty.id)"
-                             >
-                               <template #item="{ element: sub }">
-                               <div class="sub-skill-dropdown-item">
-
-                              <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
-                                    <span class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
-                                    <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
-
-                                <span class="sub-dd-name">{{ sub.name }}</span>
-
-                                <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
-
-                              </div>
-
-                              <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
-
-                                <div v-if="sub.tutorial_url" class="sub-dd-video-row">
-
-                                  <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
-
-                                  <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
-
-                                </div>
-
-                                <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
-
-                              </div>
-
-                            </div>
-                               </template>
-                             </draggable>
-                             <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
-
-                         </div>
-                      </div>
-                   </div>
-                </div>
-              </div>
+                    <!-- Sub-skills & Desc -->
+                    <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
+                       <div class="skill-details-grid">
+                          <div class="skill-desc-container">
+                             <span class="detail-label">Description</span>
+                             <p class="skill-desc-text">{{ duty.description || 'No description provided.' }}</p>
+                          </div>
+                          <div class="skill-sub-container">
+                             <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
+                             <div class="sub-skills-dropdown-list">
+                                 <draggable
+                                   :model-value="duty.sub_duties" @change="evt => onSubDutyChange(evt, duty.id)"
+                                   item-key="id"
+                                   handle=".drag-handle-sub"
+                                   animation="200"
+                                   ghost-class="drag-ghost"
+                                   @end="saveSubDutyOrder(duty.id)"
+                                 >
+                                   <template #item="{ element: sub }">
+                                   <div class="sub-skill-dropdown-item">
+                                     <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
+                                       <div class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">
+                                         <span></span><span></span><span></span>
+                                       </div>
+                                       <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
+                                       <span class="sub-dd-name">{{ sub.name }}</span>
+                                       <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
+                                     </div>
+                                     <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
+                                       <div v-if="sub.tutorial_url" class="sub-dd-video-row">
+                                         <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
+                                         <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
+                                       </div>
+                                       <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
+                                     </div>
+                                   </div>
+                                   </template>
+                                 </draggable>
+                                 <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
                   </template>
                 </draggable>
-              </div>
 
-              <!-- Quick Add Skill for this Tag -->
-              <div class="quick-add-jt" v-if="hasPerm('action.hr.add_skill')">
-                <input 
-                  v-model="newDutyName" 
-                  v-if="selectedSkillCatId === 'tag_' + cat.id"
-                  placeholder="Enter skill name..." 
-                  class="hr-input-sm"
-                  @keyup.enter="saveNewDutyWithCat(cat.id)"
-                  autofocus
-                />
-                <button 
-                  v-if="selectedSkillCatId !== 'tag_' + cat.id"
-                  class="btn-ghost-add" 
-                  @click="selectedSkillCatId = 'tag_' + cat.id; newDutyName = ''"
-                >
-                  + Add Skill to {{ cat.name }}
-                </button>
-                <div v-else class="quick-add-actions">
-                   <button class="btn-primary-xs" @click="saveNewDutyWithCat(cat.id)">Add</button>
-                   <button class="btn-cancel-xs" @click="selectedSkillCatId = null">Cancel</button>
+                <!-- Quick Add Skill (Nested inside jt-container) -->
+                <div class="quick-add-jt" v-if="hasPerm('action.hr.add_skill')">
+                  <input 
+                    v-model="newDutyName" 
+                    v-if="selectedSkillCatId === 'tag_' + cat.id"
+                    placeholder="Enter skill name..." 
+                    class="hr-input-sm"
+                    @keyup.enter="saveNewDutyWithCat(cat.id)"
+                    autofocus
+                  />
+                  <button 
+                    v-if="selectedSkillCatId !== 'tag_' + cat.id"
+                    class="btn-ghost-add" 
+                    @click="selectedSkillCatId = 'tag_' + cat.id; newDutyName = ''"
+                  >
+                    + Add Skill to {{ cat.name }}
+                  </button>
+                  <div v-else class="quick-add-actions">
+                     <button class="btn-primary-xs" @click="saveNewDutyWithCat(cat.id)">Add</button>
+                     <button class="btn-cancel-xs" @click="selectedSkillCatId = null">Cancel</button>
+                  </div>
                 </div>
-              </div>
             </div>
+          </div>
 
             <!-- ─── Modals (Skills, JD, Page Access) ─── -->
     <div v-if="showDutyModal" class="modal-overlay" @click.self="closeDutyModal">
@@ -1047,9 +1049,10 @@ const saveJT_Duties = async () => {
 }
 
 .dept-row {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  padding: 14px 18px;
-  border-bottom: 1px solid #1e293b;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s;
 }
 
 .dept-row .dept-title {
@@ -1072,10 +1075,16 @@ const saveJT_Duties = async () => {
 
 .dept-header-row {
   cursor: pointer;
+  background: #475569 !important; /* Force Soft Slate */
+  color: white !important;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 12px 16px;
+  transition: all 0.2s;
 }
 
 .dept-header-row:hover {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  background: #334155 !important;
 }
 
 .dept-title-content {
@@ -1086,7 +1095,7 @@ const saveJT_Duties = async () => {
 
 .dept-title {
   font-weight: 700;
-  color: #1e293b;
+  color: white !important;
   font-size: 0.95rem;
 }
 
@@ -1114,21 +1123,26 @@ const saveJT_Duties = async () => {
 }
 
 .jt-block-nested {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  background: white !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+  margin-bottom: 10px !important;
 }
 
 .jt-main-row {
-  padding: 10px 14px;
-  cursor: pointer;
-  background: #ffffff;
+  padding: 12px 16px !important;
+  cursor: pointer !important;
+  background: white !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  transition: background 0.2s !important;
 }
 
 .jt-main-row:hover {
-  background: #eff6ff;
+  background: #f0fdf4 !important; /* Soft Green like Skill Library */
 }
 
 .jt-title-content {
@@ -1144,12 +1158,12 @@ const saveJT_Duties = async () => {
 }
 
 .jt-skill-preview {
-  background: #eff6ff;
-  padding: 12px 14px 12px 30px;
-  border-top: 1px solid #bfdbfe;
-  border-left: 4px solid #3b82f6;
-  margin-left: 20px;
-  border-radius: 0 0 8px 8px;
+  background: #f0fdf4 !important; /* Soft Green like Skill Library */
+  padding: 16px 16px 16px 32px !important;
+  border-top: 1px solid #bbf7d0 !important;
+  border-left: 4px solid #22c55e !important;
+  margin-left: 16px !important;
+  border-radius: 0 0 8px 8px !important;
 }
 
 .jt-skill-list {
@@ -1419,6 +1433,66 @@ const saveJT_Duties = async () => {
   margin-bottom: 8px;
 }
 
+/* ────────── Drag Handles ────────── */
+.drag-handle, .drag-handle-jt, .drag-handle-skill, .drag-handle-sub {
+  cursor: grab !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 16px;
+  margin-right: 12px;
+  opacity: 0.6; /* Darker by default */
+  transition: opacity 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.drag-handle span, .drag-handle-jt span, .drag-handle-skill span, .drag-handle-sub span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  border-radius: 10px;
+}
+
+.drag-handle:hover, .drag-handle-jt:hover, .drag-handle-skill:hover, .drag-handle-sub:hover {
+  opacity: 1;
+  color: #3b82f6;
+}
+
+/* ────────── Section Specifics ────────── */
+/* Unified Department and Skill Category Header Style */
+.cat-header-row, .dept-header-row {
+  background: #475569 !important; /* Soft Slate-600 */
+  color: white !important;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.cat-header-row:hover, .dept-header-row:hover {
+  background: #334155 !important;
+}
+
+.cat-header-row .dept-title, .dept-header-row .dept-title {
+  color: white !important;
+  font-weight: 700;
+}
+
+.cat-header-row .toggle-icon, .dept-header-row .toggle-icon {
+  color: rgba(255,255,255,0.6);
+}
+
+/* Softer Theme-Safe Headers for Skill Tags (Solid Bar Style) */
+.uncat-skill-row {
+  background: #475569 !important; /* Soft Slate-600 */
+  color: white !important;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
 .form-label-checklist {
   display: block;
   font-size: 0.75rem; 
@@ -1637,25 +1711,7 @@ const saveJT_Duties = async () => {
   background: #e2e8f0;
 }
 
-/* Misc */
-.drag-handle, .drag-handle-jt {
-  cursor: grab;
-  color: #94a3b8;
-  padding: 4px 8px;
-  margin-right: 8px;
-  font-size: 1.2rem;
-  user-select: none;
-  transition: color 0.2s;
-}
-
-.drag-handle:hover, .drag-handle-jt:hover {
-  color: #64748b;
-}
-
-.drag-handle:active, .drag-handle-jt:active {
-  cursor: grabbing;
-}
-
+/* Drag Ghost */
 .drag-ghost {
   opacity: 0.4;
   background: #e0f2fe !important;
@@ -1855,33 +1911,6 @@ const saveJT_Duties = async () => {
   font-style: italic;
 }
 
-/* Drag & Drop Handles */
-.drag-handle-skill {
-  cursor: grab !important;
-  color: #94a3b8;
-  margin-right: 8px;
-  font-weight: bold;
-  font-size: 1.1rem;
-  user-select: none;
-  display: inline-block;
-  padding: 0 4px;
-}
-.drag-handle-skill:hover {
-  color: #2563eb;
-}
-.drag-handle-sub {
-  cursor: grab !important;
-  color: #94a3b8;
-  margin-right: 10px;
-  font-weight: bold;
-  font-size: 1rem;
-  user-select: none;
-  display: inline-block;
-  padding: 0 4px;
-}
-.drag-handle-sub:hover {
-  color: #2563eb;
-}
 .drag-ghost {
   opacity: 0.4;
   background: #f1f5f9 !important;
