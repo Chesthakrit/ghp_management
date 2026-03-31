@@ -200,7 +200,7 @@ class UserDutyEvaluation(UserDutyEvaluationBase):
 # --- การตรวจเช็คทักษะย่อย (User Sub Duty Evaluation / Checklist) ---
 class UserSubDutyEvaluationBase(BaseModel):
     user_id: int                        # รหัสพนักงาน
-    sub_duty_id: int                     # รหัสทักษะย่อย
+    sub_duty_id: Optional[int] = None    # รหัสทักษะย่อย (อนุญาตให้เป็น None เพื่อป้องกัน Error)
     is_completed: bool                  # ผลการตรวจ (ผ่าน/ไม่ผ่าน)
 
 class UserSubDutyEvaluationCreate(UserSubDutyEvaluationBase):

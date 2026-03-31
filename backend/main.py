@@ -37,6 +37,12 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+# จัดการโฟลเดอร์วิดีโอ (ตอนนี้เปลี่ยนเป็นด่านตรวจบัตร ปิดสาธารณะเพื่อความปลอดภัย)
+VIDEO_DIR = os.path.join(UPLOAD_DIR, "videos")
+os.makedirs(VIDEO_DIR, exist_ok=True)
+# เราจะไม่ Mount เป็น StaticFiles แล้ว แต่จะใช้ Protected Route แทน
+# app.mount("/videos", StaticFiles(directory=VIDEO_DIR), name="videos")
+
 # --- 3. การรวมพาร์ท (Routes) ---
 app.include_router(users.router)
 app.include_router(auth.router)

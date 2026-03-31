@@ -272,7 +272,7 @@
              <div v-for="sub in selectedDuty.sub_duties" :key="sub.id" class="sub-skill-admin-item">
                 <span class="sub-skill-name-text">{{ sub.name }}</span>
                 <div class="sub-skill-actions">
-                  <a v-if="sub.tutorial_url" :href="sub.tutorial_url" target="_blank" class="btn-action-sm btn-video" title="ดูวิดีโอสอน">🎬</a>
+                  <button v-if="sub.tutorial_url" class="btn-action-sm btn-video" @click="openVideoPlayer(sub.tutorial_url)" title="ดูวิดีโอสอน">🎬</button>
                   <button v-else class="btn-action-sm btn-add-link" @click="promptTutorialUrl(sub)" title="เพิ่มลิงก์วิดีโอ">🔗</button>
                   <button class="btn-action-sm btn-trash" @click="removeSubDuty(sub.id)" title="ลบ">🗑️</button>
                 </div>
@@ -293,6 +293,23 @@
           </label>
         </div>
         <div class="modal-actions"><button class="btn-cancel" @click="closeJDModal">Cancel</button><button class="btn-primary" @click="saveJT_Duties">Save Assignments</button></div>
+      </div>
+    </div>
+
+    <!-- ─── Video Player Modal (Premium Overlay) ─── -->
+    <div v-if="showVideoPlayer" class="video-modal-overlay" @click.self="closeVideoPlayer">
+      <div class="video-modal-container">
+        <button class="video-close-btn" @click="closeVideoPlayer">×</button>
+        <video 
+          ref="videoElement"
+          class="premium-video-player"
+          controls
+          autoplay
+          playsinline
+        >
+          <source :src="currentVideoUrl" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
       </div>
     </div>
   </div>
@@ -357,6 +374,42 @@ const selectedSkillCatId = ref(null)
 const showJDModal = ref(false)
 const selectedJT = ref(null)
 const selectedJT_duties = ref([])
+
+// Video Player State
+const showVideoPlayer = ref(false)
+const currentVideoUrl = ref('')
+const videoElement = ref(null)
+
+const openVideoPlayer = (url) => {
+  if (!url) return
+  const apiHost = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/$/, '') : 'http://localhost:8000'
+  
+  // 1. แปลงที่อยู่และเครื่องแม่ให้ตรงตาม .env
+  let resolvedUrl = url.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
+  
+  // 2. ถ้าเจอพาร์ทเก่า (/videos/) ให้เปลี่ยนเป็นพาร์ทใหม่ที่มีระบบตรวจบัตร (/hr/videos/) ทันที
+  if (resolvedUrl.includes('/videos/') && !resolvedUrl.includes('/hr/videos/')) {
+    resolvedUrl = resolvedUrl.replace('/videos/', '/hr/videos/')
+  }
+
+  // 3. แนบกุญแจ (Token) สำหรับวิดีโอที่อยู่ในระบบความลับ
+  let finalUrl = resolvedUrl
+  if (resolvedUrl.includes('/hr/videos/')) {
+    const token = localStorage.getItem('token')
+    finalUrl = resolvedUrl.includes('?') ? `${resolvedUrl}&token=${token}` : `${resolvedUrl}?token=${token}`
+  }
+
+  currentVideoUrl.value = finalUrl
+  showVideoPlayer.value = true
+}
+
+const closeVideoPlayer = () => {
+  if (videoElement.value) {
+    videoElement.value.pause()
+  }
+  showVideoPlayer.value = false
+  currentVideoUrl.value = ''
+}
 
 onMounted(() => {
   fetchHRData()
@@ -555,15 +608,29 @@ const deleteDutyFromPool = async (id) => {
 
 const addSubDuty = async () => {
   if (!newSubDutyName.value || !selectedDuty.value?.id) return
+  
+  let processedUrl = newSubDutyUrl.value.trim()
+  if (processedUrl) {
+    const localPath = 'C:/Users/mangc/Desktop/Allvideo/Basic_Com/'.toLowerCase()
+    const filePrefix = 'file:///C:/Users/mangc/Desktop/Allvideo/Basic_Com/'.toLowerCase()
+    let lowerUrl = processedUrl.toLowerCase().replace(/\\/g, '/')
+    
+    if (lowerUrl.startsWith(filePrefix)) {
+      processedUrl = 'http://localhost:8000/videos/' + processedUrl.substring(filePrefix.length)
+    } else if (lowerUrl.startsWith(localPath)) {
+      processedUrl = 'http://localhost:8000/videos/' + processedUrl.substring(localPath.length)
+    }
+    processedUrl = processedUrl.replace(/ /g, '%20')
+  }
+
   try {
     await api.post('/hr/sub-duties', { 
       name: newSubDutyName.value, 
       duty_id: selectedDuty.value.id,
-      tutorial_url: newSubDutyUrl.value || null
+      tutorial_url: processedUrl || null
     })
     newSubDutyName.value = ''
     newSubDutyUrl.value = ''
-    // Refresh sub duties list from server
     const res = await api.get(`/hr/duties/${selectedDuty.value.id}`)
     selectedDuty.value.sub_duties = res.data.sub_duties
   } catch (e) { 
@@ -579,20 +646,94 @@ const removeSubDuty = async (id) => {
 }
 
 const promptTutorialUrl = async (sub) => {
-  const { value: url } = await Swal.fire({
+  const { value: rawUrl, isDenied } = await Swal.fire({
     title: 'เพิ่มลิงก์วิดีโอสอน',
-    input: 'url',
+    input: 'text',
     inputLabel: `สำหรับ: ${sub.name}`,
-    inputPlaceholder: 'https://www.youtube.com/watch?v=...',
+    inputPlaceholder: 'ใส่ URL หรือ Path ไฟล์วิดีโอ (เช่น file:///C:/...)',
     inputValue: sub.tutorial_url || '',
     showCancelButton: true,
+    showDenyButton: true,
     confirmButtonText: 'บันทึก',
-    cancelButtonText: 'ยกเลิก'
+    denyButtonText: '📁 เลือกไฟล์วิดีโอจากเครื่อง',
+    cancelButtonText: 'ยกเลิก',
+    preConfirm: (value) => {
+      if (!value) return value
+      let processed = value.trim()
+      const markdownRegex = /!\[.*\]\((.*)\)/
+      const match = processed.match(markdownRegex)
+      if (match) processed = match[1]
+
+      // ดึง Base URL จาก config (เพื่อให้มือถือเข้าถึงได้ตาม IP ใน .env)
+      const apiHost = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/$/, '') : 'http://localhost:8000'
+
+      if (processed.includes('/uploads/videos/')) {
+        processed = processed.replace(/.*\/uploads\/videos\//, `${apiHost}/hr/videos/`)
+      }
+      
+      if (processed.includes('/videos/') && !processed.includes('/hr/videos/')) {
+        processed = processed.replace('/videos/', '/hr/videos/')
+      }
+
+      if (processed.toLowerCase().startsWith('file:///') || processed.includes(':\\')) {
+        const fileName = processed.split(/[/\\]/).pop()
+        processed = `${apiHost}/hr/videos/${fileName}`
+      }
+      
+      // ถ้าเคยวางเป็น localhost หรือ IP อื่นมา ให้แก้ให้ตรงกับที่ใช้ปัจจุบัน
+      if (processed.includes('localhost:8000') || processed.includes('127.0.0.1:8000')) {
+        processed = processed.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
+      }
+
+      return processed.replace(/%20/g, ' ')
+    }
   })
-  if (!url) return
+
+  // หน้าคนกดปุ่ม "เลือกไฟล์จากเครื่อง"
+  if (isDenied) {
+    const { value: file } = await Swal.fire({
+      title: 'เลือกวิดีโอ',
+      input: 'file',
+      inputAttributes: {
+        'accept': 'video/*',
+        'aria-label': 'Upload tutorial video'
+      },
+      showCancelButton: true
+    })
+
+    if (file) {
+      Swal.fire({
+        title: 'กำลังอัปโหลด...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading() }
+      })
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        const res = await api.post('/hr/upload-video', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        // หลังจากอัปโหลดเสร็จ ให้เด้งหน้าต่างเดิมกลับมาพร้อมใส่ URL ใหม่ให้
+        sub.tutorial_url = res.data.url
+        return promptTutorialUrl(sub)
+      } catch (e) {
+        Swal.fire('Error', 'ไม่สามารถอัปโหลดไฟล์ได้', 'error')
+      }
+    } else {
+      // ถ้ากดยกเลิกในหน้าเลือกไฟล์ ให้กลับมาหน้าหลัก
+      return promptTutorialUrl(sub)
+    }
+  }
+
+  if (rawUrl === undefined) return // กดยกเลิก
+  
+  // เข้ารหัส URL ให้ถูกต้องก่อนส่ง
+  const encodedUrl = rawUrl.startsWith('http') ? rawUrl.replace(/ /g, '%20') : rawUrl
   try {
-    await api.put(`/hr/sub-duties/${sub.id}`, { tutorial_url: url })
-    sub.tutorial_url = url
+    await api.put(`/hr/sub-duties/${sub.id}`, { tutorial_url: encodedUrl })
+    sub.tutorial_url = encodedUrl
     Swal.fire({ title: 'บันทึกลิงก์เรียบร้อย!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
   } catch (e) {
     Swal.fire('Error', 'Failed to save URL', 'error')
@@ -1262,6 +1403,84 @@ const saveJT_Duties = async () => {
 @media (max-width: 1024px) {
   .hr-settings-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Video Player Modal Styles ─── */
+.video-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.video-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.premium-video-player {
+  width: 100%;
+  height: auto;
+  max-height: 90vh;
+  outline: none;
+}
+
+.video-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 32px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.video-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: rotate(90deg);
+}
+
+@media (max-width: 768px) {
+  .video-modal-overlay {
+    padding: 10px;
+  }
+  .video-modal-container {
+    max-height: 80vh;
+    border-radius: 8px;
+  }
+  .video-close-btn {
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    font-size: 24px;
   }
 }
 </style>

@@ -54,6 +54,17 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     # หากทุกอย่างถูกต้อง ฟังก์ชันนี้จะส่ง Object ของ User คนนั้นกลับไปให้ Endpoint ใช้งาน
     return user
 
+# --- ฟังก์ชันช่วยเหลือสำหรับตรวจสอบความถูกต้องของ Token โดยตรง (ใช้กับวิดีโอหรือไฟล์) ---
+def verify_token(token: str):
+    """ถอดรหัสและตรวจสอบ Metadata ของ Token เบื้องต้น"""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except JWTError:
+        return None
+
 # --- ฟังก์ชันตรวจสอบสิทธิ์แอดมิน (Dependency: check_admin) ---
 def check_admin(current_user: models.User = Depends(get_current_user)):
     """ยามเฝ้าประตูชั้นที่ 2: ตรวจสอบว่าเป็น Admin หรือไม่"""

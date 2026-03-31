@@ -4,9 +4,13 @@
 คลังทักษะ (Skill Library/Duties) และการประเมินผลพนักงาน (Evaluations)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import os
+import shutil
+import time
 from database import get_db
 from models import users as models
 from schemas import hr as schemas
@@ -498,4 +502,67 @@ def save_user_sub_evaluation(
     db.commit()
     db.refresh(db_eval)
     return db_eval
+
+
+@router.post("/upload-video")
+async def upload_video(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    """อัปโหลดวิดีโอสอนงานมาเก็บไว้ในระบบ"""
+    # ตรวจสอบสิทธิ์ (Admin หรือ User Manage)
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
+               (current_user.username.lower() == 'admin')
+    if not is_admin and 'user.manage' not in (current_user.permissions or []):
+        raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์อัปโหลดไฟล์")
+
+    # กำหนดตำแหน่งเก็บไฟล์ (ในโปรเจกต์)
+    UPLOAD_DIR = os.path.join(os.getcwd(), "uploads", "videos")
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    # ทำความสะอาดชื่อไฟล์และใส่ Timestamp
+    timestamp = int(time.time())
+    safe_filename = file.filename.replace(" ", "_").replace("(", "").replace(")", "")
+    unique_name = f"{timestamp}_{safe_filename}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
+
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
+    finally:
+        file.file.close()
+
+    # คืนค่า URL สำหรับเรียกดูผ่านด่านตรวจ (Protected)
+    # เพิ่มโทเค็นลงในฟรอนต์เอนด์แทน
+    return {"url": f"http://localhost:8000/hr/videos/{unique_name}"}
+
+
+@router.get("/videos/{filename}")
+def get_video(
+    filename: str,
+    token: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """ส่งไฟล์วิดีโอให้ดูเฉพาะผู้ที่มีสิทธิ์ (ล็อคกุญแจ)"""
+    # 1. ตรวจสอบบัตรผ่าน (Token)
+    # รองรับการส่งโทเค็นทาง URL (?token=...) เพราะบราวเซอร์เล่นวิดีโอไม่ส่ง Header
+    username = oauth2.verify_token(token)
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="คุณไม่มีสิทธิ์เข้าดูวิดีโอนี้ กรุณา Login ก่อน"
+        )
+    
+    # 2. ค้นหาไฟล์ในระบบ
+    VIDEO_DIR = os.path.join(os.getcwd(), "uploads", "videos")
+    file_path = os.path.join(VIDEO_DIR, filename)
+    
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="ไม่พบไฟล์วิดีโอในระบบ")
+        
+    # 3. ส่งไฟล์กลับไปแบบ Streaming
+    return FileResponse(file_path, media_type="video/mp4")
 

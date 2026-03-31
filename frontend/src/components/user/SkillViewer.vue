@@ -91,16 +91,14 @@
                   </div>
                   <div class="sub-skill-content">
                     <span class="sub-skill-name">{{ sub.name }}</span>
-                    <a 
+                    <button 
                       v-if="sub.tutorial_url" 
-                      :href="sub.tutorial_url" 
-                      target="_blank" 
                       class="sub-skill-video-link" 
-                      @click.stop
+                      @click.stop="openVideoPlayer(sub.tutorial_url)"
                       title="รับชมวิดีโอสอนงาน"
                     >
                       <i class="fas fa-play-circle"></i> Tutorial
-                    </a>
+                    </button>
                   </div>
                 </div>
             </div>
@@ -112,11 +110,29 @@
         <p>เลือก Skill เพื่อดูรายละเอียดการทำงาน</p>
       </div>
     </div>
+
+    <!-- ─── Video Player Modal (Premium Overlay) ─── -->
+    <div v-if="showVideoPlayer" class="video-modal-overlay" @click.self="closeVideoPlayer">
+      <div class="video-modal-container">
+        <button class="video-close-btn" @click="closeVideoPlayer">×</button>
+        <video 
+          ref="videoElement"
+          class="premium-video-player"
+          controls
+          autoplay
+          playsinline
+        >
+          <source :src="currentVideoUrl" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import api from '../../api'
 
 const props = defineProps({
   userSkills: {
@@ -146,6 +162,42 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select-skill', 'toggle-sub-duty'])
+
+// Video Player State
+const showVideoPlayer = ref(false)
+const currentVideoUrl = ref('')
+const videoElement = ref(null)
+
+const openVideoPlayer = (url) => {
+  if (!url) return
+  const apiHost = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/$/, '') : 'http://localhost:8000'
+  
+  // 1. แปลงที่อยู่และเครื่องแม่ให้ตรงตาม .env
+  let resolvedUrl = url.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
+  
+  // 2. ถ้าเจอพาร์ทเก่า (/videos/) ให้เปลี่ยนเป็นพาร์ทใหม่ที่มีระบบตรวจบัตร (/hr/videos/) ทันที
+  if (resolvedUrl.includes('/videos/') && !resolvedUrl.includes('/hr/videos/')) {
+    resolvedUrl = resolvedUrl.replace('/videos/', '/hr/videos/')
+  }
+
+  // 3. แนบกุญแจ (Token) สำหรับวิดีโอที่อยู่ในระบบความลับ
+  let finalUrl = resolvedUrl
+  if (resolvedUrl.includes('/hr/videos/')) {
+    const token = localStorage.getItem('token')
+    finalUrl = resolvedUrl.includes('?') ? `${resolvedUrl}&token=${token}` : `${resolvedUrl}?token=${token}`
+  }
+
+  currentVideoUrl.value = finalUrl
+  showVideoPlayer.value = true
+}
+
+const closeVideoPlayer = () => {
+  if (videoElement.value) {
+    videoElement.value.pause()
+  }
+  showVideoPlayer.value = false
+  currentVideoUrl.value = ''
+}
 
 const groupedSkills = computed(() => {
   const groups = {}
@@ -633,5 +685,89 @@ const getOverallColor = (pct) => {
     max-width: none;
     height: 400px;
   }
+}
+
+/* ─── Video Player Modal Styles (Shared) ─── */
+.video-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 10000; /* ให้สูงกว่าทุกอย่างในหน้านี้ */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.video-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.premium-video-player {
+  width: 100%;
+  height: auto;
+  max-height: 90vh;
+  outline: none;
+}
+
+.video-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 32px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.video-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: rotate(90deg);
+}
+
+@media (max-width: 768px) {
+  .video-modal-overlay {
+    padding: 10px;
+    z-index: 99999;
+  }
+  .video-modal-container {
+    max-height: 80vh;
+    border-radius: 8px;
+  }
+  .video-close-btn {
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    font-size: 24px;
+  }
+}
+
+.sub-skill-video-link {
+  cursor: pointer;
+  border: none;
 }
 </style>
