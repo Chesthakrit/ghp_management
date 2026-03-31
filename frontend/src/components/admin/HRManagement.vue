@@ -710,16 +710,21 @@ const onSubDutyChange = async (evt, dutyId) => {
       // Force reactivity
       dutiesPool.value = [...dutiesPool.value]
       
-      // Save
+      // Save to database
       try {
         const payload = {
           items: items.map((s, idx) => ({ id: parseInt(s.id), display_order: idx + 1 }))
         }
-        console.log("Saving sub-duty order:", payload)
         await api.put('/hr/sub-duties/reorder', payload)
-        Swal.fire({ title: 'Sub-skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 })
+        Swal.fire({ 
+            title: 'Sub-skills Reordered!', 
+            icon: 'success', 
+            toast: true, 
+            position: 'top-end', 
+            showConfirmButton: false, 
+            timer: 1000 
+        })
       } catch (e) {
-        console.error("Save sub-duty order failed", e)
         Swal.fire('Error', 'Failed to save sub-skill order', 'error')
         fetchHRData()
       }
