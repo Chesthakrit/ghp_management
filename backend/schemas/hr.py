@@ -37,6 +37,7 @@ class DutyBase(BaseModel):
     description_th: Optional[str] = None # รายละเอียด (TH)
     description_v3: Optional[str] = None # รายละเอียด (ภาษาที่สาม)
     category_id: Optional[int] = None   # รหัสหมวดหมู่ที่สังกัด
+    display_order: int = 100            # ลำดับการแสดงผล (Drag & Drop)
 
 class DutyCreate(DutyBase):
     """ใช้รับข้อมูลตอนสร้างทักษะใหม่"""
@@ -59,6 +60,7 @@ class SubDutyBase(BaseModel):
     name_v3: Optional[str] = None
     duty_id: int                        # รหัสทักษะหลักที่สังกัด
     tutorial_url: Optional[str] = None  # ลิงก์วิดีโอสอน
+    display_order: int = 100            # ลำดับการแสดงผล (Drag & Drop)
 
 class SubDutyCreate(SubDutyBase):
     """ใช้รับข้อมูลตอนสร้างทักษะย่อยใหม่"""

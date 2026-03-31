@@ -158,6 +158,7 @@ class Duty(Base):
     description = Column(String, nullable=True)    # รายละเอียดทักษะ
     description_th = Column(String, nullable=True)
     description_v3 = Column(String, nullable=True)
+    display_order = Column(Integer, default=100) # สำหรับการ Drag & Drop
     
     # เชื่อมกับหมวดหมู่ทักษะ
     category_id = Column(Integer, ForeignKey("duty_categories.id"), nullable=True)
@@ -165,7 +166,7 @@ class Duty(Base):
     
     # เชื่อมกับตำแหน่งงานและทักษะย่อย
     job_titles = relationship("JobTitle", secondary=job_title_duty_link, back_populates="duties")
-    sub_duties = relationship("SubDuty", back_populates="duty", cascade="all, delete-orphan")
+    sub_duties = relationship("SubDuty", back_populates="duty", cascade="all, delete-orphan", order_by="SubDuty.display_order.asc()")
 
 class SubDuty(Base):
     """รายการทักษะย่อย (Sub-Duties) ที่อยู่ในทักษะหลักอีกที"""
@@ -176,6 +177,7 @@ class SubDuty(Base):
     name_v3 = Column(String, nullable=True)
     duty_id = Column(Integer, ForeignKey("duties.id", ondelete="CASCADE"))
     tutorial_url = Column(String, nullable=True) # ลิงก์วิดีโอสอน
+    display_order = Column(Integer, default=100) # สำหรับการ Drag & Drop
     
     duty = relationship("Duty", back_populates="sub_duties")
 

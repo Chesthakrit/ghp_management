@@ -82,8 +82,7 @@
                        <div v-else class="no-data-hint-sm jt-no-skill-hint">
                           No skills assigned yet.
                        </div>
-                    </div>
-                  </div>
+                 </div>
                   </template>
                 </draggable>
 
@@ -136,63 +135,72 @@
                </div>
              </div>
              <div v-if="expandedDepts.includes('uncat_skill')" class="jt-container">
-                <div v-for="duty in dutiesPool.filter(d => !d.category_id)" :key="duty.id" class="skill-block-nested">
-                   <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
-                      <div class="jt-title-content">
-                         <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
-                         <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
-                      </div>
-                      <div class="jt-actions" @click.stop>
-                         <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
-                         <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
-                      </div>
-                   </div>
-                   <!-- Sub-skills & Desc -->
-                   <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
-                      <div class="skill-details-grid">
-                         <div class="skill-desc-container">
-                            <span class="detail-label">Description</span>
-                            <p class="skill-desc-text">{{ duty.description || 'No description provided.' }}</p>
-                         </div>
-                         <div class="skill-sub-container">
-                            <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
-                            <div class="sub-skills-dropdown-list">
-
-                               <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-dropdown-item">
-
-                                 <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
-
-                                   <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
-
-                                   <span class="sub-dd-name">{{ sub.name }}</span>
-
-                                   <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
-
-                                 </div>
-
-                                 <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
-
-                                   <div v-if="sub.tutorial_url" class="sub-dd-video-row">
-
-                                     <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
-
-                                     <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
-
-                                   </div>
-
-                                   <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
-
-                                 </div>
-
-                               </div>
-
-                               <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
-
-                            </div>
-                         </div>
-                      </div>
-                   </div>
-                </div>
+                <draggable
+                  :model-value="dutiesPool.filter(d => !d.category_id)"
+                  @update:model-value="val => updateDutyOrderLocal(val, null)"
+                  item-key="id"
+                  handle=".drag-handle-skill"
+                  animation="200"
+                  ghost-class="drag-ghost"
+                  @end="evt => saveDutyOrder(null)"
+                >
+                  <template #item="{ element: duty }">
+                  <div class="skill-block-nested">
+                    <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
+                       <div class="jt-title-content">
+                          <span class="drag-handle-skill" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                          <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
+                          <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
+                       </div>
+                       <div class="jt-actions" @click.stop>
+                          <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
+                          <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
+                       </div>
+                    </div>
+                    <!-- Sub-skills & Desc -->
+                    <div v-if="expandedDuties.includes(duty.id)" class="skill-details-area">
+                       <div class="skill-details-grid">
+                          <div class="skill-desc-container">
+                             <span class="detail-label">Description</span>
+                             <p class="skill-desc-text">{{ duty.description || 'No description provided.' }}</p>
+                          </div>
+                          <div class="skill-sub-container">
+                             <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
+                             <div class="sub-skills-dropdown-list">
+                                <draggable
+                                  v-model="duty.sub_duties"
+                                  item-key="id"
+                                  handle=".drag-handle-sub"
+                                  animation="200"
+                                  ghost-class="drag-ghost"
+                                  @end="saveSubDutyOrder(duty.id)"
+                                >
+                                  <template #item="{ element: sub }">
+                                  <div class="sub-skill-dropdown-item">
+                                    <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
+                                      <span class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                                      <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
+                                      <span class="sub-dd-name">{{ sub.name }}</span>
+                                      <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
+                                    </div>
+                                    <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
+                                      <div v-if="sub.tutorial_url" class="sub-dd-video-row">
+                                        <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
+                                        <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
+                                      </div>
+                                      <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
+                                    </div>
+                                  </div>
+                                  </template>
+                                </draggable>
+                                <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                  </template>
+                </draggable>
              </div>
           </div>
 
@@ -218,10 +226,21 @@
 
             <!-- Skills List under Tag -->
             <div v-if="expandedDepts.includes('cat_' + cat.id)" class="jt-container">
-              <div v-for="duty in dutiesPool.filter(d => d.category_id === cat.id)" :key="duty.id" class="skill-block-nested">
+                <draggable
+                   :model-value="dutiesPool.filter(d => d.category_id === cat.id)"
+                   @update:model-value="val => updateDutyOrderLocal(val, cat.id)"
+                   item-key="id"
+                   handle=".drag-handle-skill"
+                   animation="200"
+                   ghost-class="drag-ghost"
+                   @end="evt => saveDutyOrder(cat.id)"
+                >
+                  <template #item="{ element: duty }">
+                  <div class="skill-block-nested">
                 <div class="skill-main-row clickable-row" @click="toggleDutyExpansion(duty.id)">
                    <div class="jt-title-content">
-                      <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
+                          <span class="drag-handle-skill" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                          <span class="toggle-icon-sm">{{ expandedDuties.includes(duty.id) ? '▾' : '▸' }}</span>
                       <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                    </div>
                    <div class="jt-actions" @click.stop>
@@ -240,12 +259,20 @@
                       <div class="skill-sub-container">
                          <span class="detail-label">Sub-skills ({{ duty.sub_duties?.length || 0 }})</span>
                          <div class="sub-skills-dropdown-list">
-
-                            <div v-for="sub in duty.sub_duties" :key="sub.id" class="sub-skill-dropdown-item">
+                             <draggable
+                               v-model="duty.sub_duties"
+                               item-key="id"
+                               handle=".drag-handle-sub"
+                               animation="200"
+                               ghost-class="drag-ghost"
+                               @end="saveSubDutyOrder(duty.id)"
+                             >
+                               <template #item="{ element: sub }">
+                               <div class="sub-skill-dropdown-item">
 
                               <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
-
-                                <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
+                                    <span class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">≡</span>
+                                    <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
 
                                 <span class="sub-dd-name">{{ sub.name }}</span>
 
@@ -268,13 +295,17 @@
                               </div>
 
                             </div>
-
-                            <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
+                               </template>
+                             </draggable>
+                             <div v-if="!duty.sub_duties?.length" class="no-sub-hint">No checklist defined</div>
 
                          </div>
                       </div>
                    </div>
                 </div>
+              </div>
+                  </template>
+                </draggable>
               </div>
 
               <!-- Quick Add Skill for this Tag -->
@@ -300,12 +331,8 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- ─── Modals (Skills, JD, Page Access) ─── -->
+            <!-- ─── Modals (Skills, JD, Page Access) ─── -->
     <div v-if="showDutyModal" class="modal-overlay" @click.self="closeDutyModal">
       <div class="modal-box jd-modal">
         <h3 class="modal-title">Skill Details</h3>
@@ -373,8 +400,10 @@
           Your browser does not support the video tag.
         </video>
       </div>
+      </div>
     </div>
   </div>
+
 </template>
 <script setup>
 
@@ -649,6 +678,50 @@ const saveNewDutyWithCat = async (catId) => {
     selectedSkillCatId.value = null
     await fetchHRData()
   } catch (e) { Swal.fire('Error', 'Add skill failed', 'error') }
+}
+
+const updateDutyOrderLocal = (newList, catId) => {
+  // Update only the items for this specific category in the main pool
+  const otherCats = dutiesPool.value.filter(d => d.category_id !== catId)
+  dutiesPool.value = [...otherCats, ...newList]
+}
+
+const saveDutyOrder = async (catId) => {
+  try {
+    const rawList = JSON.parse(JSON.stringify(dutiesPool.value))
+    // Only items belonging to THIS category (or null if uncat)
+    const catItems = rawList.filter(d => d.category_id === catId && d.id)
+    const items = catItems.map((d, index) => ({ 
+      id: Number(d.id), 
+      display_order: index + 1 
+    }))
+    if (items.length === 0) return
+    await api.put('/hr/duties/reorder', { items })
+    Swal.fire({ title: 'Skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+    // fetchHRData() Not strictly needed if local state is OK, but safer
+    await fetchHRData() 
+  } catch (e) { 
+    console.error(e)
+    Swal.fire('Error', 'Failed to save skill order', 'error')
+  }
+}
+
+const saveSubDutyOrder = async (dutyId) => {
+  try {
+    const duty = dutiesPool.value.find(d => d.id === dutyId)
+    if (!duty || !duty.sub_duties) return
+    const items = duty.sub_duties.map((s, index) => ({ 
+      id: Number(s.id), 
+      display_order: index + 1 
+    }))
+    if (items.length === 0) return
+    await api.put('/hr/sub-duties/reorder', { items })
+    Swal.fire({ title: 'Sub-skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+    await fetchHRData() 
+  } catch (e) { 
+    console.error(e)
+    Swal.fire('Error', 'Failed to save sub-skill order', 'error')
+  }
 }
 
 // Duty Modal
@@ -1722,4 +1795,36 @@ const saveJT_Duties = async () => {
   font-style: italic;
 }
 
+/* Drag & Drop Handles */
+.drag-handle-skill {
+  cursor: grab !important;
+  color: #94a3b8;
+  margin-right: 8px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  user-select: none;
+  display: inline-block;
+  padding: 0 4px;
+}
+.drag-handle-skill:hover {
+  color: #2563eb;
+}
+.drag-handle-sub {
+  cursor: grab !important;
+  color: #94a3b8;
+  margin-right: 10px;
+  font-weight: bold;
+  font-size: 1rem;
+  user-select: none;
+  display: inline-block;
+  padding: 0 4px;
+}
+.drag-handle-sub:hover {
+  color: #2563eb;
+}
+.drag-ghost {
+  opacity: 0.4;
+  background: #f1f5f9 !important;
+  border: 1px dashed #2563eb !important;
+}
 </style>
