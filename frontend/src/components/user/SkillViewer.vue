@@ -172,15 +172,21 @@ const openVideoPlayer = (url) => {
   if (!url) return
   const apiHost = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/$/, '') : 'http://localhost:8000'
   
-  // 1. แปลงที่อยู่และเครื่องแม่ให้ตรงตาม .env
-  let resolvedUrl = url.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
+  // 1. แปลงที่อยู่และเครื่องแม่ให้ตรงตามสถานะการใช้งาน
+  let resolvedUrl = url
+  if (url.startsWith('http')) {
+    resolvedUrl = url.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
+  } else {
+    // ถ้าเป็น Path สั้น ให้เติมชื่อเครื่องแม่เข้าไป
+    resolvedUrl = apiHost + (url.startsWith('/') ? '' : '/') + url
+  }
   
-  // 2. ถ้าเจอพาร์ทเก่า (/videos/) ให้เปลี่ยนเป็นพาร์ทใหม่ที่มีระบบตรวจบัตร (/hr/videos/) ทันที
+  // 2. ถ้าเจอพาร์ทเก่า (/videos/) ให้ซ่อมเป็นพาร์ทใหม่ที่มีระบบตรวจบัตร (/hr/videos/) ทันที
   if (resolvedUrl.includes('/videos/') && !resolvedUrl.includes('/hr/videos/')) {
     resolvedUrl = resolvedUrl.replace('/videos/', '/hr/videos/')
   }
 
-  // 3. แนบกุญแจ (Token) สำหรับวิดีโอที่อยู่ในระบบความลับ
+  // 3. แนบกุญแจ (Token) สำหรับวิดีโอนิรภัย
   let finalUrl = resolvedUrl
   if (resolvedUrl.includes('/hr/videos/')) {
     const token = localStorage.getItem('token')

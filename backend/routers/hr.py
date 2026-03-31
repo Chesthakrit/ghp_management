@@ -536,8 +536,7 @@ async def upload_video(
         file.file.close()
 
     # คืนค่า URL สำหรับเรียกดูผ่านด่านตรวจ (Protected)
-    # เพิ่มโทเค็นลงในฟรอนต์เอนด์แทน
-    return {"url": f"http://localhost:8000/hr/videos/{unique_name}"}
+    return {"url": f"/hr/videos/{unique_name}"}
 
 
 @router.get("/videos/{filename}")
