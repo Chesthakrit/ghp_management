@@ -89,6 +89,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../api'
 
+const props = defineProps(['userId'])
+
 // Core States
 const currentTime = ref('00:00:00')
 const currentDate = ref('')
@@ -175,7 +177,8 @@ const formatTime = (isoStr) => {
 // API Calls
 const fetchUserData = async () => {
   try {
-    const res = await api.get('/users/me')
+    const endpoint = props.userId ? `/users/${props.userId}` : '/users/me'
+    const res = await api.get(endpoint)
     if (res.data?.employee_profile) {
       salaryType.value = res.data.employee_profile.salary_type || 'monthly'
       hireDateStr.value = res.data.employee_profile.hire_date || ''
@@ -185,7 +188,8 @@ const fetchUserData = async () => {
 
 const fetchMyAttendance = async () => {
   try {
-    const res = await api.get('/attendance/me')
+    const endpoint = props.userId ? `/attendance/user/${props.userId}` : '/attendance/me'
+    const res = await api.get(endpoint)
     historyLogs.value = res.data || []
     generateWeek(baseDate.value)
   } catch (e) { console.error(e) }

@@ -106,6 +106,24 @@ def get_my_attendance(
     return db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == current_user.id).order_by(models.AttendanceLog.date.desc()).all()
 
 
+@router.get("/user/{user_id}", response_model=list[schemas.AttendanceLogResponse])
+def get_user_attendance(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """
+    ดึงประวัติการเข้า-ออกงานของพนักงานระบุบุคคล (สำหรับ Admin/HR)
+    """
+    if current_user.id != user_id:
+        is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
+        perms = current_user.permissions or []
+        if not is_admin and 'user.manage' not in perms and 'page.usermanagement' not in perms:
+            raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์ดูข้อมูลลงเวลาของผู้อื่น")
+            
+    return db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == user_id).order_by(models.AttendanceLog.date.desc()).all()
+
+
 @router.get("/today", response_model=schemas.AttendanceLogResponse)
 def get_today_status(
     db: Session = Depends(get_db),
@@ -124,3 +142,91 @@ def get_today_status(
     if not log:
         raise HTTPException(status_code=404, detail="No record today")
     return log
+
+# --- SETTINGS & PUBLIC HOLIDAYS ---
+def check_admin_or_hr(user):
+    is_admin = (user.role and user.role.name.lower() == 'admin') or (user.username.lower() == 'admin')
+    perms = user.permissions or []
+    if not is_admin and 'page.hr' not in perms:
+        raise HTTPException(status_code=403, detail="Not authorized to manage settings")
+
+
+@router.get("/settings", response_model=list[schemas.AttendanceConfigResponse])
+def get_attendance_configs(db: Session = Depends(get_db), current_user = Depends(oauth2.get_current_user)):
+    check_admin_or_hr(current_user)
+    return db.query(models.AttendanceConfig).all()
+
+
+@router.put("/settings", response_model=list[schemas.AttendanceConfigResponse])
+def update_attendance_configs(
+    configs: list[schemas.AttendanceConfigUpdate],
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    check_admin_or_hr(current_user)
+    for cfg in configs:
+        db_cfg = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key == cfg.key).first()
+        if db_cfg:
+            db_cfg.value = cfg.value
+        else:
+            db_cfg = models.AttendanceConfig(key=cfg.key, value=cfg.value)
+            db.add(db_cfg)
+    db.commit()
+    return db.query(models.AttendanceConfig).all()
+
+
+@router.get("/holidays/{year}", response_model=list[schemas.CompanyHolidayResponse])
+def get_holidays_by_year(year: int, db: Session = Depends(get_db), current_user = Depends(oauth2.get_current_user)):
+    return db.query(models.CompanyHoliday).filter(models.CompanyHoliday.year == year).order_by(models.CompanyHoliday.date).all()
+
+
+@router.post("/holidays", response_model=schemas.CompanyHolidayResponse)
+def create_holiday(
+    holiday: schemas.CompanyHolidayCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    check_admin_or_hr(current_user)
+    db_holiday = models.CompanyHoliday(
+        year=holiday.year,
+        date=holiday.date,
+        name=holiday.name,
+        is_active=True
+    )
+    db.add(db_holiday)
+    db.commit()
+    db.refresh(db_holiday)
+    return db_holiday
+
+
+@router.delete("/holidays/{holiday_id}")
+def delete_holiday(
+    holiday_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    check_admin_or_hr(current_user)
+    db_holiday = db.query(models.CompanyHoliday).filter(models.CompanyHoliday.id == holiday_id).first()
+    if not db_holiday:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    db.delete(db_holiday)
+    db.commit()
+    return {"message": "Deleted successfully"}
+
+@router.put("/holidays/{holiday_id}", response_model=schemas.CompanyHolidayResponse)
+def update_holiday(
+    holiday_id: int,
+    holiday: schemas.CompanyHolidayCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    check_admin_or_hr(current_user)
+    db_holiday = db.query(models.CompanyHoliday).filter(models.CompanyHoliday.id == holiday_id).first()
+    if not db_holiday:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    db_holiday.year = holiday.year
+    db_holiday.date = holiday.date
+    db_holiday.name = holiday.name
+    db.commit()
+    db.refresh(db_holiday)
+    return db_holiday

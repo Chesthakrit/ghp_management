@@ -114,7 +114,7 @@
             @toggle-sub-duty="toggleSubDuty"
           />
 
-          <AttendancePanel v-else-if="activeMenu === 'attendance'" />
+          <AttendancePanel v-else-if="activeMenu === 'attendance'" :userId="userId" />
 
           <CompanyPolicy v-else-if="activeMenu === 'policy'" />
 
@@ -125,8 +125,8 @@
             />
           </div>
 
-          <!-- Embedded Admin Panel for HR, Salary, and Access tabs -->
-          <div v-else-if="['hr', 'salary', 'access'].includes(activeMenu)" class="embedded-admin-tab" style="padding: 20px;">
+          <!-- Embedded Admin Panel for HR, Salary, Access, and Time/Leave tabs -->
+          <div v-else-if="['hr', 'salary', 'access', 'time_leave'].includes(activeMenu)" class="embedded-admin-tab" style="padding: 20px;">
             <AdminPanel 
               :embedded="activeMenu"
               @view-profile="(id) => $emit('view-profile', id)"
@@ -235,6 +235,9 @@ const menuItems = computed(() => {
   if (perms.includes('page.access') || isAdmin.value) {
     baseItems.push({ id: 'access', label: 'Access Control', icon: 'fas fa-user-shield' })
   }
+  if (perms.includes('page.hr') || isAdmin.value) {
+    baseItems.push({ id: 'time_leave', label: 'Time & Leave', icon: 'fas fa-clock' })
+  }
 
   return baseItems
 })
@@ -260,7 +263,7 @@ const isAdmin = computed(() => {
 
 const hasAdminModulesAccess = computed(() => {
   const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
-  return isAdmin.value || perms.some(p => ['page.hr', 'page.salary', 'page.access'].includes(p))
+  return isAdmin.value || perms.some(p => ['page.hr', 'page.salary', 'page.access', 'time_leave'].includes(p))
 })
 
 const canEvaluate = computed(() => {

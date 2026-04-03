@@ -36,3 +36,22 @@ class AttendanceLog(Base):
 
     # Relationship ไปยังตาราง User
     user = relationship("User", backref="attendance_logs")
+
+class CompanyHoliday(Base):
+    """ตารางเก็บวันหยุดประจำปี (Public Holidays) จัดการแยกรายปี"""
+    __tablename__ = "company_holidays"
+
+    id = Column(Integer, primary_key=True, index=True)
+    year = Column(Integer, index=True) # เช่น 2026
+    date = Column(Date, nullable=False, index=True) # เช่น 2026-04-13
+    name = Column(String, nullable=False) # เช่น Songkran Festival
+    is_active = Column(Boolean, default=True)
+
+class AttendanceConfig(Base):
+    """ตารางเก็บการตั้งค่าแบบ Key-Value (เวลาเข้างาน, โควตาวันลา, เวลาโอที)"""
+    __tablename__ = "attendance_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True, nullable=False) # เช่น check_in_time
+    value = Column(String, nullable=False) # เช่น 08:00
+    description = Column(String, nullable=True) # คำอธิบาย (ใส่ไว้ให้ admin อ่านใน DB ง่ายๆ)

@@ -46,6 +46,14 @@
 
         <button
           v-if="isAdmin || hasPerm('page.hr')"
+          :class="['nav-item', { active: activeTab === 'time_leave' }]"
+          @click="activeTab = 'time_leave'; sidebarOpen = false"
+        >
+          <i class="fas fa-clock"></i> Time & Leave
+        </button>
+
+        <button
+          v-if="isAdmin || hasPerm('page.hr')"
           :class="['nav-item', { active: activeTab === 'policies' }]"
           @click="activeTab = 'policies'; sidebarOpen = false"
         >
@@ -68,6 +76,7 @@
             activeTab === 'hr' ? 'HR Settings' : 
             activeTab === 'salary' ? 'Salary Settings' : 
             activeTab === 'access' ? 'Access Control' : 
+            activeTab === 'time_leave' ? 'Time & Leave' : 
             activeTab === 'policies' ? 'Policy Management' : 'Dashboard'
           }}
         </span>
@@ -114,6 +123,11 @@
           />
         </div>
 
+        <!-- TAB: Time & Leave Settings -->
+        <div v-if="activeTab === 'time_leave'">
+          <AttendanceSettings />
+        </div>
+
         <!-- TAB: Policy Management -->
         <div v-if="activeTab === 'policies'">
           <PolicyManagement />
@@ -132,6 +146,7 @@ import UserManagement from './UserManagement.vue'
 import SalaryManagement from './SalaryManagement.vue'
 import HRManagement from './HRManagement.vue'
 import PolicyManagement from './PolicyManagement.vue'
+import AttendanceSettings from './AttendanceSettings.vue'
 
 const props = defineProps({
   embedded: { type: String, default: null }

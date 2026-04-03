@@ -30,3 +30,30 @@ class AttendanceLogResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+class CompanyHolidayCreate(BaseModel):
+    year: int
+    date: date
+    name: str
+
+class CompanyHolidayResponse(BaseModel):
+    id: int
+    year: int
+    date: date
+    name: str
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+class AttendanceConfigUpdate(BaseModel):
+    key: str
+    value: str
+
+class AttendanceConfigResponse(BaseModel):
+    key: str
+    value: str
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
