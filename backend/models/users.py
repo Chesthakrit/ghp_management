@@ -90,27 +90,41 @@ class User(Base):
                     except:
                         pass
 
-        # 3. ดึงสิทธิ์รายบุคคล (User Specific Page Access)
+        # 3. ดึงสิทธิ์จากการตั้งค่ารายบุคคล (Individual Overrides)
         session = object_session(self)
         if session:
+            # ดึงสิทธิ์ที่มอบให้พนักงานรายบุคคล
             individual_access = session.query(UserPageAccess).filter(UserPageAccess.user_id == self.id).all()
             for pa in individual_access:
                 perms.append(pa.page_id)
-                # หากมีสิทธิ์แก้ไข ให้เพิ่มสิทธิ์จัดการพ่วงไปด้วยถ้าเป็นหน้าจัดการ
+                # หากมีสิทธิ์แก้ไข (can_edit) ให้สิทธิ์การจัดการที่เกี่ยวข้องพ่วงไปด้วย
                 if pa.can_edit:
-                    if pa.page_id == 'page.usermanagement': perms.append('user.manage')
-                    if pa.page_id == 'page.hr': perms.append('action.hr.edit_name') # ตัวอย่าง
+                    if pa.page_id in ['page.usermanagement', 'page.hr']:
+                        perms.append('user.manage')
+                        perms.append('action.hr.edit_name')
 
-        # 4. ดึงสิทธิ์จากแผนก (Department-wide Access)
-        if self.employee_profile and self.employee_profile.department:
-            session = object_session(self)
-            if session:
-                dept_obj = session.query(Department).filter(Department.value == self.employee_profile.department).first()
-                if dept_obj and dept_obj.permissions:
-                    try:
-                        perms.extend(json.loads(dept_obj.permissions))
-                    except:
-                        pass
+            # 4. ดึงสิทธิ์จากแผนก และ ตำแหน่ง (Cascading Access จากโปรไฟล์)
+            if self.employee_profile:
+                # ดึงจากแผนก (Section/Department)
+                if self.employee_profile.department:
+                    dept_obj = session.query(Department).filter(
+                        (Department.value == self.employee_profile.department) | 
+                        (Department.name == self.employee_profile.department) |
+                        (Department.name_th == self.employee_profile.department)
+                    ).first()
+                    if dept_obj and dept_obj.permissions:
+                        try: perms.extend(json.loads(dept_obj.permissions))
+                        except: pass
+                
+                # ดึงจากตำแหน่ง (Job Title/Position)
+                if self.employee_profile.job_title:
+                    jt_obj = session.query(JobTitle).filter(
+                        (JobTitle.name == self.employee_profile.job_title) |
+                        (JobTitle.name_th == self.employee_profile.job_title)
+                    ).first()
+                    if jt_obj and jt_obj.permissions:
+                        try: perms.extend(json.loads(jt_obj.permissions))
+                        except: pass
         
         # ส่งค่ากลับแบบไม่ซ้ำกัน (Distinct List)
         return list(set(perms))

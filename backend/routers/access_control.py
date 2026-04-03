@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 @router.get("/users-with-access", response_model=List[dict])
-def get_users_with_individual_access(db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_admin)):
+def get_users_with_individual_access(db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_can_manage_access)):
     """ดึงรายชื่อผู้ใช้ทั้งหมดที่มีการกำหนดสิทธิ์การเข้าถึงหน้าเว็บเป็นรายบุคคล"""
     access_list = db.query(models.UserPageAccess).all()
     # ดึงรายชื่อ User IDs ที่ไม่ซ้ำกัน
@@ -33,7 +33,7 @@ def get_users_with_individual_access(db: Session = Depends(get_db), admin: model
     return result
 
 @router.post("/grant", status_code=201)
-def grant_page_access(user_id: int, page_id: str, can_edit: bool = False, db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_admin)):
+def grant_page_access(user_id: int, page_id: str, can_edit: bool = False, db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_can_manage_access)):
     """มอบสิทธิ์การเข้าถึงหน้าเว็บให้กับ User ID ที่ระบุรายบุคคล"""
     # ตรวจสอบว่ามี User นี้อยู่จริงหรือไม่
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -50,7 +50,7 @@ def grant_page_access(user_id: int, page_id: str, can_edit: bool = False, db: Se
     return {"message": f"มอบสิทธิ์การเข้าถึง {page_id} ให้กับ User ID {user_id} เรียบร้อยแล้ว"}
 
 @router.delete("/revoke")
-def revoke_page_access(user_id: int, page_id: str, db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_admin)):
+def revoke_page_access(user_id: int, page_id: str, db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_can_manage_access)):
     """ดึงสิทธิ์การเข้าถึงหน้าเว็บคืนจาก User ID ที่ระบุ"""
     access = db.query(models.UserPageAccess).filter(models.UserPageAccess.user_id == user_id, models.UserPageAccess.page_id == page_id).first()
     if not access:
@@ -61,7 +61,7 @@ def revoke_page_access(user_id: int, page_id: str, db: Session = Depends(get_db)
     return {"message": "ดึงสิทธิ์คืนเรียบร้อยแล้ว"}
 
 @router.get("/user/{user_id}", response_model=List[dict])
-def get_user_page_access(user_id: int, db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_admin)):
+def get_user_page_access(user_id: int, db: Session = Depends(get_db), admin: models.User = Depends(oauth2.check_can_manage_access)):
     """ดึงรายการสิทธิ์การเข้าถึงหน้าเว็บทั้งหมดของผู้ใช้งานรายบุคคล"""
     access_list = db.query(models.UserPageAccess).filter(models.UserPageAccess.user_id == user_id).all()
     return [{"page_id": a.page_id, "can_edit": a.can_edit} for a in access_list]

@@ -34,7 +34,7 @@ def get_departments(db: Session = Depends(get_db), current_user: models.User = D
 def create_department(
     dept: schemas.DepartmentCreate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """เพิ่มแผนกใหม่ (เฉพาะ Admin เท่านั้น)"""
         
@@ -49,7 +49,7 @@ def update_department(
     dept_id: int,
     dept: schemas.DepartmentUpdate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """แก้ไขข้อมูลพื้นฐานของแผนก (เช่น เปลี่ยนชื่อพิกัดแผนก หรือสิทธิ์ส่วนกลาง)"""
     db_dept = db.query(models.Department).filter(models.Department.id == dept_id).first()
@@ -68,7 +68,7 @@ def update_department(
 def reorder_departments(
     payload: schemas.ReorderRequest,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """บันทึกลำดับแผนกใหม่หลังการ Drag & Drop"""
     for item in payload.items:
@@ -78,32 +78,12 @@ def reorder_departments(
     db.commit()
     return db.query(models.Department).order_by(models.Department.display_order.asc()).all()
 
-@router.put("/departments/{dept_id}", response_model=schemas.Department)
-def update_department(
-    dept_id: int, 
-    dept_update: schemas.DepartmentUpdate, 
-    db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
-):
-    """แก้ไขข้อมูลแผนก (เฉพาะ Admin เท่านั้น)"""
-        
-    db_dept = db.query(models.Department).filter(models.Department.id == dept_id).first()
-    if not db_dept:
-        raise HTTPException(status_code=404, detail="ไม่พบแผนกที่ต้องการ")
-        
-    # อัปเดตเฉพาะฟิลด์ที่มีการส่งข้อมูลมา
-    for key, value in dept_update.dict(exclude_unset=True).items():
-        setattr(db_dept, key, value)
-        
-    db.commit()
-    db.refresh(db_dept)
-    return db_dept
 
 @router.delete("/departments/{dept_id}")
 def delete_department(
     dept_id: int, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """ลบแผนก (เฉพาะ Admin เท่านั้น)"""
         
@@ -130,7 +110,7 @@ def get_job_titles(dept_id: Optional[int] = None, db: Session = Depends(get_db),
 def create_job_title(
     jt: schemas.JobTitleCreate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """สร้างตำแหน่งงานใหม่ภายใต้แผนก (เฉพาะ Admin เท่านั้น)"""
         
@@ -144,7 +124,7 @@ def create_job_title(
 def reorder_job_titles(
     payload: schemas.ReorderRequest,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """บันทึกลำดับตำแหน่งงานใหม่หลังการ Drag & Drop"""
     for item in payload.items:
@@ -159,7 +139,7 @@ def update_job_title(
     jt_id: int, 
     jt_update: schemas.JobTitleUpdate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """แก้ไขข้อมูลตำแหน่งงาน (เฉพาะ Admin)"""
         
@@ -178,7 +158,7 @@ def update_job_title(
 def delete_job_title(
     jt_id: int, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """ลบตำแหน่งงาน (เฉพาะ Admin)"""
         
@@ -197,7 +177,7 @@ def delete_job_title(
 def create_job_description(
     jd: schemas.JobDescriptionCreate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """เพิ่มคำอธิบายรายละเอียดงาน (JD) ให้กับตำแหน่งงาน"""
         
@@ -211,7 +191,7 @@ def create_job_description(
 def delete_job_description(
     jd_id: int, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """ลบรายละเอียดงานที่ไม่ได้ใช้ง่าน"""
         
@@ -235,7 +215,7 @@ def get_duty_categories(db: Session = Depends(get_db), current_user: models.User
 def create_duty_category(
     cat: schemas.DutyCategoryCreate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """เพิ่มหมวดหมู่ทักษะใหม่ (เฉพาะ Admin)"""
         
@@ -249,7 +229,7 @@ def create_duty_category(
 def reorder_duty_categories(
     payload: schemas.ReorderRequest,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """บันทึกลำดับหมวดหมู่ทักษะหลัง Drag & Drop"""
     for item in payload.items:
@@ -264,7 +244,7 @@ def update_duty_category(
     cat_id: int,
     cat_update: schemas.DutyCategoryUpdate,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """แก้ไขหมวดหมู่ทักษะ"""
         
@@ -283,7 +263,7 @@ def update_duty_category(
 def delete_duty_category(
     cat_id: int, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """ลบหมวดหมู่ทักษะ"""
         
@@ -307,7 +287,7 @@ def get_duties(db: Session = Depends(get_db), current_user: models.User = Depend
 def create_duty(
     duty: schemas.DutyCreate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """เพิ่มทักษะใหม่เข้าระบบ (เช่น ความรู้ภาษาอังกฤษ, การใช้ Excel) Outlined"""
         
@@ -321,7 +301,7 @@ def create_duty(
 def reorder_duties(
     payload: schemas.ReorderRequest,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """บันทึกลำดับทักษะหลักหลัง Drag & Drop"""
     try:
@@ -349,7 +329,7 @@ def update_duty(
     duty_id: int, 
     duty_update: schemas.DutyUpdate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """แก้ไขข้อมูลทักษะหลัก Outlined"""
         
@@ -368,7 +348,7 @@ def update_duty(
 def delete_duty(
     duty_id: int, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """ลบทักษะหลักทิ้ง"""
         
@@ -387,7 +367,7 @@ def delete_duty(
 def create_sub_duty(
     sub_duty: schemas.SubDutyCreate, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """เพิ่มหัวข้อเช็คลิสต์ย่อยภายใต้ทักษะหลัก (เช่น ทักษะหลัก: Excel -> ทักษะย่อย: VLOOKUP)"""
         
@@ -401,7 +381,7 @@ def create_sub_duty(
 def reorder_sub_duties(
     payload: schemas.ReorderRequest,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """บันทึกลำดับทักษะย่อยหลัง Drag & Drop"""
     try:
@@ -421,7 +401,7 @@ def update_sub_duty(
     sub_id: int,
     update: schemas.SubDutyUpdate,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """อัปเดตข้อมูลทักษะย่อย (เช่น เพิ่ม tutorial URL)"""
     db_sub = db.query(models.SubDuty).filter(models.SubDuty.id == sub_id).first()
@@ -437,7 +417,7 @@ def update_sub_duty(
 def delete_sub_duty(
     sub_id: int, 
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """ลบทักษะย่อย"""
         
@@ -457,7 +437,7 @@ def update_job_title_duties(
     jt_id: int,
     payload: schemas.JobTitleDutiesUpdate,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_admin)
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
 ):
     """กำหนดว่าตำแหน่งงานนี้ จะต้องมีทักษะ/ความรู้เรื่องอะไรบ้าง"""
         
