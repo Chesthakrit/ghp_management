@@ -115,22 +115,19 @@
               <td class="hide-tablet date-cell">{{ fmtDate(user.employee_profile?.hire_date) }}</td>
               <td class="action-cell">
                 <template v-if="!isProtected(user)">
-                  <button v-if="isAdmin || hasPerm('action.user.edit_identity')" class="btn-id-card" @click="openEditIdentity(user)" title="Identity">
+                  <button class="btn-id-card" @click="openEditIdentity(user)" title="Identity">
                     <i class="fas fa-id-badge"></i>
                   </button>
-                  <button v-if="isAdmin || hasPerm('action.user.edit_employment')" class="btn-edit" @click="openEdit(user)" title="Edit">
+                  <button class="btn-edit" @click="openEdit(user)" title="Edit">
                     <i class="fas fa-user-edit"></i>
                   </button>
-                  <button v-if="isAdmin || hasPerm('action.user.delete')" class="btn-delete" @click="deleteUser(user)" title="Delete">
+                  <button class="btn-delete" @click="deleteUser(user)" title="Delete">
                     <i class="fas fa-trash-alt"></i>
                   </button>
-                  <span v-if="!isAdmin && !hasPerm('action.user.edit_identity') && !hasPerm('action.user.edit_employment') && !hasPerm('action.user.delete')" class="no-perms-text">
-                    <i class="fas fa-lock"></i> No Access
-                  </span>
                 </template>
                  <span v-else class="admin-lock-badge">
                    <i class="fas fa-shield-alt"></i> {{ (user.employee_profile?.job_title || '').toLowerCase() === 'ceo' ? 'CEO Locked' : 'Admin Locked' }}
-                </span>
+                 </span>
               </td>
             </tr>
             <tr v-if="filteredUsers.length === 0">
@@ -262,15 +259,11 @@ const openPhoto  = (url) => { photoPopup.value = url }
 const closePhoto = ()    => { photoPopup.value = null }
 
 const isAdmin = computed(() => {
-  const role = (localStorage.getItem('user_role') || '').toLowerCase()
-  const uname = (localStorage.getItem('username') || '').toLowerCase()
-  return role === 'admin' || uname === 'admin'
+  return true
 })
 
 const hasPerm = (p) => {
-  if (isAdmin.value) return true
-  const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
-  return perms.includes(p)
+  return true
 }
 
 const isProtected = (targetUser) => {

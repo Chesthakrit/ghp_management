@@ -118,17 +118,18 @@
 
           <CompanyPolicy v-else-if="activeMenu === 'policy'" />
 
-          <div v-else-if="activeMenu === 'user_management'" class="user-management-tab">
+          <!-- Management Tab for authorized Users/Managers -->
+          <div v-else-if="activeMenu === 'manage_users'" class="management-tab">
             <UserManagement 
               @go-to-identity="(id) => $emit('go-to-identity', id)"
               @view-profile="(id) => $emit('view-profile', id)"
             />
           </div>
 
-          <!-- Embedded Admin Panel for HR, Salary, Access, and Time/Leave tabs -->
-          <div v-else-if="['hr', 'salary', 'access', 'time_leave'].includes(activeMenu)" class="embedded-admin-tab" style="padding: 20px;">
+          <!-- Dynamic Rendering of other Admin Modules (using AdminPanel's embedded mode) -->
+          <div v-else-if="['manage_hr', 'manage_salary', 'manage_access', 'manage_time_leave'].includes(activeMenu)" class="management-tab-embedded">
             <AdminPanel 
-              :embedded="activeMenu"
+              :embedded="activeMenu.replace('manage_', '')"
               @view-profile="(id) => $emit('view-profile', id)"
               @go-to-identity="(id) => $emit('go-to-identity', id)"
             />
@@ -158,7 +159,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
-import UserManagement from '../admin/UserManagement.vue'
+import UserManagement from '../shared/UserManagement.vue'
 import AdminPanel from '../admin/AdminPanel.vue'
 import SkillViewer from './SkillViewer.vue'
 import AttendancePanel from './AttendancePanel.vue'
@@ -211,32 +212,33 @@ const selectSkill = (skill) => {
   selectedSkill.value = skill
 }
 
+const currentUserPermissions = ref(JSON.parse(localStorage.getItem('user_permissions') || '[]'))
+
 const menuItems = computed(() => {
+  const perms = currentUserPermissions.value
+  
   const baseItems = [
-    { id: 'profile', label: 'Profile', icon: 'fas fa-user-circle' },
-    { id: 'attendance', label: 'Check IN', icon: 'fas fa-clock' },
-    { id: 'skills', label: 'Skills', icon: 'fas fa-award' },
+    { id: 'profile', label: 'Personal Card', icon: 'fas fa-user-circle' },
+    { id: 'attendance', label: 'Time Recording', icon: 'fas fa-clock' },
+    { id: 'skills', label: 'Skill (Tutorial)', icon: 'fas fa-award' },
     { id: 'policy', label: 'Policy & Welfare', icon: 'fas fa-file-contract' },
   ]
 
-  // Add User Management if user has permission
-  const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
+  // Add Dynamic Management Tabs based on Permissions
   if (perms.includes('page.usermanagement') || isAdmin.value) {
-    baseItems.push({ id: 'user_management', label: 'User Management', icon: 'fas fa-users-cog' })
+    baseItems.push({ id: 'manage_users', label: 'Admin (User List)', icon: 'fas fa-users-cog' })
   }
-  
-  // Add explicit Admin Modules directly inside user profile menu
   if (perms.includes('page.hr') || isAdmin.value) {
-    baseItems.push({ id: 'hr', label: 'HR Settings', icon: 'fas fa-sliders-h' })
+    baseItems.push({ id: 'manage_hr', label: 'Admin (Section)', icon: 'fas fa-sitemap' })
+  }
+  if (perms.includes('page.time_leave') || isAdmin.value) {
+    baseItems.push({ id: 'manage_time_leave', label: 'Admin (Time)', icon: 'fas fa-hourglass-half' })
   }
   if (perms.includes('page.salary') || isAdmin.value) {
-    baseItems.push({ id: 'salary', label: 'Salary Config', icon: 'fas fa-money-check-alt' })
+    baseItems.push({ id: 'manage_salary', label: 'Admin (Salary)', icon: 'fas fa-money-check-alt' })
   }
   if (perms.includes('page.access') || isAdmin.value) {
-    baseItems.push({ id: 'access', label: 'Access Control', icon: 'fas fa-user-shield' })
-  }
-  if (perms.includes('page.hr') || isAdmin.value) {
-    baseItems.push({ id: 'time_leave', label: 'Time & Leave', icon: 'fas fa-clock' })
+    baseItems.push({ id: 'manage_access', label: 'Admin (Access Control)', icon: 'fas fa-shield-alt' })
   }
 
   return baseItems
@@ -247,8 +249,8 @@ const handleMenuClick = (item) => {
   if (isMobile.value) isSidebarOpen.value = false
 }
 
-const currentMenuLabel = computed(() => menuItems.find(m => m.id === activeMenu.value)?.label)
-const currentMenuIcon = computed(() => menuItems.find(m => m.id === activeMenu.value)?.icon)
+const currentMenuLabel = computed(() => menuItems.value.find(m => m.id === activeMenu.value)?.label)
+const currentMenuIcon = computed(() => menuItems.value.find(m => m.id === activeMenu.value)?.icon)
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
@@ -262,14 +264,13 @@ const isAdmin = computed(() => {
 })
 
 const hasAdminModulesAccess = computed(() => {
-  const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
-  return isAdmin.value || perms.some(p => ['page.hr', 'page.salary', 'page.access', 'time_leave'].includes(p))
+  const perms = currentUserPermissions.value
+  return isAdmin.value || perms.some(p => ['page.hr', 'page.salary', 'page.access', 'page.time_leave'].includes(p))
 })
 
 const canEvaluate = computed(() => {
   if (isAdmin.value) return true
-  // Also check if they have manage permission (if stored in localStorage)
-  const perms = JSON.parse(localStorage.getItem('user_permissions') || '[]')
+  const perms = currentUserPermissions.value
   return perms.includes('user.manage')
 })
 
@@ -293,6 +294,13 @@ const fetchUserData = async () => {
     const endpoint = targetUserId ? `/users/${targetUserId}` : '/users/me'
     const res = await api.get(endpoint)
     user.value = res.data
+
+    // ─── CRITICAL: Refresh current user's permissions in frontend state ───
+    if (!props.userId) {
+       currentUserPermissions.value = res.data.permissions || []
+       localStorage.setItem('user_permissions', JSON.stringify(currentUserPermissions.value))
+       localStorage.setItem('user_role', res.data.role || '')
+    }
 
     let evalsRes = { data: [] }
     let subEvalsRes = { data: [] }

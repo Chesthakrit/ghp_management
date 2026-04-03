@@ -50,6 +50,11 @@ AVAILABLE_PERMISSIONS = [
     {"id": "page.warehouse", "name": "หน้า: คลังสินค้า (Warehouse Page)"},
     {"id": "page.office", "name": "หน้า: สำนักงาน (Office Page)"},
     {"id": "page.accounts", "name": "หน้า: การเงินและบัญชี (Accounts Page)"},
+    {"id": "page.time_leave", "name": "หน้า: จัดการเวลาและวันหยุด (Time & Leave Settings)"},
+    {"id": "action.time.edit_hours", "name": "ปุ่ม: แก้ไขเวลาทำงาน (Edit Working Hours)"},
+    {"id": "action.time.edit_ot", "name": "ปุ่ม: แก้ไขกฎ OT (Edit OT Rules)"},
+    {"id": "action.time.edit_leave", "name": "ปุ่ม: แก้ไขโควตาวันลา (Edit Leave Quota)"},
+    {"id": "action.time.edit_holiday", "name": "ปุ่ม: จัดการวันหยุดประจำปี (Manage Public Holiday)"},
     # สามารถเพิ่มสิทธิ์ใหม่ๆ เข้าไปในอนาคตได้ที่นี่
 ]
 

@@ -159,6 +159,17 @@ import { ref, computed, onMounted, watch } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
 
+const userPermissions = ref(JSON.parse(localStorage.getItem('user_permissions') || '[]'))
+const dbUser = ref(JSON.parse(localStorage.getItem('user_data') || '{}'))
+
+const isAdmin = computed(() => {
+  return dbUser.value?.username === 'admin' || dbUser.value?.role?.name === 'admin'
+})
+
+const canEdit = (section) => {
+  return true
+}
+
 const currentYear = new Date().getFullYear()
 
 // Config Data

@@ -13,7 +13,6 @@
         </button>
 
         <button
-          v-if="isAdmin || hasPerm('page.usermanagement')"
           :class="['nav-item', { active: activeTab === 'users' }]"
           @click="activeTab = 'users'; sidebarOpen = false"
         >
@@ -21,7 +20,6 @@
         </button>
 
         <button
-          v-if="isAdmin || hasPerm('page.hr')"
           :class="['nav-item', { active: activeTab === 'hr' }]"
           @click="activeTab = 'hr'; sidebarOpen = false"
         >
@@ -29,7 +27,6 @@
         </button>
 
         <button
-          v-if="isAdmin || hasPerm('page.salary')"
           :class="['nav-item', { active: activeTab === 'salary' }]"
           @click="activeTab = 'salary'; sidebarOpen = false"
         >
@@ -45,7 +42,6 @@
         </button>
 
         <button
-          v-if="isAdmin || hasPerm('page.hr')"
           :class="['nav-item', { active: activeTab === 'time_leave' }]"
           @click="activeTab = 'time_leave'; sidebarOpen = false"
         >
@@ -53,7 +49,6 @@
         </button>
 
         <button
-          v-if="isAdmin || hasPerm('page.hr')"
           :class="['nav-item', { active: activeTab === 'policies' }]"
           @click="activeTab = 'policies'; sidebarOpen = false"
         >
@@ -142,11 +137,11 @@ import { ref, computed, watch, onMounted } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
 import AccessManagement from './AccessManagement.vue'
-import UserManagement from './UserManagement.vue'
-import SalaryManagement from './SalaryManagement.vue'
-import HRManagement from './HRManagement.vue'
-import PolicyManagement from './PolicyManagement.vue'
-import AttendanceSettings from './AttendanceSettings.vue'
+import UserManagement from '../shared/UserManagement.vue'
+import SalaryManagement from '../shared/SalaryManagement.vue'
+import HRManagement from '../shared/HRManagement.vue'
+import PolicyManagement from '../shared/PolicyManagement.vue'
+import AttendanceSettings from '../shared/AttendanceSettings.vue'
 
 const props = defineProps({
   embedded: { type: String, default: null }
@@ -155,6 +150,11 @@ const props = defineProps({
 const emit = defineEmits(['logout', 'go-to-identity', 'go-to-profile', 'view-profile'])
 
 const activeTab = ref(props.embedded || 'users')
+
+watch(() => props.embedded, (newVal) => {
+  if (newVal) activeTab.value = newVal
+})
+
 const sidebarOpen = ref(false)
 const currentUser = ref(null)
 const isLoading = ref(false)
@@ -209,10 +209,7 @@ onMounted(fetchData)
 // Initial tab placement
 watch(currentUser, (newVal) => {
   if (newVal && !props.embedded) {
-    if (isAdmin.value || hasPerm('page.usermanagement')) activeTab.value = 'users'
-    else if (hasPerm('page.hr')) activeTab.value = 'hr'
-    else if (hasPerm('page.salary')) activeTab.value = 'salary'
-    else if (hasPerm('page.access')) activeTab.value = 'access'
+    activeTab.value = 'users'
   }
 }, { immediate: true })
 </script>

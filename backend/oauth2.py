@@ -67,24 +67,30 @@ def verify_token(token: str):
 
 # --- ฟังก์ชันตรวจสอบสิทธิ์แอดมิน (Dependency: check_admin) ---
 def check_admin(current_user: models.User = Depends(get_current_user)):
-    """ยามเฝ้าประตูชั้นที่ 2: ตรวจสอบว่าเป็น Admin หรือไม่"""
+    """ยามเฝ้าประตูชั้นที่ 2: ตรวจสอบความเป็นแอดมิน (หรือผู้ที่ได้รับสิทธิ์พิเศษรายบุคคล)"""
     is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
                (current_user.username.lower() == 'admin')
     
-    if not is_admin:
+    # หากไม่ใช่แอดมิน ให้เช็คว่ามีสิทธิ์เข้าหน้าใดหน้าหนึ่งใน Admin Panel หรือไม่
+    # เช่น ถ้ามีสิทธิ์ page.access, page.hr, page.salary, page.usermanagement อย่างใดอย่างหนึ่ง ก็ถือว่าผ่าน
+    perms = current_user.permissions or []
+    has_any_admin_access = any(p.startswith('page.') for p in perms)
+
+    if not is_admin and not has_any_admin_access:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="ไม่มีสิทธิ์ในการดำเนินการนี้ (เฉพาะแอดมินเท่านั้น)"
+            detail="ไม่มีสิทธิ์ในการดำเนินการนี้ (เฉพาะแอดมิน หรือผู้ที่ได้รับสิทธิ์รายบุคคล)"
         )
     return current_user
 
 # --- ฟังก์ชันตรวจสอบสิทธิ์จัดการข้อมูลพนักงาน (Dependency: check_can_manage_users) ---
 def check_can_manage_users(current_user: models.User = Depends(get_current_user)):
-    """ยามเฝ้าประตูสำหรับ HR: ตรวจสอบว่าเป็น Admin หรือมีสิทธิ์จัดการพนักงาน"""
+    """ยามเฝ้าประตูสำหรับ HR: ตรวจสอบสิทธิ์จัดการพนักงาน"""
     is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
                (current_user.username.lower() == 'admin')
     
     perms = current_user.permissions or []
+    # ให้ผ่านหากเป็นแอดมิน หรือมีสิทธิ์จัดการพนักงาน หรือมีสิทธิ์เข้าหน้าจัดการพนักงาน
     if not is_admin and 'user.manage' not in perms and 'page.usermanagement' not in perms:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

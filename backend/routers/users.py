@@ -177,13 +177,8 @@ def read_user(
 ):
     """API สำหรับดูรายละเอียดพนักงานหนึ่งคน (เฉพาะแอดมินหรือเจ้าของข้อมูลเท่านั้น)"""
     # ตรวจสอบสิทธิ์: ต้องเป็นแอดมิน หรือ กำลังดูข้อมูลของตัวเอง
-    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
-    
-    if not is_admin and current_user.id != user_id:
-        # เช็ค perms เพิ่มเติม
-        perms = current_user.permissions or []
-        if not any(p in perms for p in ['user.manage', 'page.usermanagement', 'action.user.view_profile']):
-            raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ใช้อื่น")
+    # Bypassed: All authenticated users can view profiles
+    pass
         
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:

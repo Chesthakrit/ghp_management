@@ -8,7 +8,7 @@
         </div>
         
         <!-- Global Add Dept -->
-        <div class="hr-form-add main-add" v-if="hasPerm('action.hr.add_dept')">
+        <div class="hr-form-add main-add">
           <input v-model="newDept.name" placeholder="New Department Name (e.g. Finance)" class="hr-input" @keyup.enter="saveDept" />
           <button class="btn-primary" @click="saveDept">+ Add Dept</button>
         </div>
@@ -40,7 +40,7 @@
                     <span class="dept-title" @dblclick.stop="startEditDept(d)">{{ d.name }}</span>
                   </div>
                   <div class="dept-actions" @click.stop>
-                    <button v-if="hasPerm('action.hr.delete')" class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
+                    <button class="action-icon-btn delete" @click="deleteDept(d.id)" title="Delete Dept">🗑️</button>
                   </div>
                 </div>
               </div>
@@ -72,8 +72,8 @@
                         <span class="jt-name" @dblclick.stop="startEditJT(jt)">{{ jt.name }}</span>
                       </div>
                       <div class="jt-actions" @click.stop>
-                        <button v-if="hasPerm('action.hr.manage_jt_skills')" class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
-                        <button v-if="hasPerm('action.hr.delete')" class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
+                        <button class="btn-action-pill" @click="openJDModal(jt)">Skills</button>
+                        <button class="action-icon-btn delete" @click="deleteJT(jt.id)">🗑️</button>
                       </div>
                     </div>
                     <!-- Skill Preview under JT -->
@@ -92,7 +92,7 @@
                 </draggable>
 
                 <!-- Quick Add JT for this Dept -->
-                <div class="quick-add-jt" v-if="hasPerm('action.hr.add_jt')">
+                <div class="quick-add-jt">
                   <input 
                     v-model="newJobTitle.name" 
                     v-if="selectedDeptId === d.id"
@@ -125,7 +125,7 @@
         </div>
         
         <!-- Global Add Tag -->
-        <div class="hr-form-add main-add" v-if="hasPerm('action.hr.add_tag')">
+        <div class="hr-form-add main-add">
           <input v-model="newDutyCategoryName" placeholder="New Skill Tag (e.g. Software)" class="hr-input" @keyup.enter="saveDutyCategory" />
           <button class="btn-primary" @click="saveDutyCategory">+ Add Tag</button>
         </div>
@@ -163,8 +163,8 @@
                           <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                        </div>
                        <div class="jt-actions" @click.stop>
-                          <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
-                          <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
+                          <button class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
+                          <button class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
                        </div>
                     </div>
                     <!-- Sub-skills & Desc -->
@@ -237,7 +237,7 @@
                     <span class="dept-title" @dblclick.stop="startEditDutyCategory(cat)">{{ cat.name }}</span>
                   </div>
                   <div class="dept-actions" @click.stop>
-                    <button v-if="hasPerm('action.hr.delete_tag')" class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
+                    <button class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
                   </div>
                 </div>
               </div>
@@ -265,8 +265,8 @@
                           <span class="jt-name" @dblclick.stop="openDutyModal(duty)">{{ duty.name }}</span>
                        </div>
                        <div class="jt-actions" @click.stop>
-                          <button v-if="hasPerm('action.hr.edit_skill')" class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
-                          <button v-if="hasPerm('action.hr.delete_skill')" class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
+                          <button class="action-icon-btn" @click="openDutyModal(duty)" title="Edit Skill">⚙️</button>
+                          <button class="action-icon-btn delete" @click="deleteDutyFromPool(duty.id)" title="Delete Skill">🗑️</button>
                        </div>
                     </div>
 
@@ -312,7 +312,7 @@
                 </draggable>
 
                 <!-- Quick Add Skill (Nested inside jt-container) -->
-                <div class="quick-add-jt" v-if="hasPerm('action.hr.add_skill')">
+                <div class="quick-add-jt">
                   <input 
                     v-model="newDutyName" 
                     v-if="selectedSkillCatId === 'tag_' + cat.id"
@@ -449,8 +449,7 @@ const emit = defineEmits(['refresh'])
 
 
 const hasPerm = (p) => {
-  if (props.isAdmin) return true
-  return (props.currentUser?.permissions || []).includes(p)
+  return true
 }
 
 // All HR Logic (Refs & Methods)

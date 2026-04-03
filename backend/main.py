@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routers import attendance, auth, hr, payroll, permissions, projects, users
+from routers import attendance, auth, hr, payroll, permissions, projects, users, access_control
 
 # สร้างอินสแตนซ์ของ FastAPI
 app = FastAPI()
@@ -39,6 +39,7 @@ app.include_router(permissions.router)
 app.include_router(hr.router)
 app.include_router(attendance.router)
 app.include_router(payroll.router)
+app.include_router(access_control.router)
 
 @app.get("/")
 async def root():

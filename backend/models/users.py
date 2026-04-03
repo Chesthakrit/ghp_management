@@ -64,7 +64,7 @@ class User(Base):
 
     @property
     def permissions(self):
-        """Helper function สำหรับดึงสิทธิ์ที่รวมกันระหว่าง Role และ ตำแหน่ง (Job Title)"""
+        """Helper function สำหรับดึงสิทธิ์ที่รวมกันระหว่าง Role, ตำแหน่ง (Job Title) และสิทธิ์รายบุคคล (Individual Page Access)"""
         from sqlalchemy.orm import object_session
         perms = []
         
@@ -79,10 +79,7 @@ class User(Base):
         if self.employee_profile and self.employee_profile.job_title:
             session = object_session(self)
             if session:
-                # ค้นหา JobTitle ที่ชื่อตรงกันและอยู่ในแผนกเดียวกัน (ถ้ามีระบุแผนก)
                 query = session.query(JobTitle).filter(JobTitle.name == self.employee_profile.job_title)
-                
-                # หากโปรไฟล์ระบุแผนก ให้เช็คแผนกด้วยเพื่อให้ได้ข้อมูลที่ถูกต้องแม่นยำ
                 if self.employee_profile.department:
                     query = query.join(Department).filter(Department.value == self.employee_profile.department)
                 
@@ -90,6 +87,28 @@ class User(Base):
                 if jt and jt.permissions:
                     try:
                         perms.extend(json.loads(jt.permissions))
+                    except:
+                        pass
+
+        # 3. ดึงสิทธิ์รายบุคคล (User Specific Page Access)
+        session = object_session(self)
+        if session:
+            individual_access = session.query(UserPageAccess).filter(UserPageAccess.user_id == self.id).all()
+            for pa in individual_access:
+                perms.append(pa.page_id)
+                # หากมีสิทธิ์แก้ไข ให้เพิ่มสิทธิ์จัดการพ่วงไปด้วยถ้าเป็นหน้าจัดการ
+                if pa.can_edit:
+                    if pa.page_id == 'page.usermanagement': perms.append('user.manage')
+                    if pa.page_id == 'page.hr': perms.append('action.hr.edit_name') # ตัวอย่าง
+
+        # 4. ดึงสิทธิ์จากแผนก (Department-wide Access)
+        if self.employee_profile and self.employee_profile.department:
+            session = object_session(self)
+            if session:
+                dept_obj = session.query(Department).filter(Department.value == self.employee_profile.department).first()
+                if dept_obj and dept_obj.permissions:
+                    try:
+                        perms.extend(json.loads(dept_obj.permissions))
                     except:
                         pass
         
@@ -110,6 +129,7 @@ class Department(Base):
     name_v3 = Column(String, nullable=True)         # ชื่อแผนกภาษาที่สาม
     value = Column(String, unique=True, index=True) # ค่าที่ใช้ในระบบ เช่น 'office', 'production'
     display_order = Column(Integer, default=100)    # ลำดับการแสดงผล (ใช้สำหรับ Drag & Drop)
+    permissions = Column(String, nullable=True)     # สิทธิ์ส่วนกลางของแผนก (ทุกคนในแผนกจะได้รับ)
     
     # ความสัมพันธ์: หนึ่งแผนกมีได้หลายชื่อตำแหน่ง
     job_titles = relationship("JobTitle", back_populates="department", cascade="all, delete-orphan")
@@ -138,6 +158,16 @@ class JobTitle(Base):
     # รายละเอียดงานและความสัมพันธ์กับทักษะ
     descriptions = relationship("JobDescription", back_populates="job_title", cascade="all, delete-orphan")
     duties = relationship("Duty", secondary=job_title_duty_link, back_populates="job_titles")
+
+class UserPageAccess(Base):
+    """ตารางกำหนดสิทธิ์การเข้าถึงหน้าเว็บรายบุคคล (User-based Page Access)"""
+    __tablename__ = "user_page_access"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    page_id = Column(String, index=True) # เช่น 'page.hr', 'page.salary', 'page.usermanagement'
+    can_edit = Column(Boolean, default=False) # สามารถแก้ไขข้อมูลในหน้านั้นได้หรือไม่
+    
+    user = relationship("User", backref="individual_page_access")
 
 class DutyCategory(Base):
     """หมวดหมู่ของทักษะ (Duty Categories) เช่น ทักษะงานไม้, ทักษะงานเขียนแบบ"""

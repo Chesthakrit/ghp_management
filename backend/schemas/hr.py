@@ -162,11 +162,13 @@ class DepartmentUpdate(BaseModel):
     name_th: Optional[str] = None
     name_v3: Optional[str] = None
     value: Optional[str] = None
+    permissions: Optional[str] = None
 
 class Department(DepartmentBase):
     """ข้อมูลแผนกสำหรับส่งออก (รวมรายการตำแหน่งในแผนกนั้นๆ)"""
     id: int
     display_order: int = 100
+    permissions: Optional[str] = None
     job_titles: List[JobTitle] = []
     class Config:
         from_attributes = True

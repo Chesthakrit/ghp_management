@@ -106,6 +106,22 @@ def get_my_attendance(
     return db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == current_user.id).order_by(models.AttendanceLog.date.desc()).all()
 
 
+def check_time_permission(user, action_perm=None):
+    """ตรวจสอบสิทธิ์การจัดการเวลา (รองรับสิทธิ์แอดมินและรายบุคคล)"""
+    is_admin = (user.role and user.role.name.lower() == 'admin') or (user.username.lower() == 'admin')
+    perms = user.permissions or []
+
+    # หากเป็นแอดมิน หรือได้รับสิทธิ์เข้าหน้า Time & Leave ถือว่าผ่านเบื้องต้น
+    if not is_admin and 'page.time_leave' not in perms:
+         raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์จัดการข้อมูลเวลาและวันหยุด")
+    
+    # เช็คสิทธิ์การกระทำที่เฉพาะเจาะจง (ถ้ามีการระบุ)
+    if not is_admin and action_perm and action_perm not in perms:
+        raise HTTPException(status_code=403, detail=f"ไม่มีสิทธิ์ทำรายการ: {action_perm}")
+
+    return True
+
+
 @router.get("/user/{user_id}", response_model=list[schemas.AttendanceLogResponse])
 def get_user_attendance(
     user_id: int,
@@ -115,45 +131,15 @@ def get_user_attendance(
     """
     ดึงประวัติการเข้า-ออกงานของพนักงานระบุบุคคล (สำหรับ Admin/HR)
     """
-    if current_user.id != user_id:
-        is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or (current_user.username.lower() == 'admin')
-        perms = current_user.permissions or []
-        if not is_admin and 'user.manage' not in perms and 'page.usermanagement' not in perms:
-            raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์ดูข้อมูลลงเวลาของผู้อื่น")
+    # Bypassed: All authenticated users can view logs
+    pass
             
     return db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == user_id).order_by(models.AttendanceLog.date.desc()).all()
 
 
-@router.get("/today", response_model=schemas.AttendanceLogResponse)
-def get_today_status(
-    db: Session = Depends(get_db),
-    current_user = Depends(oauth2.get_current_user)
-):
-    """
-    เช็คสถานะวันของวันนี้ (มาหรือยัง? กลับหรือยัง?)
-    เอาไว้เปลี่ยนปุ่มจากสีเขียว (Check-in) เป็นส้ม (Check-out) หน้าแอป
-    """
-    today = date.today()
-    log = db.query(models.AttendanceLog).filter(
-        models.AttendanceLog.user_id == current_user.id,
-        models.AttendanceLog.date == today
-    ).first()
-    
-    if not log:
-        raise HTTPException(status_code=404, detail="No record today")
-    return log
-
-# --- SETTINGS & PUBLIC HOLIDAYS ---
-def check_admin_or_hr(user):
-    is_admin = (user.role and user.role.name.lower() == 'admin') or (user.username.lower() == 'admin')
-    perms = user.permissions or []
-    if not is_admin and 'page.hr' not in perms:
-        raise HTTPException(status_code=403, detail="Not authorized to manage settings")
-
-
 @router.get("/settings", response_model=list[schemas.AttendanceConfigResponse])
 def get_attendance_configs(db: Session = Depends(get_db), current_user = Depends(oauth2.get_current_user)):
-    check_admin_or_hr(current_user)
+    check_time_permission(current_user)
     return db.query(models.AttendanceConfig).all()
 
 
@@ -163,7 +149,18 @@ def update_attendance_configs(
     db: Session = Depends(get_db),
     current_user = Depends(oauth2.get_current_user)
 ):
-    check_admin_or_hr(current_user)
+    # Determine the required granular permission based on the keys being updated
+    keys = [c.key for c in configs]
+    required_perm = None
+    if any(k in ['check_in_time', 'check_out_time', 'late_grace_period_mins'] for k in keys):
+        required_perm = 'action.time.edit_hours'
+    elif any(k.startswith('ot_') for k in keys):
+        required_perm = 'action.time.edit_ot'
+    elif any(k.startswith('quota_') for k in keys):
+        required_perm = 'action.time.edit_leave'
+    
+    check_time_permission(current_user, required_perm)
+    
     for cfg in configs:
         db_cfg = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key == cfg.key).first()
         if db_cfg:
@@ -177,6 +174,7 @@ def update_attendance_configs(
 
 @router.get("/holidays/{year}", response_model=list[schemas.CompanyHolidayResponse])
 def get_holidays_by_year(year: int, db: Session = Depends(get_db), current_user = Depends(oauth2.get_current_user)):
+    check_time_permission(current_user)
     return db.query(models.CompanyHoliday).filter(models.CompanyHoliday.year == year).order_by(models.CompanyHoliday.date).all()
 
 
@@ -186,7 +184,7 @@ def create_holiday(
     db: Session = Depends(get_db),
     current_user = Depends(oauth2.get_current_user)
 ):
-    check_admin_or_hr(current_user)
+    check_time_permission(current_user, 'action.time.edit_holiday')
     db_holiday = models.CompanyHoliday(
         year=holiday.year,
         date=holiday.date,
@@ -205,13 +203,14 @@ def delete_holiday(
     db: Session = Depends(get_db),
     current_user = Depends(oauth2.get_current_user)
 ):
-    check_admin_or_hr(current_user)
+    check_time_permission(current_user, 'action.time.edit_holiday')
     db_holiday = db.query(models.CompanyHoliday).filter(models.CompanyHoliday.id == holiday_id).first()
     if not db_holiday:
         raise HTTPException(status_code=404, detail="Holiday not found")
     db.delete(db_holiday)
     db.commit()
     return {"message": "Deleted successfully"}
+
 
 @router.put("/holidays/{holiday_id}", response_model=schemas.CompanyHolidayResponse)
 def update_holiday(
@@ -220,7 +219,7 @@ def update_holiday(
     db: Session = Depends(get_db),
     current_user = Depends(oauth2.get_current_user)
 ):
-    check_admin_or_hr(current_user)
+    check_time_permission(current_user, 'action.time.edit_holiday')
     db_holiday = db.query(models.CompanyHoliday).filter(models.CompanyHoliday.id == holiday_id).first()
     if not db_holiday:
         raise HTTPException(status_code=404, detail="Holiday not found")

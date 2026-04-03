@@ -1,41 +1,81 @@
 <template>
   <div class="access-management">
-    <div class="access-grid">
-      <!-- Left: Job Titles List (Accordion Style) -->
+    <!-- Mode Switcher -->
+    <div class="mode-switcher">
+      <button 
+        :class="['mode-btn', { active: activeMode === 'org' }]" 
+        @click="activeMode = 'org'"
+      >
+        <i class="fas fa-sitemap"></i> Organization (แผนก/ตำแหน่ง)
+      </button>
+      <button 
+        :class="['mode-btn', { active: activeMode === 'user' }]" 
+        @click="activeMode = 'user'"
+      >
+        <i class="fas fa-user-shield"></i> Individual ID (รายบุคคล)
+      </button>
+    </div>
 
+    <div class="access-grid">
+      <!-- Left: Sidebar Tree -->
       <div class="jt-sidebar card">
-        <h3 class="selection-title">📂 Organization Structure</h3>
+        <h3 class="selection-title">
+          <i :class="activeMode === 'org' ? 'fas fa-building' : 'fas fa-users'"></i>
+          {{ activeMode === 'org' ? 'Structure Tree' : 'User Selection' }}
+        </h3>
+        
         <div v-if="isLoading" class="loading-state">Loading...</div>
-        <div v-else class="salary-accordion">
-          <div v-for="dept in departments" :key="dept.id" class="org-dept-block">
-            <!-- Department Header -->
+        
+        <!-- Organization Tree Mode -->
+        <div v-else-if="activeMode === 'org'" class="org-tree">
+          <div v-for="dept in departments" :key="dept.id" class="org-node">
+            <!-- Section Header (Selectable & Expandable) -->
             <div 
-              class="dept-row dept-header-row" 
-              :class="{ expanded: expandedDepts.includes(dept.id) }"
-              @click="toggleDeptExpansion(dept.id)"
+              class="tree-header dept-tree-header" 
+              :class="{ active: selectedType === 'dept' && selectedDept?.id === dept.id }"
+              @click="selectDept(dept)"
             >
-              <div class="dept-title-content">
-                <span class="toggle-icon">{{ expandedDepts.includes(dept.id) ? '▼' : '▶' }}</span>
-                <span class="dept-title">{{ dept.name }}</span>
-              </div>
+               <div class="header-main">
+                  <span class="tree-toggle" @click.stop="toggleDeptExpansion(dept.id)">
+                    {{ expandedDepts.includes(dept.id) ? '▼' : '▶' }}
+                  </span>
+                  <i class="fas fa-building node-icon"></i>
+                  <span class="node-name">{{ dept.name }}</span>
+               </div>
+               <span class="node-badge" title="Group Access">Group</span>
             </div>
 
             <!-- Job Titles (Nested) -->
-            <div v-if="expandedDepts.includes(dept.id)" class="jt-container">
+            <div v-if="expandedDepts.includes(dept.id)" class="tree-children">
               <div 
                 v-for="jt in jobTitles.filter(j => j.department_id === dept.id)" 
                 :key="jt.id"
-                class="jt-block-nested"
-                :class="{ active: selectedJT?.id === jt.id }"
+                class="tree-item jt-tree-item"
+                :class="{ active: selectedType === 'jt' && selectedJT?.id === jt.id }"
                 @click="selectJobTitle(jt)"
               >
-                <div class="jt-main-row">
-                   <span class="jt-name">{{ jt.name }}</span>
-                </div>
+                  <i class="fas fa-user-tag node-icon-sm"></i>
+                  <span class="node-name-sm">{{ jt.name }}</span>
               </div>
               <div v-if="!jobTitles.filter(j => j.department_id === dept.id).length" class="no-data-hint">
-                No positions
+                Empty
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Selection Mode -->
+        <div v-else class="user-selection-list">
+          <div 
+            v-for="u in allUsers" 
+            :key="u.id"
+            class="user-item"
+            :class="{ active: selectedUser?.id === u.id }"
+            @click="selectUser(u)"
+          >
+            <div class="user-info">
+              <span class="u-name">{{ u.first_name }} {{ u.last_name }}</span>
+              <span class="u-id">ID: @{{ u.username }}</span>
             </div>
           </div>
         </div>
@@ -43,124 +83,70 @@
 
       <!-- Right: Permissions Grid -->
       <div class="permissions-content card">
-        <div v-if="!selectedJT" class="no-jt-selected">
-          <i class="fas fa-arrow-left"></i>
-          <p>Please select a Job Title to manage access rights.</p>
+        <!-- Placeholder States -->
+        <div v-if="!hasSelection" class="no-selection-state">
+          <i :class="placeholderIcon"></i>
+          <p>{{ placeholderText }}</p>
         </div>
         
         <div v-else>
+          <!-- Header -->
           <div class="content-header">
-            <h3>Access Rights for: <span class="highlight">{{ selectedJT.name }}</span></h3>
+            <div class="header-titles">
+               <span class="selection-badge">{{ activeMode === 'org' ? (selectedType === 'dept' ? 'Section' : 'Position') : 'User' }}</span>
+               <h3>{{ selectionName }}</h3>
+            </div>
+            
             <button class="btn-primary" @click="savePermissions" :disabled="isSaving">
               {{ isSaving ? 'Saving...' : '💾 Save Changes' }}
             </button>
           </div>
 
-          <!-- Section: User Management -->
-          <div class="perm-section">
-            <div class="section-badge">Module</div>
-            <div class="accordion-header" @click="userSectionExpanded = !userSectionExpanded" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-              <h4 style="margin: 0;"><i class="fas fa-users-cog"></i> User Management Page</h4>
-              <span class="toggle-icon">{{ userSectionExpanded ? '▼' : '▶' }}</span>
+          <!-- Info Banner -->
+          <div class="info-banner" v-if="activeMode === 'org' && selectedType === 'dept'">
+             <i class="fas fa-info-circle"></i>
+             EVERYONE in the <strong>{{ selectedDept?.name }}</strong> section will inherit any permissions set here.
+          </div>
+
+          <!-- Permission Layout -->
+          <div v-for="section in permissionLayout" :key="section.title" class="perm-section">
+            <div class="section-badge">{{ section.badge || 'Module' }}</div>
+            <div class="accordion-header" @click="section.expanded = !section.expanded">
+              <h4><i :class="section.icon"></i> {{ section.title }}</h4>
+              <span class="toggle-icon">{{ section.expanded ? '▼' : '▶' }}</span>
             </div>
             
-            <div v-if="userSectionExpanded" style="margin-top: 15px;">
-              <div class="perm-row page-level">
+            <div v-if="section.expanded" class="section-content-area">
+              <div class="perm-row-main">
                 <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.usermanagement" />
+                  <input type="checkbox" v-model="selectedPerms" :value="section.pageId" />
                   <span class="slider"></span>
-                  <span class="label-text">Allow Access to User Management Page</span>
+                  <span class="label-text">Enable Full Access to {{ section.title }}</span>
                 </label>
               </div>
 
-              <div class="granular-actions" :class="{ disabled: !selectedPerms.includes('page.usermanagement') }">
-                <div class="action-item">
+              <!-- Granular Actions -->
+              <div v-if="activeMode === 'org'" class="granular-actions" :class="{ disabled: !selectedPerms.includes(section.pageId) }">
+                <div v-for="action in section.actions" :key="action.id" class="action-item">
                   <label class="chk-container">
-                    <input type="checkbox" v-model="selectedPerms" value="action.user.edit_identity" :disabled="!selectedPerms.includes('page.usermanagement')" />
+                    <input type="checkbox" v-model="selectedPerms" :value="action.id" :disabled="!selectedPerms.includes(section.pageId)" />
                     <span class="checkmark"></span>
-                    Edit Employee Identity
+                    <span class="action-label">{{ action.label }}</span>
                   </label>
                 </div>
-                <div class="action-item">
-                  <label class="chk-container">
-                    <input type="checkbox" v-model="selectedPerms" value="action.user.edit_employment" :disabled="!selectedPerms.includes('page.usermanagement')" />
-                    <span class="checkmark"></span>
-                    Employment & Access Control
-                  </label>
-                </div>
-                <div class="action-item">
-                  <label class="chk-container">
-                    <input type="checkbox" v-model="selectedPerms" value="action.user.delete" :disabled="!selectedPerms.includes('page.usermanagement')" />
-                    <span class="checkmark"></span>
-                    Delete Employee
-                  </label>
-                </div>
-                <div class="action-item">
-                  <label class="chk-container">
-                    <input type="checkbox" v-model="selectedPerms" value="action.user.view_profile" :disabled="!selectedPerms.includes('page.usermanagement')" />
-                    <span class="checkmark"></span>
-                    View Profile Page
-                  </label>
-                </div>
+              </div>
+              
+              <!-- Individual Mode Hint -->
+              <div v-else class="id-mode-hint">
+                <p v-if="selectedPerms.includes(section.pageId)" class="hint-active">
+                  <i class="fas fa-check-circle"></i> Granted specifically to this User ID.
+                </p>
+                <p v-else class="hint-normal">
+                  Calculated based on Section/Position rules.
+                </p>
               </div>
             </div>
           </div>
-
-          <!-- Section: HR Management -->
-          <div class="perm-section">
-            <div class="section-badge">Module</div>
-            <div class="accordion-header" @click="hrSectionExpanded = !hrSectionExpanded" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-              <h4 style="margin: 0;"><i class="fas fa-sitemap"></i> HR Settings Page</h4>
-              <span class="toggle-icon">{{ hrSectionExpanded ? '▼' : '▶' }}</span>
-            </div>
-            
-            <div v-if="hrSectionExpanded" style="margin-top: 15px;">
-              <div class="perm-row page-level">
-                <label class="switch-label">
-                  <input type="checkbox" v-model="selectedPerms" value="page.hr" />
-                  <span class="slider"></span>
-                  <span class="label-text">Allow Access to HR Settings Page</span>
-                </label>
-              </div>
-
-              <div class="granular-actions" :class="{ disabled: !selectedPerms.includes('page.hr') }">
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_dept" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add Department
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_jt" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add Job Title
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.edit_name" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Edit Name (Dept / Job Title)
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.delete" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Delete (Dept / Job Title)
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.manage_jt_skills" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Assign Skills to Job Title
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_tag" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add Skill Tag
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.edit_tag" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Edit Skill Tag Name
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.delete_tag" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Delete Skill Tag
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.add_skill" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Add New Skill
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.edit_skill" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Edit Skill Info
-                </label></div>
-                <div class="action-item"><label class="chk-container">
-                  <input type="checkbox" v-model="selectedPerms" value="action.hr.delete_skill" :disabled="!selectedPerms.includes('page.hr')" /><span class="checkmark"></span>Delete Skill
-                </label></div>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
@@ -181,14 +167,86 @@ const props = defineProps({
 
 const emit = defineEmits(['refresh'])
 
-const allPermissions = ref([])
+const activeMode = ref('org')
+const selectedType = ref(null) // 'dept' or 'jt'
+const selectedDept = ref(null)
 const selectedJT = ref(null)
-const selectedPerms = ref([])
+const selectedUser = ref(null)
+
 const expandedDepts = ref([])
-const userSectionExpanded = ref(true)
-const hrSectionExpanded = ref(true)
+const selectedPerms = ref([])
+const allUsers = ref([])
 const isLoading = ref(true)
 const isSaving = ref(false)
+
+const permissionLayout = ref([
+  {
+    title: 'User Management',
+    pageId: 'page.usermanagement',
+    icon: 'fas fa-users-cog',
+    expanded: true,
+    actions: [
+      { id: 'action.user.edit_identity', label: 'Identity' },
+      { id: 'action.user.edit_employment', label: 'Access' },
+      { id: 'action.user.delete', label: 'Delete' },
+      { id: 'action.user.view_profile', label: 'Profile' }
+    ]
+  },
+  {
+    title: 'HR Settings',
+    pageId: 'page.hr',
+    icon: 'fas fa-sitemap',
+    expanded: true,
+    actions: [
+      { id: 'action.hr.add_dept', label: 'Add Dept' },
+      { id: 'action.hr.add_jt', label: 'Add Post' },
+      { id: 'action.hr.edit_name', label: 'Names' },
+      { id: 'action.hr.delete', label: 'Remove' }
+    ]
+  },
+  {
+    title: 'Time & Leave',
+    pageId: 'page.time_leave',
+    icon: 'fas fa-clock',
+    expanded: true,
+    actions: [
+      { id: 'action.time.edit_hours', label: 'Hours' },
+      { id: 'action.time.edit_ot', label: 'OT' },
+      { id: 'action.time.edit_leave', label: 'Quota' },
+      { id: 'action.time.edit_holiday', label: 'Holidays' }
+    ]
+  },
+  {
+    title: 'Salary Management',
+    pageId: 'page.salary',
+    icon: 'fas fa-money-check-alt',
+    expanded: false,
+    actions: []
+  }
+])
+
+// Computed for dynamic UI
+const hasSelection = computed(() => {
+   if (activeMode.value === 'org') return !!(selectedDept.value || selectedJT.value)
+   return !!selectedUser.value
+})
+
+const selectionName = computed(() => {
+   if (activeMode.value === 'org') {
+      return selectedType.value === 'dept' ? selectedDept.value?.name : selectedJT.value?.name
+   }
+   return selectedUser.value ? `${selectedUser.value.first_name} ${selectedUser.value.last_name}` : ''
+})
+
+const placeholderIcon = computed(() => {
+   if (activeMode.value === 'org') return 'fas fa-sitemap'
+   return 'fas fa-user-shield'
+})
+
+const placeholderText = computed(() => {
+   if (activeMode.value === 'org') return 'Select a Section or Job Position to manage group access.'
+   return 'Select an Employee ID to manage individual override access.'
+})
 
 const toggleDeptExpansion = (id) => {
   if (expandedDepts.value.includes(id)) {
@@ -201,17 +259,32 @@ const toggleDeptExpansion = (id) => {
 const fetchData = async () => {
   isLoading.value = true
   try {
-    const permsRes = await api.get('/permissions/')
-    allPermissions.value = permsRes.data
+    const res = await api.get('/users/')
+    allUsers.value = res.data
   } catch (e) {
-    console.error('Failed to load access data', e)
+    console.error('Failed to load users', e)
   } finally {
     isLoading.value = false
   }
 }
 
+const selectDept = (dept) => {
+  selectedType.value = 'dept'
+  selectedDept.value = dept
+  selectedJT.value = null
+  selectedUser.value = null
+  try {
+    selectedPerms.value = dept.permissions ? JSON.parse(dept.permissions) : []
+  } catch (e) {
+    selectedPerms.value = []
+  }
+}
+
 const selectJobTitle = (jt) => {
+  selectedType.value = 'jt'
   selectedJT.value = jt
+  selectedDept.value = null
+  selectedUser.value = null
   try {
     selectedPerms.value = jt.permissions ? JSON.parse(jt.permissions) : []
   } catch (e) {
@@ -219,44 +292,45 @@ const selectJobTitle = (jt) => {
   }
 }
 
-const hasPageAccess = computed(() => {
-  return selectedPerms.value.includes('page.usermanagement')
-})
-
-const hasHRAccess = computed(() => {
-  return selectedPerms.value.includes('page.hr')
-})
-
-// Auto-uncheck granular if page access is lost
-watch(hasPageAccess, (val) => {
-  if (!val) {
-    const granular = ['action.user.edit_identity', 'action.user.edit_employment', 'action.user.delete', 'action.user.view_profile']
-    selectedPerms.value = selectedPerms.value.filter(p => !granular.includes(p))
+const selectUser = async (user) => {
+  selectedUser.value = user
+  selectedJT.value = null
+  selectedDept.value = null
+  selectedType.value = null
+  try {
+    const res = await api.get(`/access-control/user/${user.id}`)
+    selectedPerms.value = res.data.map(a => a.page_id)
+  } catch (e) {
+    console.error(e)
+    selectedPerms.value = []
   }
-})
-
-watch(hasHRAccess, (val) => {
-  if (!val) {
-    const granularHR = [
-      'action.hr.add_dept', 'action.hr.add_jt', 'action.hr.edit_name', 'action.hr.delete',
-      'action.hr.manage_jt_skills', 'action.hr.add_tag', 'action.hr.edit_tag', 'action.hr.delete_tag',
-      'action.hr.add_skill', 'action.hr.edit_skill', 'action.hr.delete_skill'
-    ]
-    selectedPerms.value = selectedPerms.value.filter(p => !granularHR.includes(p))
-  }
-})
+}
 
 const savePermissions = async () => {
-  if (!selectedJT.value) return
   isSaving.value = true
   try {
-    await api.put(`/hr/job-titles/${selectedJT.value.id}`, {
-      permissions: JSON.stringify(selectedPerms.value)
-    })
-    Swal.fire({ icon: 'success', title: 'Permissions Saved', timer: 1000, showConfirmButton: false })
+    const permsJson = JSON.stringify(selectedPerms.value)
+    if (activeMode.value === 'org') {
+      if (selectedType.value === 'dept') {
+         await api.put(`/hr/departments/${selectedDept.value.id}`, { permissions: permsJson })
+      } else {
+         await api.put(`/hr/job-titles/${selectedJT.value.id}`, { permissions: permsJson })
+      }
+    } else {
+      const currentGranted = await api.get(`/access-control/user/${selectedUser.value.id}`)
+      const previouslyGrantedIds = currentGranted.data.map(a => a.page_id)
+      const toGrant = selectedPerms.value.filter(p => !previouslyGrantedIds.includes(p))
+      const toRevoke = previouslyGrantedIds.filter(p => !selectedPerms.value.includes(p))
+      
+      await Promise.all([
+        ...toGrant.map(p => api.post(`/access-control/grant?user_id=${selectedUser.value.id}&page_id=${p}&can_edit=true`)),
+        ...toRevoke.map(p => api.delete(`/access-control/revoke?user_id=${selectedUser.value.id}&page_id=${p}`))
+      ])
+    }
+    Swal.fire({ icon: 'success', title: 'Updated Successfully', timer: 1000, showConfirmButton: false })
     emit('refresh')
   } catch (e) {
-    Swal.fire('Error', 'Failed to save permissions', 'error')
+    Swal.fire('Error', 'Failed to update access', 'error')
   } finally {
     isSaving.value = false
   }
@@ -266,176 +340,96 @@ onMounted(fetchData)
 </script>
 
 <style scoped>
-.access-management {
-  height: 100%;
-}
-.access-grid {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 20px;
-  height: calc(100vh - 120px);
-}
-.card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-}
-.jt-sidebar {
-  padding: 20px;
-  overflow-y: auto;
-}
+.access-management { height: 100%; display: flex; flex-direction: column; gap: 20px; }
 
-.selection-title {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #1a2a3a;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.mode-switcher {
+  display: flex; gap: 10px; padding: 6px; background: #f1f5f9; border-radius: 14px; align-self: flex-start;
+  margin-bottom: 5px;
 }
-.salary-accordion {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.mode-btn {
+  padding: 10px 22px; border: none; background: transparent; color: #64748b; border-radius: 10px; cursor: pointer; font-weight: 700; transition: all 0.2s; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;
 }
-.org-dept-block {
-  border: 1px solid #f1f5f9;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #f8fafc;
-}
-.dept-row {
-  background: white;
-  padding: 12px 14px;
-  border-bottom: 1px solid #f1f5f9;
-}
-.dept-header-row {
-  cursor: pointer;
-}
-.dept-header-row:hover {
-  background: #f1f5f9;
-}
-.dept-header.expanded {
-  background: #f8fafc;
-  border-bottom-color: #e2e8f0;
-}
-.dept-title-content {
-  display: flex; 
-  align-items: center; 
-  gap: 8px;
-}
-.dept-title {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 0.95rem;
-}
-.toggle-icon {
-  font-size: 0.7rem;
-  color: #94a3b8;
-  width: 12px;
-}
-.jt-container {
-  padding: 10px;
-  background: #f8fafc;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.jt-block-nested { 
-  background: white;
-  border: 1px solid #eef2f6;
-  border-radius: 8px; 
-  cursor: pointer; 
-  transition: all 0.2s;
-  overflow: hidden;
-}
-.jt-main-row {
-  padding: 10px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.jt-name {
-  font-weight: 600;
-  color: #334155;
-  font-size: 0.88rem;
-}
-.jt-block-nested.active .jt-name {
-  color: white;
-}
-.no-data-hint {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  padding: 8px 12px;
-  font-style: italic;
-}
-.jt-block-nested:hover { background: #f1f5f9; border-color: #cbd5e1; }
-.jt-block-nested.active { background: #1a2a3a; color: white; border-color: #1a2a3a; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+.mode-btn.active { background: white; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
-.permissions-content {
-  padding: 28px;
-  overflow-y: auto;
-}
-.no-jt-selected {
-  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8;
-}
-.no-jt-selected i { font-size: 2.5rem; margin-bottom: 20px; opacity: 0.5; }
+.access-grid { display: grid; grid-template-columns: 310px 1fr; gap: 24px; flex: 1; min-height: 0; }
+.card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; min-height: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
 
-.content-header { 
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9;
+.jt-sidebar { padding: 24px; overflow-y: auto; background: #fff; }
+.selection-title { font-size: 0.85rem; font-weight: 850; color: #94a3b8; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Org Tree Visuals */
+.org-tree { display: flex; flex-direction: column; gap: 4px; }
+.tree-header { 
+   padding: 12px 14px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; margin-bottom: 2px;
 }
-.content-header h3 { font-size: 1.15rem; color: #1a2a3a; font-weight: 800; }
-.highlight { color: #1a2a3a; text-decoration: underline; text-underline-offset: 4px; }
+.tree-header:hover { background: #f8fafc; }
+.tree-header.active { background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb; }
+.header-main { display: flex; align-items: center; gap: 10px; }
+.tree-toggle { width: 14px; font-size: 0.7rem; color: #94a3b8; cursor: pointer; }
+.node-icon { font-size: 0.9rem; color: #2563eb; }
+.node-name { font-weight: 800; font-size: 0.95rem; }
+.node-badge { font-size: 0.6rem; padding: 2px 6px; background: #e2e8f0; border-radius: 6px; color: #64748b; font-weight: 800; text-transform: uppercase; }
 
-.perm-section { 
-  background: #f8fafc; border-radius: 14px; padding: 24px; margin-bottom: 24px; border: 1px solid #e2e8f0;
+.tree-children { padding: 4px 0 8px 30px; display: flex; flex-direction: column; gap: 2px; }
+.tree-item { 
+   padding: 10px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;
 }
-.perm-section.muted { opacity: 0.8; }
-.section-badge { display: inline-block; padding: 3px 10px; background: #e2e8f0; border-radius: 100px; font-size: 0.65rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 12px; }
-.perm-section h4 { margin-bottom: 20px; font-size: 1rem; color: #1e293b; font-weight: 700; }
+.tree-item:hover { background: #f8fafc; }
+.tree-item.active { background: #1e293b; color: white; border-color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.node-icon-sm { font-size: 0.8rem; color: #64748b; }
+.active .node-icon-sm { color: white; }
+.node-name-sm { font-weight: 600; font-size: 0.88rem; }
 
-.perm-row.page-level { margin-bottom: 24px; padding: 16px; background: white; border-radius: 12px; border: 1px solid #dde3e8; display: flex; align-items: center; }
+.user-selection-list { display: flex; flex-direction: column; gap: 10px; }
+.user-item { padding: 14px 18px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.user-item:hover { transform: translateX(5px); border-color: #1e293b; }
+.user-item.active { background: #1e293b; color: white; border-color: #1e293b; }
 
-/* Switch Style */
-.switch-label { display: flex; align-items: center; gap: 14px; cursor: pointer; position: relative; }
-.label-text { font-weight: 700; color: #1e293b; font-size: 0.92rem; }
+.permissions-content { padding: 32px; overflow-y: auto; }
+.no-selection-state { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; text-align: center; }
+.no-selection-state i { font-size: 3.5rem; margin-bottom: 24px; opacity: 0.15; }
+
+.content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; padding-bottom: 24px; border-bottom: 2px solid #f1f5f9; }
+.selection-badge { font-size: 0.65rem; padding: 4px 10px; background: #1e293b; color: white; border-radius: 6px; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; display: inline-block; }
+.content-header h3 { font-size: 1.35rem; font-weight: 850; color: #1e293b; margin: 0; }
+
+.info-banner { background: #eff6ff; border-radius: 12px; padding: 14px 20px; color: #1e40af; font-size: 0.9rem; display: flex; align-items: center; gap: 12px; margin-bottom: 30px; font-weight: 600; border-left: 5px solid #2563eb; }
+
+.perm-section { background: #f8fafc; border-radius: 20px; padding: 28px; margin-bottom: 24px; border: 1px solid #e2e8f0; transition: all 0.3s; }
+.perm-section:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+.section-badge { display: inline-block; padding: 4px 12px; background: #e2e8f0; border-radius: 100px; font-size: 0.65rem; font-weight: 850; color: #475569; margin-bottom: 15px; text-transform: uppercase; }
+
+.accordion-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.accordion-header h4 { margin: 0; font-size: 1.1rem; font-weight: 850; color: #1e293b; display: flex; align-items: center; gap: 12px; }
+.toggle-icon { font-size: 0.75rem; color: #94a3b8; }
+
+.section-content-area { margin-top: 25px; }
+.perm-row-main { padding: 20px; background: white; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+
+.switch-label { display: flex; align-items: center; gap: 16px; cursor: pointer; }
+.label-text { font-weight: 850; font-size: 1rem; color: #1e293b; }
 .switch-label input { opacity: 0; width: 0; height: 0; }
-.slider { position: relative; width: 44px; height: 24px; background-color: #cbd5e1; border-radius: 34px; transition: .3s; }
-.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.slider { position: relative; width: 50px; height: 28px; background-color: #cbd5e1; border-radius: 34px; transition: .3s; }
+.slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; }
 input:checked + .slider { background-color: #10b981; }
-input:checked + .slider:before { transform: translateX(20px); }
+input:checked + .slider:before { transform: translateX(22px); }
 
-.granular-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 5px; }
-.granular-actions.disabled { opacity: 0.4; pointer-events: none; filter: grayscale(1); }
-.action-item { background: white; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; transition: all 0.2s; }
-.action-item:hover { border-color: #1a2a3a; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.granular-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.granular-actions.disabled { opacity: 0.35; pointer-events: none; filter: grayscale(1); }
+.action-item { background: white; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; transition: border 0.2s; }
+.action-item:hover { border-color: #1e293b; }
+.chk-container { display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 0.92rem; font-weight: 750; color: #475569; position: relative; padding-left: 32px; }
+.chk-container input { position: absolute; opacity: 0; }
+.checkmark { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 20px; width: 20px; background: #fff; border: 2px solid #cbd5e1; border-radius: 6px; }
+input:checked ~ .checkmark { background: #1e293b; border-color: #1e293b; }
+.checkmark:after { content: ""; position: absolute; display: none; left: 6px; top: 2px; width: 5px; height: 10px; border: solid white; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+input:checked ~ .checkmark:after { display: block; }
 
-.perm-grid-lite { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.id-mode-hint { margin-top: 15px; padding: 16px; background: white; border-radius: 12px; border: 1.5px dashed #cbd5e1; }
+.hint-active { color: #059669; font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+.hint-normal { color: #94a3b8; font-size: 0.88rem; font-style: italic; }
 
-/* Checkbox Style */
-.chk-container, .chk-container-inline { 
-  display: block; position: relative; padding-left: 32px; cursor: pointer; font-size: 0.88rem; color: #475569; user-select: none; font-weight: 600;
-}
-.chk-container input, .chk-container-inline input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
-.checkmark { 
-  position: absolute; top: 0; left: 0; height: 20px; width: 20px; background-color: #fff; border: 2px solid #cbd5e1; border-radius: 6px; transition: all 0.2s;
-}
-.chk-container:hover input ~ .checkmark, .chk-container-inline:hover input ~ .checkmark { border-color: #1a2a3a; }
-.chk-container input:checked ~ .checkmark, .chk-container-inline input:checked ~ .checkmark { background-color: #1a2a3a; border-color: #1a2a3a; }
-.checkmark:after { content: ""; position: absolute; display: none; }
-.chk-container input:checked ~ .checkmark:after, .chk-container-inline input:checked ~ .checkmark:after { display: block; }
-.chk-container .checkmark:after, .chk-container-inline .checkmark:after { left: 6px; top: 2px; width: 5px; height: 10px; border: solid white; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
-
-.btn-primary { 
-  background: #1a2a3a; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.95rem;
-}
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: #243447; }
-.btn-primary:active { transform: translateY(0); }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.perm-section { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.btn-primary { background: #1e293b; color: white; border: none; padding: 14px 35px; border-radius: 14px; font-weight: 850; cursor: pointer; transition: all 0.3s; font-size: 1rem; }
+.btn-primary:hover { border-radius: 10px; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
