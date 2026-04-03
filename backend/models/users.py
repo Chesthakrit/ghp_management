@@ -64,69 +64,58 @@ class User(Base):
 
     @property
     def permissions(self):
-        """Helper function สำหรับดึงสิทธิ์ที่รวมกันระหว่าง Role, ตำแหน่ง (Job Title) และสิทธิ์รายบุคคล (Individual Page Access)"""
+        """ดึงสิทธิ์การใช้งานที่รวมกันจาก Role, ตำแหน่งพนักงาน (Job Title), แผนก และการตั้งค่าเฉพาะตัว"""
         from sqlalchemy.orm import object_session
+        import json
         perms = []
         
-        # 1. ดึงสิทธิ์จาก Role (admin/employee)
+        # 1. สิทธิ์จาก Role หลัก (เช่น admin, employee)
         if self.role and self.role.permissions:
-            try:
-                perms.extend(json.loads(self.role.permissions))
-            except:
-                pass
-        
-        # 2. ดึงสิทธิ์จากตำแหน่งงาน (Job Title) ผ่านโปรไฟล์พนักงาน
-        if self.employee_profile and self.employee_profile.job_title:
-            session = object_session(self)
-            if session:
-                query = session.query(JobTitle).filter(JobTitle.name == self.employee_profile.job_title)
-                if self.employee_profile.department:
-                    query = query.join(Department).filter(Department.value == self.employee_profile.department)
-                
-                jt = query.first()
-                if jt and jt.permissions:
-                    try:
-                        perms.extend(json.loads(jt.permissions))
-                    except:
-                        pass
-
-        # 3. ดึงสิทธิ์จากการตั้งค่ารายบุคคล (Individual Overrides)
+            try: perms.extend(json.loads(self.role.permissions))
+            except: pass
+            
         session = object_session(self)
         if session:
-            # ดึงสิทธิ์ที่มอบให้พนักงานรายบุคคล
+            from sqlalchemy import func
+            # 2. หัวใจหลัก: สิทธิ์ตามตำแหน่ง (Job Title / Position)
+            # ดึงตามที่ระบบ Access Control ตั้งค่าไว้รายตำแหน่ง (ใช้ Case-Insensitive & Strip)
+            if self.employee_profile and self.employee_profile.job_title:
+                jt_query = self.employee_profile.job_title.strip().lower()
+                jt_obj = session.query(JobTitle).filter(
+                    (func.lower(JobTitle.name) == jt_query) |
+                    (func.lower(JobTitle.name_th) == jt_query)
+                ).first()
+                if jt_obj and jt_obj.permissions:
+                    try: 
+                        jt_perms = json.loads(jt_obj.permissions)
+                        if isinstance(jt_perms, list): perms.extend(jt_perms)
+                    except: pass
+
+            # 3. สิทธิ์ตามแผนก (Department / Section) - ใช้ Case-Insensitive เช่นกัน
+            if self.employee_profile and self.employee_profile.department:
+                dept_query = self.employee_profile.department.strip().lower()
+                dept_obj = session.query(Department).filter(
+                    (func.lower(Department.value) == dept_query) | 
+                    (func.lower(Department.name) == dept_query)
+                ).first()
+                if dept_obj and dept_obj.permissions:
+                    try: 
+                        dept_perms = json.loads(dept_obj.permissions)
+                        if isinstance(dept_perms, list): perms.extend(dept_perms)
+                    except: pass
+
+            # 4. สิทธิ์รายบุคคล (Individual Override)
             individual_access = session.query(UserPageAccess).filter(UserPageAccess.user_id == self.id).all()
             for pa in individual_access:
                 perms.append(pa.page_id)
-                # หากมีสิทธิ์แก้ไข (can_edit) ให้สิทธิ์การจัดการที่เกี่ยวข้องพ่วงไปด้วย
+                # เผื่อกรณีใช้ checkbox 'แก้ไขได้' (can_edit) ในหน้า Access Control รายคน
                 if pa.can_edit:
-                    if pa.page_id in ['page.usermanagement', 'page.hr']:
-                        perms.append('user.manage')
-                        perms.append('action.hr.edit_name')
-
-            # 4. ดึงสิทธิ์จากแผนก และ ตำแหน่ง (Cascading Access จากโปรไฟล์)
-            if self.employee_profile:
-                # ดึงจากแผนก (Section/Department)
-                if self.employee_profile.department:
-                    dept_obj = session.query(Department).filter(
-                        (Department.value == self.employee_profile.department) | 
-                        (Department.name == self.employee_profile.department) |
-                        (Department.name_th == self.employee_profile.department)
-                    ).first()
-                    if dept_obj and dept_obj.permissions:
-                        try: perms.extend(json.loads(dept_obj.permissions))
-                        except: pass
-                
-                # ดึงจากตำแหน่ง (Job Title/Position)
-                if self.employee_profile.job_title:
-                    jt_obj = session.query(JobTitle).filter(
-                        (JobTitle.name == self.employee_profile.job_title) |
-                        (JobTitle.name_th == self.employee_profile.job_title)
-                    ).first()
-                    if jt_obj and jt_obj.permissions:
-                        try: perms.extend(json.loads(jt_obj.permissions))
-                        except: pass
+                    if pa.page_id == 'page.usermanagement':
+                        perms.extend(['action.user.add', 'action.user.edit_id', 'action.user.edit_profile', 'action.user.delete', 'action.user.view_profile'])
+                    elif pa.page_id == 'page.hr':
+                        perms.extend(['action.hr.add_dept', 'action.hr.add_jt', 'action.hr.edit_name', 'action.hr.delete'])
         
-        # ส่งค่ากลับแบบไม่ซ้ำกัน (Distinct List)
+        # ส่งคืนค่าเป็น List ของ ID สิทธิ์ที่ไม่มีชื่อซ้ำ
         return list(set(perms))
 
     # ข้อกำหนดเพิ่มเติม: ชื่อและนามสกุลจริงรวมกันต้องไม่ซ้ำกัน

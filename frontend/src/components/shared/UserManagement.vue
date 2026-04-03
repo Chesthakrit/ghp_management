@@ -15,7 +15,12 @@
     <!-- User Table -->
     <div class="section-card">
       <div class="section-header">
-        <h2>Employee List</h2>
+        <div class="header-main-title">
+          <h2>Employee List</h2>
+          <button v-if="isAdminUser || hasPerm('action.user.add')" class="btn-add-employee" @click="$emit('go-to-register')">
+            <i class="fas fa-user-plus"></i> Add Employee
+          </button>
+        </div>
         <div class="controls-row">
           <div class="search-row">
             <input v-model="searchQuery" placeholder="Search..." class="search-input" />
@@ -88,8 +93,8 @@
                   </div>
                   <div 
                     class="name-info" 
-                    :class="{ 'clickable-name': isAdmin || hasPerm('action.user.view_profile') }"
-                    @click="(isAdmin || hasPerm('action.user.view_profile')) && $emit('view-profile', user.id)"
+                    :class="{ 'clickable-name': isAdminUser || hasPerm('action.user.view_profile') }"
+                    @click="(isAdminUser || hasPerm('action.user.view_profile')) && $emit('view-profile', user.id)"
                   >
                     <span class="name-text">{{ user.first_name || '-' }} {{ user.last_name || '' }}</span>
                     <span v-if="user.nickname" class="nickname-text">({{ user.nickname }})</span>
@@ -115,13 +120,22 @@
               <td class="hide-tablet date-cell">{{ fmtDate(user.employee_profile?.hire_date) }}</td>
               <td class="action-cell">
                 <template v-if="!isProtected(user)">
-                  <button class="btn-id-card" @click="openEditIdentity(user)" title="Identity">
+                  <button 
+                    v-if="isAdminUser || hasPerm('action.user.edit_id')" 
+                    class="btn-id-card" @click="openEditIdentity(user)" title="Identity"
+                  >
                     <i class="fas fa-id-badge"></i>
                   </button>
-                  <button class="btn-edit" @click="openEdit(user)" title="Edit">
+                  <button 
+                    v-if="isAdminUser || hasPerm('action.user.edit_profile')" 
+                    class="btn-edit" @click="openEdit(user)" title="Edit"
+                  >
                     <i class="fas fa-user-edit"></i>
                   </button>
-                  <button class="btn-delete" @click="deleteUser(user)" title="Delete">
+                  <button 
+                    v-if="isAdminUser || hasPerm('action.user.delete')" 
+                    class="btn-delete" @click="deleteUser(user)" title="Delete"
+                  >
                     <i class="fas fa-trash-alt"></i>
                   </button>
                 </template>
@@ -224,7 +238,14 @@ import { ref, computed, onMounted } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
 
-const emit = defineEmits(['go-to-identity', 'view-profile'])
+const emit = defineEmits(['go-to-identity', 'view-profile', 'go-to-register'])
+
+const props = defineProps({
+  currentUser: { type: Object, default: () => ({}) },
+  isAdmin: { type: Boolean, default: false },
+  departments: { type: Array, default: () => [] },
+  jobTitles: { type: Array, default: () => [] }
+})
 
 const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const users = ref([])
@@ -258,12 +279,16 @@ const form = ref({
 const openPhoto  = (url) => { photoPopup.value = url }
 const closePhoto = ()    => { photoPopup.value = null }
 
-const isAdmin = computed(() => {
-  return true
+const isAdminUser = computed(() => {
+  if (props.isAdmin) return true
+  const role = (props.currentUser?.role?.name || props.currentUser?.role || '').toLowerCase()
+  const uname = (props.currentUser?.username || '').toLowerCase()
+  return role === 'admin' || uname === 'admin'
 })
 
 const hasPerm = (p) => {
-  return true
+  if (isAdminUser.value) return true
+  return (props.currentUser?.permissions || []).includes(p)
 }
 
 const isProtected = (targetUser) => {
@@ -276,7 +301,7 @@ const isProtected = (targetUser) => {
   if (role === 'admin' || uname === 'admin') return true
   
   // CEO is locked if you are NOT an admin
-  if (jt === 'ceo' && !isAdmin.value) return true
+  if (jt === 'ceo' && !isAdminUser.value) return true
   
   return false
 }
@@ -322,7 +347,7 @@ const filteredUsers = computed(() => {
     
     // Security: Only 'admin' can see the 'admin' account in the list
     const isTargetAdmin = u.username.toLowerCase() === 'admin' || (u.role || '').toLowerCase() === 'admin'
-    const isViewerAdmin = isAdmin.value
+    const isViewerAdmin = isAdminUser.value
     
     if (isTargetAdmin && !isViewerAdmin) return false
     
@@ -385,6 +410,13 @@ const fetchHRData = async () => {
 const fetchData = async () => {
   isLoading.value = true
   try {
+    // Force refresh currentUser permissions before showing buttons
+    const meRes = await api.get('/users/me')
+    if (props.currentUser) {
+       // Update local copy if possible (though props are usually reactive from parent)
+       Object.assign(props.currentUser, meRes.data)
+    }
+
     await fetchHRData()
     const usersRes = await api.get('/users/')
     users.value = usersRes.data
@@ -542,6 +574,34 @@ onMounted(fetchData)
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.header-main-title {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.btn-add-employee {
+  background: #1a2a3a;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.btn-add-employee:hover {
+  background: #243447;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+.btn-add-employee i {
+  font-size: 0.9rem;
 }
 .section-header h2::before {
   content: '';

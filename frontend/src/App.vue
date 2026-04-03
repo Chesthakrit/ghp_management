@@ -110,6 +110,7 @@ const handleLogout = () => {
       @go-to-profile="goToPage('profile')"
       @view-profile="(id) => goToPage('profile', id)"
       @go-to-identity="(id) => goToPage('identity', id)"
+      @go-to-register="goToPage('register')"
     />
 
     <EmployeeIdentityEditor

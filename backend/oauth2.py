@@ -120,3 +120,42 @@ def check_can_manage_hr_settings(current_user: models.User = Depends(get_current
             detail="ไม่มีสิทธิ์จัดการข้อมูลโครงสร้างองค์กร (แผนก/ตำแหน่ง)"
         )
     return current_user
+
+
+# ─── Granular User Management Actions (Action-based permissions) ───
+
+def check_can_add_user(current_user: models.User = Depends(get_current_user)):
+    """ต้องเป็นแอดมิน หรือได้รับสิทธิ์ 'action.user.add'"""
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
+               (current_user.username.lower() == 'admin')
+    perms = current_user.permissions or []
+    if not is_admin and 'action.user.add' not in perms:
+        raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์เพิ่มพนักงานใหม่")
+    return current_user
+
+def check_can_edit_user_id(current_user: models.User = Depends(get_current_user)):
+    """ต้องเป็นแอดมิน หรือได้รับสิทธิ์ 'action.user.edit_id'"""
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
+               (current_user.username.lower() == 'admin')
+    perms = current_user.permissions or []
+    if not is_admin and 'action.user.edit_id' not in perms:
+        raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์แก้ไขบัตรพนักงาน")
+    return current_user
+
+def check_can_edit_user_profile(current_user: models.User = Depends(get_current_user)):
+    """ต้องเป็นแอดมิน หรือได้รับสิทธิ์ 'action.user.edit_profile'"""
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
+               (current_user.username.lower() == 'admin')
+    perms = current_user.permissions or []
+    if not is_admin and 'action.user.edit_profile' not in perms:
+        raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน")
+    return current_user
+
+def check_can_delete_user(current_user: models.User = Depends(get_current_user)):
+    """ต้องเป็นแอดมิน หรือได้รับสิทธิ์ 'action.user.delete'"""
+    is_admin = (current_user.role and current_user.role.name.lower() == 'admin') or \
+               (current_user.username.lower() == 'admin')
+    perms = current_user.permissions or []
+    if not is_admin and 'action.user.delete' not in perms:
+        raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์ลบรายชื่อพนักงาน")
+    return current_user

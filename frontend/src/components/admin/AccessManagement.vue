@@ -186,10 +186,11 @@ const permissionLayout = ref([
     icon: 'fas fa-users-cog',
     expanded: true,
     actions: [
-      { id: 'action.user.edit_identity', label: 'Identity' },
-      { id: 'action.user.edit_employment', label: 'Access' },
-      { id: 'action.user.delete', label: 'Delete' },
-      { id: 'action.user.view_profile', label: 'Profile' }
+      { id: 'action.user.add', label: 'Add Employee' },
+      { id: 'action.user.edit_id', label: 'Identity Card' },
+      { id: 'action.user.edit_profile', label: 'Edit Info' },
+      { id: 'action.user.delete', label: 'Delete User' },
+      { id: 'action.user.view_profile', label: 'View Profile' }
     ]
   },
   {

@@ -32,7 +32,11 @@ os.makedirs(os.path.join(UPLOAD_DIR, "id_docs"), exist_ok=True)
 #  สร้าง User ใหม่ (ลงทะเบียนพนักงาน)
 # ─────────────────────────────────────────────
 @router.post("/", response_model=schemas.UserOut)
-def create_user(request: schemas.UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    request: schemas.UserCreate, 
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(oauth2.check_can_add_user)
+):
     """API สำหรับลงทะเบียนพนักงานใหม่เข้าระบบ"""
 
     # 1. ตรวจสอบข้อมูลที่จำเป็น (Required fields)
@@ -194,7 +198,7 @@ def update_user(
     user_id: int,
     request: schemas.UserUpdate,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_can_manage_users)
+    admin: models.User = Depends(oauth2.check_can_edit_user_profile)
 ):
     """API สำหรับแอดมินแก้ไขข้อมูลพื้นฐานของพนักงาน"""
 
@@ -244,7 +248,7 @@ def update_employee_profile(
     user_id: int,
     request: schemas.EmployeeProfileUpdate,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_can_manage_users)
+    admin: models.User = Depends(oauth2.check_can_edit_user_profile)
 ):
     """API สำหรับแอดมินแก้ไขข้อมูลการจ้างงาน (แผนก, ตำแหน่ง, สถานะ)"""
 
@@ -297,7 +301,7 @@ def update_employee_profile(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_can_manage_users)
+    admin: models.User = Depends(oauth2.check_can_delete_user)
 ):
     """API สำหรับแอดมินลบผู้ใช้งานออกจากระบบอย่างถาวร"""
 

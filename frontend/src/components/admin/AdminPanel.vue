@@ -79,11 +79,13 @@
       </div>
 
       <main class="admin-content">
-        <!-- TAB: Users -->
         <div v-if="activeTab === 'users'">
           <UserManagement 
+            :currentUser="currentUser"
+            :isAdmin="isAdmin"
             @go-to-identity="(id) => $emit('go-to-identity', id)"
             @view-profile="(id) => $emit('view-profile', id)"
+            @go-to-register="$emit('go-to-register')"
           />
         </div>
 
@@ -147,7 +149,7 @@ const props = defineProps({
   embedded: { type: String, default: null }
 })
 
-const emit = defineEmits(['logout', 'go-to-identity', 'go-to-profile', 'view-profile'])
+const emit = defineEmits(['logout', 'go-to-identity', 'go-to-profile', 'view-profile', 'go-to-register'])
 
 const activeTab = ref(props.embedded || 'users')
 
