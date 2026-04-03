@@ -1,9 +1,13 @@
+"""
+ไฟล์สคริปต์สำหรับทดสอบการเข้าสู่ระบบในฐานะแอดมิน
+และการดึงข้อมูลโปรเจกต์ทั้งหมดเพื่อตรวจสอบสิทธิ์การเข้าถึง
+"""
 import urllib.request
 import urllib.parse
 import json
 import ssl
 
-# Bypass SSL check for localhost
+# ยกเว้นการตรวจสอบความปลอดภัย SSL สำหรับการรันบน Localhost
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE
@@ -47,7 +51,7 @@ def get_projects(token):
 
 print("--- Starting Admin Verification ---")
 
-# Step 1: Login as Admin
+# ขั้นตอนที่ 1: ทดสอบการเข้าสู่ระบบในฐานะ Admin
 print("\n[Step 1] Attempting Admin Login (admin / admin9999)...")
 status, result = login("admin", "admin9999")
 
@@ -55,13 +59,13 @@ if status == 200 and "access_token" in result:
     print("✅ Admin Login Success: Token received.")
     token = result["access_token"]
     
-    # Step 2: Get All Projects
+    # ขั้นตอนที่ 2: ดึงข้อมูลโปรเจกต์ทั้งหมดโดยใช้ Token ของ Admin
     print("\n[Step 2] Fetching All Projects as Admin...")
     p_status, projects = get_projects(token)
     
     if p_status == 200:
         print(f"✅ Fetch Success: Retrieved {len(projects)} projects.")
-        # Print a few examples
+        # แสดงตัวอย่างข้อมูลที่ดึงมาได้บางส่วน
         for p in projects[:3]:
             print(f"   - Project: {p.get('name')} (Owner ID: {p.get('owner_id')})")
     else:

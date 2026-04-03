@@ -11,6 +11,7 @@ class DutyCategoryBase(BaseModel):
     name: str                           # ชื่อหมวดหมู่ (EN)
     name_th: Optional[str] = None       # ชื่อหมวดหมู่ (TH)
     name_v3: Optional[str] = None       # ชื่อหมวดหมู่ (ภาษาที่สาม)
+    display_order: int = 100
 
 class DutyCategoryCreate(DutyCategoryBase):
     """ใช้รับข้อมูลตอนสร้างหมวดหมู่ใหม่"""

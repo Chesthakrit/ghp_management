@@ -1,3 +1,7 @@
+"""
+ไฟล์จัดการระบบบันทึกเวลาเข้า-ออกงาน (Attendance Router)
+รองรับการ Check-in, Check-out และการดูประวัติการลงเวลา
+"""
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from datetime import date, datetime

@@ -146,7 +146,8 @@ class DutyCategory(Base):
     name = Column(String, unique=True, index=True) # ภาษาอังกฤษ
     name_th = Column(String, nullable=True)         # ภาษาไทย
     name_v3 = Column(String, nullable=True)         # ภาษาที่สาม
-    duties = relationship("Duty", back_populates="category", cascade="all, delete-orphan")
+    display_order = Column(Integer, default=100)
+    duties = relationship("Duty", back_populates="category", cascade="all, delete-orphan", order_by="Duty.display_order.asc()")
 
 class Duty(Base):
     """รายการทักษะความสามารถ (Duties/Skills)"""

@@ -209,7 +209,7 @@ def delete_job_description(
 @router.get("/duty-categories", response_model=List[schemas.DutyCategory])
 def get_duty_categories(db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
     """ดึงหมวดหมู่ทักษะทั้งหมด (เช่น Soft Skill, Hardware, Language)"""
-    return db.query(models.DutyCategory).all()
+    return db.query(models.DutyCategory).order_by(models.DutyCategory.display_order.asc()).all()
 
 @router.post("/duty-categories", response_model=schemas.DutyCategory)
 def create_duty_category(
@@ -224,6 +224,20 @@ def create_duty_category(
     db.commit()
     db.refresh(db_cat)
     return db_cat
+
+@router.put("/duty-categories/reorder", response_model=List[schemas.DutyCategory])
+def reorder_duty_categories(
+    payload: schemas.ReorderRequest,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(oauth2.check_admin)
+):
+    """บันทึกลำดับหมวดหมู่ทักษะหลัง Drag & Drop"""
+    for item in payload.items:
+        db.query(models.DutyCategory).filter(models.DutyCategory.id == item.id).update(
+            {"display_order": item.display_order}
+        )
+    db.commit()
+    return db.query(models.DutyCategory).order_by(models.DutyCategory.display_order.asc()).all()
 
 @router.put("/duty-categories/{cat_id}", response_model=schemas.DutyCategory)
 def update_duty_category(

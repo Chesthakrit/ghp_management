@@ -20,7 +20,7 @@ router = APIRouter(
 # --- การตั้งค่าสำหรับการสร้าง Token (JWT Config) ---
 SECRET_KEY = "1900"             # กุญแจลับสำหรับเข้ารหัส
 ALGORITHM = "HS256"              # อัลกอริทึมที่ใช้
-ACCESS_TOKEN_EXPIRE_MINUTES = 120 # ระยะเวลาที่ Token สามารถใช้งานได้ (2 ชม.)
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # ระยะเวลาที่ Token สามารถใช้งานได้ (24 ชม.)
 
 def create_access_token(data: dict):
     """ฟังก์ชันสำหรับสร้างรหัส JWT (Access Token)"""

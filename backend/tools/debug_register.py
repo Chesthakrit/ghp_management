@@ -15,14 +15,14 @@ payload_1 = {
     "username": "testuser1",
     "email": "test1@example.com",
     "password": "password",
-    "id_card_number": ""  # First user with empty ID card
+    "id_card_number": ""  # ผู้ใช้คนที่ 1 ที่ไม่ได้ระบุเลขบัตรประชาชน
 }
 
 payload_2 = {
     "username": "testuser2",
     "email": "test2@example.com",
     "password": "password",
-    "id_card_number": ""  # Second user with empty ID card (Should fail if Unique=True considers "" as value)
+    "id_card_number": ""  # ผู้ใช้คนที่ 2 ที่ไม่ได้ระบุเลขบัตรประชาชน (จะแจ้งเตือน Error หากฐานข้อมูลมองว่าค่าว่าง "" ซ้ำกัน)
 }
 
 try:

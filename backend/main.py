@@ -1,18 +1,14 @@
 """
-ไฟล์หลัก (Main Entry Point) สำหรับรันแอปพลิเคชัน FastAPI
+ไฟล์หลักสำหรับการเริ่มต้นระบบ (Main Entry Point)
+ทำหน้าที่ตั้งค่า FastAPI, CORS, Static Files และเชื่อมต่อ Router ต่างๆ เข้าด้วยกัน
 """
-
 import os
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 
-# นำเข้าโมดูลฐานข้อมูลและโมดูลอื่นๆ ที่เกี่ยวข้อง
-from database import engine, Base
-from models import users as model_users
-from models import projects as model_projects
-from models import payroll as model_payroll
-from routers import users, auth, projects, permissions, hr, attendance, payroll
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from routers import attendance, auth, hr, payroll, permissions, projects, users
 
 # สร้างอินสแตนซ์ของ FastAPI
 app = FastAPI()

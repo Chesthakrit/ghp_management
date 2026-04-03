@@ -145,7 +145,7 @@
              <div v-if="expandedDepts.includes('uncat_skill')" class="jt-container">
                 <draggable
                   v-model="uncatSkills"
-                  
+                  :group="{ name: 'skills' }"
                   item-key="id"
                   handle=".drag-handle-skill"
                   animation="200"
@@ -186,21 +186,15 @@
                                   @end="saveSubDutyOrder(duty.id)"
                                 >
                                   <template #item="{ element: sub }">
-                                  <div class="sub-skill-dropdown-item">
-                                    <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
+                                  <div class="sub-skill-dropdown-item" style="cursor: default;">
+                                    <div class="sub-skill-dropdown-header" style="cursor: default;">
                                       <div class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">
                                         <span></span><span></span><span></span>
                                       </div>
-                                      <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
-                                      <span class="sub-dd-name">{{ sub.name }}</span>
-                                      <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
-                                    </div>
-                                    <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
-                                      <div v-if="sub.tutorial_url" class="sub-dd-video-row">
-                                        <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
-                                        <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
-                                      </div>
-                                      <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
+                                      <span class="sub-dd-name" style="text-align: left; flex: 1;">{{ sub.name }}</span>
+                                      <button v-if="sub.tutorial_url" class="btn-action-sm btn-video" style="color: #64748b; background: transparent; border: none; cursor: pointer; transition: all 0.2s; font-size: 1.1rem; display: flex; align-items: center; padding: 6px; margin-right: 8px;" @click.stop="openVideoPlayer(sub.tutorial_url)" title="ดูวิดีโอสอน" onmouseover="this.style.color='#334155';" onmouseout="this.style.color='#64748b';">
+                                        <i class="fas fa-play-circle"></i>
+                                      </button>
                                     </div>
                                   </div>
                                   </template>
@@ -217,30 +211,43 @@
           </div>
 
           <!-- Categorized Blocks -->
-          <div v-for="cat in dutyCategories" :key="cat.id" class="org-dept-block">
-            <!-- Tag Header -->
-            <div class="dept-row cat-header-row" @click="toggleDeptExpansion('cat_' + cat.id)">
-              <div v-if="editingDutyCategory?.id === cat.id" class="edit-mode-row" @click.stop>
-                <input v-model="editingDutyCategory.name" class="hr-input-sm" />
-                <button class="btn-primary-xs" @click="updateDutyCategory">Save</button>
-                <button class="btn-cancel-xs" @click="editingDutyCategory = null">Cancel</button>
-              </div>
-              <div v-else class="view-mode-row">
-                <div class="dept-title-content">
-                  <span class="toggle-icon">{{ expandedDepts.includes('cat_' + cat.id) ? '▼' : '▶' }}</span>
-                  <span class="dept-title" @dblclick.stop="startEditDutyCategory(cat)">{{ cat.name }}</span>
+          <draggable
+            v-model="dutyCategories"
+            item-key="id"
+            handle=".drag-handle-cat"
+            animation="200"
+            ghost-class="drag-ghost"
+            @end="saveDutyCategoryOrder"
+          >
+            <template #item="{ element: cat }">
+            <div class="org-dept-block">
+              <!-- Tag Header -->
+              <div class="dept-row cat-header-row" @click="toggleDeptExpansion('cat_' + cat.id)">
+                <div v-if="editingDutyCategory?.id === cat.id" class="edit-mode-row" @click.stop>
+                  <input v-model="editingDutyCategory.name" class="hr-input-sm" />
+                  <button class="btn-primary-xs" @click="updateDutyCategory">Save</button>
+                  <button class="btn-cancel-xs" @click="editingDutyCategory = null">Cancel</button>
                 </div>
-                <div class="dept-actions" @click.stop>
-                  <button v-if="hasPerm('action.hr.delete_tag')" class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
+                <div v-else class="view-mode-row">
+                  <div class="dept-title-content">
+                    <div class="drag-handle-cat" @click.stop title="ลากเพื่อเรียงลำดับ">
+                      <span></span><span></span><span></span>
+                    </div>
+                    <span class="toggle-icon">{{ expandedDepts.includes('cat_' + cat.id) ? '▼' : '▶' }}</span>
+                    <span class="dept-title" @dblclick.stop="startEditDutyCategory(cat)">{{ cat.name }}</span>
+                  </div>
+                  <div class="dept-actions" @click.stop>
+                    <button v-if="hasPerm('action.hr.delete_tag')" class="action-icon-btn delete" @click="deleteDutyCategory(cat.id)" title="Delete Tag">🗑️</button>
+                  </div>
                 </div>
               </div>
-            </div>
 
             <!-- Skills List under Tag (Nesting the Add Skill button INSIDE) -->
             <div v-if="expandedDepts.includes('cat_' + cat.id)" class="jt-container">
                 <draggable
                    :model-value="dutiesPool.filter(d => d.category_id === cat.id)"
                    @change="evt => onDutyChange(evt, cat.id)"
+                   :group="{ name: 'skills' }"
                    item-key="id"
                    handle=".drag-handle-skill"
                    animation="200"
@@ -282,21 +289,15 @@
                                    @end="saveSubDutyOrder(duty.id)"
                                  >
                                    <template #item="{ element: sub }">
-                                   <div class="sub-skill-dropdown-item">
-                                     <div class="sub-skill-dropdown-header" @click.stop="toggleSubDutyExpansion(sub.id)">
+                                   <div class="sub-skill-dropdown-item" style="cursor: default;">
+                                     <div class="sub-skill-dropdown-header" style="cursor: default;">
                                        <div class="drag-handle-sub" @click.stop title="ลากเพื่อเรียงลำดับ">
                                          <span></span><span></span><span></span>
                                        </div>
-                                       <span class="sub-dd-toggle">{{ expandedSubDuties.includes(sub.id) ? '▾' : '▸' }}</span>
-                                       <span class="sub-dd-name">{{ sub.name }}</span>
-                                       <span v-if="sub.tutorial_url" class="sub-dd-video-dot" title="มีวิดีโอ">📹</span>
-                                     </div>
-                                     <div v-if="expandedSubDuties.includes(sub.id)" class="sub-skill-dropdown-body">
-                                       <div v-if="sub.tutorial_url" class="sub-dd-video-row">
-                                         <span class="sub-dd-label">🎬 วิดีโอสอน:</span>
-                                         <button class="sub-dd-play-btn" @click.stop="openVideoPlayer(sub.tutorial_url)">▶ เล่นวิดีโอ</button>
-                                       </div>
-                                       <div v-else class="sub-dd-no-video">ไม่มีวิดีโอประกอบ</div>
+                                       <span class="sub-dd-name" style="text-align: left; flex: 1;">{{ sub.name }}</span>
+                                       <button v-if="sub.tutorial_url" class="btn-action-sm btn-video" style="color: #64748b; background: transparent; border: none; cursor: pointer; transition: all 0.2s; font-size: 1.1rem; display: flex; align-items: center; padding: 6px; margin-right: 8px;" @click.stop="openVideoPlayer(sub.tutorial_url)" title="ดูวิดีโอสอน" onmouseover="this.style.color='#334155';" onmouseout="this.style.color='#64748b';">
+                                         <i class="fas fa-play-circle"></i>
+                                       </button>
                                      </div>
                                    </div>
                                    </template>
@@ -333,7 +334,9 @@
                   </div>
                 </div>
             </div>
-          </div>
+            </div>
+            </template>
+          </draggable>
 
             <!-- ─── Modals (Skills, JD, Page Access) ─── -->
     <div v-if="showDutyModal" class="modal-overlay" @click.self="closeDutyModal">
@@ -357,18 +360,36 @@
             <button class="btn-primary btn-add-sub" @click="addSubDuty">+ เพิ่ม</button>
           </div>
           <div class="sub-skills-list-admin">
-             <div v-for="sub in selectedDuty.sub_duties" :key="sub.id" class="sub-skill-admin-item">
-                <div class="sub-skill-info">
-                  <span class="sub-skill-name-text">{{ sub.name }}</span>
-                  <span v-if="sub.tutorial_url" class="video-status-badge has-video">📹 มีวิดีโอ</span>
-                  <span v-else class="video-status-badge no-video">ไม่มีวิดีโอ</span>
-                </div>
-                <div class="sub-skill-actions">
-                  <button v-if="sub.tutorial_url" class="btn-action-sm btn-video" @click="openVideoPlayer(sub.tutorial_url)" title="ดูวิดีโอสอน">🎬</button>
-                  <button class="btn-action-sm btn-edit-link" @click="promptTutorialUrl(sub)" title="แก้ไขลิงก์วิดีโอ">✏️</button>
-                  <button class="btn-action-sm btn-trash" @click="removeSubDuty(sub.id)" title="ลบ">🗑️</button>
-                </div>
-             </div>
+             <draggable
+               v-model="selectedDuty.sub_duties"
+               item-key="id"
+               handle=".drag-handle-sub-modal"
+               animation="200"
+               ghost-class="drag-ghost"
+               @end="saveSubOrderFromModal"
+             >
+               <template #item="{ element: sub }">
+                 <div class="sub-skill-admin-item">
+                    <div class="drag-handle-sub-modal" title="ลากเพื่อเรียงลำดับ">
+                      <span></span><span></span><span></span>
+                    </div>
+                    <div class="sub-skill-info" style="flex: 1; text-align: left; padding-left: 8px;">
+                      <span class="sub-skill-name-text" style="font-weight: 600; font-size: 0.95rem; color: #1e293b; display: block; width: 100%; text-align: left;">{{ sub.name }}</span>
+                    </div>
+                    <div class="sub-skill-actions" style="display: flex; gap: 8px; align-items: center;">
+                      <button v-if="sub.tutorial_url" class="btn-action-sm btn-video" style="color: #64748b; background: transparent; border: none; cursor: pointer; transition: all 0.2s; font-size: 1.1rem; display: flex; align-items: center;" @click="openVideoPlayer(sub.tutorial_url)" title="ดูวิดีโอสอน" onmouseover="this.style.color='#334155';" onmouseout="this.style.color='#64748b';">
+                        <i class="fas fa-play-circle"></i>
+                      </button>
+                      <button class="btn-action-sm btn-edit-link" style="color: #64748b; background: transparent; border: none; cursor: pointer; transition: all 0.2s; font-size: 1.1rem; display: flex; align-items: center;" @click="promptTutorialUrl(sub)" title="เพิ่ม/แก้ไขลิงก์วิดีโอ" onmouseover="this.style.color='#334155';" onmouseout="this.style.color='#64748b';">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="btn-action-sm btn-trash" style="color: #64748b; background: transparent; border: none; cursor: pointer; transition: all 0.2s; font-size: 1.1rem; display: flex; align-items: center;" @click="removeSubDuty(sub.id)" title="ลบสับสกิลนี้" onmouseover="this.style.color='#ef4444';" onmouseout="this.style.color='#64748b';">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                 </div>
+               </template>
+             </draggable>
           </div>
         </div>
         <div class="modal-actions"><button class="btn-cancel" @click="closeDutyModal">Cancel</button><button class="btn-primary" @click="saveDutyDetails">Save Details</button></div>
@@ -631,11 +652,32 @@ const saveDeptOrder = async () => {
       }))
     if (items.length === 0) return
     await api.put('/hr/departments/reorder', { items })
-    Swal.fire({ title: 'Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+    Swal.fire({ title: 'Order Saved!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
     emit('refresh')
   } catch (e) { 
     console.error(e)
-    Swal.fire('Error', 'Failed to save order', 'error')
+    const msg = e.response?.data?.detail || e.message || 'Failed to save order'
+    Swal.fire('Error', msg, 'error')
+  }
+}
+
+const saveDutyCategoryOrder = async () => {
+  try {
+    const rawList = JSON.parse(JSON.stringify(dutyCategories.value))
+    const items = rawList
+      .filter(c => c && c.id)
+      .map((c, index) => ({ 
+        id: Number(c.id), 
+        display_order: index + 1 
+      }))
+    if (items.length === 0) return
+    await api.put('/hr/duty-categories/reorder', { items })
+    Swal.fire({ title: 'Tags Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+    await fetchHRData()
+  } catch (e) { 
+    console.error(e)
+    const msg = e.response?.data?.detail || e.message || 'Failed to save order'
+    Swal.fire('Error', msg, 'error')
   }
 }
 
@@ -658,7 +700,8 @@ const saveJTOrder = async (deptId) => {
     emit('refresh')
   } catch (e) { 
     console.error(e)
-    Swal.fire('Error', 'Failed to save order', 'error')
+    const msg = e.response?.data?.detail || e.message || 'Failed to save order'
+    Swal.fire('Error', msg, 'error')
   }
 }
 
@@ -734,17 +777,25 @@ const onSubDutyChange = async (evt, dutyId) => {
   }
 }
 
-const onDutyChange = (evt, catId) => {
+const onDutyChange = async (evt, catId) => {
   if (evt.moved) {
     const { newIndex, oldIndex } = evt.moved
-    // We need to reorder the local state so it matches what's on screen
     const catItems = dutiesPool.value.filter(d => d.category_id === catId)
     const [movedItem] = catItems.splice(oldIndex, 1)
     catItems.splice(newIndex, 0, movedItem)
-    
-    // Merge back into main pool
     const others = dutiesPool.value.filter(d => d.category_id !== catId)
     dutiesPool.value = [...others, ...catItems]
+  }
+
+  if (evt.added) {
+    const { element } = evt.added
+    element.category_id = catId
+    // Notify server of category change
+    try {
+      await api.put(`/hr/duties/${element.id}`, { category_id: catId })
+    } catch (e) {
+      console.error('Failed to change skill category', e)
+    }
   }
 }
 
@@ -763,7 +814,8 @@ const saveDutyOrder = async (catId) => {
     // No need to fetch immediately as local state is already correct from onDutyChange/uncatSkills
   } catch (e) { 
     console.error(e)
-    Swal.fire('Error', 'Failed to save skill order', 'error')
+    const msg = e.response?.data?.detail || e.message || 'Failed to save skill order'
+    Swal.fire('Error', msg, 'error')
     fetchHRData() // Revert on error
   }
 }
@@ -778,11 +830,29 @@ const saveSubDutyOrder = async (dutyId) => {
     }))
     if (items.length === 0) return
     await api.put('/hr/sub-duties/reorder', { items })
-    Swal.fire({ title: 'Sub-skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+    Swal.fire({ title: 'Sub-skills Reordered!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 })
     await fetchHRData() 
   } catch (e) { 
     console.error(e)
     Swal.fire('Error', 'Failed to save sub-skill order', 'error')
+  }
+}
+
+const saveSubOrderFromModal = async () => {
+  if (!selectedDuty.value || !selectedDuty.value.sub_duties) return
+  try {
+    const items = selectedDuty.value.sub_duties.map((s, index) => ({ 
+      id: parseInt(s.id), 
+      display_order: index + 1 
+    }))
+    if (items.length === 0) return
+    await api.put('/hr/sub-duties/reorder', { items })
+    Swal.fire({ title: 'Order Saved!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 })
+    // We don't necessarily need to fetchHRData here because it's in a modal,
+    // but it's good to keep it in sync.
+    await fetchHRData()
+  } catch (e) {
+    console.error(e)
   }
 }
 
@@ -1375,7 +1445,7 @@ const saveJT_Duties = async () => {
 }
 
 /* Icons */
-.drag-handle, .drag-handle-jt {
+.drag-handle, .drag-handle-jt, .drag-handle-cat {
   cursor: grab;
   color: #cbd5e1;
   font-family: serif;
@@ -1434,19 +1504,19 @@ const saveJT_Duties = async () => {
 }
 
 /* ────────── Drag Handles ────────── */
-.drag-handle, .drag-handle-jt, .drag-handle-skill, .drag-handle-sub {
+.drag-handle, .drag-handle-jt, .drag-handle-cat, .drag-handle-skill, .drag-handle-sub, .drag-handle-sub-modal {
   cursor: grab !important;
   display: flex;
   flex-direction: column;
   gap: 2px;
   width: 16px;
   margin-right: 12px;
-  opacity: 0.6; /* Darker by default */
+  opacity: 0.6;
   transition: opacity 0.2s, color 0.2s;
   flex-shrink: 0;
 }
 
-.drag-handle span, .drag-handle-jt span, .drag-handle-skill span, .drag-handle-sub span {
+.drag-handle span, .drag-handle-jt span, .drag-handle-cat span, .drag-handle-skill span, .drag-handle-sub span, .drag-handle-sub-modal span {
   display: block;
   width: 100%;
   height: 2px;
@@ -1454,9 +1524,14 @@ const saveJT_Duties = async () => {
   border-radius: 10px;
 }
 
-.drag-handle:hover, .drag-handle-jt:hover, .drag-handle-skill:hover, .drag-handle-sub:hover {
+.drag-handle:hover, .drag-handle-jt:hover, .drag-handle-skill:hover, .drag-handle-sub:hover, .drag-handle-sub-modal:hover {
   opacity: 1;
   color: #3b82f6;
+}
+
+.drag-handle-sub-modal {
+  margin-right: 10px;
+  width: 14px;
 }
 
 /* ────────── Section Specifics ────────── */
