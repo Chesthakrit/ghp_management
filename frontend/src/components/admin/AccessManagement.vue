@@ -357,28 +357,33 @@ onMounted(fetchData)
 .jt-sidebar { padding: 24px; overflow-y: auto; background: #fff; }
 .selection-title { font-size: 0.85rem; font-weight: 850; color: #94a3b8; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
 
-/* Org Tree Visuals */
-.org-tree { display: flex; flex-direction: column; gap: 4px; }
+/* Org Tree Visuals (Matching HR Settings Style) */
+.org-tree { display: flex; flex-direction: column; gap: 12px; }
 .tree-header { 
-   padding: 12px 14px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; margin-bottom: 2px;
+   background: #475569; color: white; padding: 14px 18px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s;
+   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); border: 1px solid transparent;
 }
-.tree-header:hover { background: #f8fafc; }
-.tree-header.active { background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb; }
-.header-main { display: flex; align-items: center; gap: 10px; }
-.tree-toggle { width: 14px; font-size: 0.7rem; color: #94a3b8; cursor: pointer; }
-.node-icon { font-size: 0.9rem; color: #2563eb; }
-.node-name { font-weight: 800; font-size: 0.95rem; }
-.node-badge { font-size: 0.6rem; padding: 2px 6px; background: #e2e8f0; border-radius: 6px; color: #64748b; font-weight: 800; text-transform: uppercase; }
+.tree-header:hover { background: #334155; transform: translateY(-1px); }
+.tree-header.active { background: #1e293b; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.3); }
 
-.tree-children { padding: 4px 0 8px 30px; display: flex; flex-direction: column; gap: 2px; }
-.tree-item { 
-   padding: 10px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;
+.header-main { display: flex; align-items: center; gap: 14px; }
+.tree-toggle { width: 14px; font-size: 0.75rem; color: #cbd5e1; cursor: pointer; transition: transform 0.2s; }
+.node-icon { font-size: 1rem; color: #94a3b8; }
+.node-name { font-weight: 700; font-size: 1rem; letter-spacing: 0.02em; }
+.node-badge { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.15); border-radius: 6px; color: #f1f5f9; font-weight: 800; text-transform: uppercase; }
+
+.tree-children { 
+   margin-top: -6px; padding: 12px 10px 8px 30px; background: #f8fafc; border-radius: 0 0 10px 10px; border: 1px solid #e2e8f0; border-top: none;
+   display: flex; flex-direction: column; gap: 6px; 
 }
-.tree-item:hover { background: #f8fafc; }
-.tree-item.active { background: #1e293b; color: white; border-color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-.node-icon-sm { font-size: 0.8rem; color: #64748b; }
-.active .node-icon-sm { color: white; }
-.node-name-sm { font-weight: 600; font-size: 0.88rem; }
+.tree-item { 
+   padding: 10px 15px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s; background: white; border: 1px solid #e2e8f0;
+}
+.tree-item:hover { background: #f1f5f9; border-color: #cbd5e1; padding-left: 18px; }
+.tree-item.active { background: #1e293b; color: white; border-color: #1e293b; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.node-icon-sm { font-size: 0.85rem; color: #64748b; }
+.active .node-icon-sm { color: #94a3b8; }
+.node-name-sm { font-weight: 600; font-size: 0.9rem; }
 
 .user-selection-list { display: flex; flex-direction: column; gap: 10px; }
 .user-item { padding: 14px 18px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.2s; }

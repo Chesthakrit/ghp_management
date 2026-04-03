@@ -44,6 +44,21 @@ def create_department(
     db.refresh(db_dept)
     return db_dept
 
+@router.put("/departments/reorder", response_model=List[schemas.Department])
+def reorder_departments(
+    payload: schemas.ReorderRequest,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
+):
+    """บันทึกลำดับแผนกใหม่หลังการ Drag & Drop"""
+    for item in payload.items:
+        db.query(models.Department).filter(models.Department.id == item.id).update(
+            {"display_order": item.display_order}
+        )
+    db.commit()
+    return db.query(models.Department).order_by(models.Department.display_order.asc()).all()
+
+
 @router.put("/departments/{dept_id}", response_model=schemas.Department)
 def update_department(
     dept_id: int,
@@ -63,20 +78,6 @@ def update_department(
     db.commit()
     db.refresh(db_dept)
     return db_dept
-
-@router.put("/departments/reorder", response_model=List[schemas.Department])
-def reorder_departments(
-    payload: schemas.ReorderRequest,
-    db: Session = Depends(get_db),
-    admin: models.User = Depends(oauth2.check_can_manage_hr_settings)
-):
-    """บันทึกลำดับแผนกใหม่หลังการ Drag & Drop"""
-    for item in payload.items:
-        db.query(models.Department).filter(models.Department.id == item.id).update(
-            {"display_order": item.display_order}
-        )
-    db.commit()
-    return db.query(models.Department).order_by(models.Department.display_order.asc()).all()
 
 
 @router.delete("/departments/{dept_id}")
