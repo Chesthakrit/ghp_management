@@ -123,6 +123,7 @@
             <UserManagement 
               @go-to-identity="(id) => $emit('go-to-identity', id)"
               @view-profile="(id) => $emit('view-profile', id)"
+              @go-to-register="$emit('go-to-register')"
             />
           </div>
 

@@ -88,6 +88,16 @@ const handleLogout = () => {
   localStorage.clear()
   currentView.value = 'login'
 }
+
+const handleRegisterCancel = () => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    // If logged in, go back to the previous admin or profile view
+    goToPage(isAdminOnly() ? 'admin' : 'profile')
+  } else {
+    goToPage('login')
+  }
+}
 </script>
 
 <template>
@@ -100,7 +110,7 @@ const handleLogout = () => {
 
     <RegisterForm 
       v-else-if="currentView === 'register'" 
-      @go-to-login="goToPage('login')" 
+      @go-to-login="handleRegisterCancel" 
     />
 
 
@@ -119,7 +129,7 @@ const handleLogout = () => {
       @go-back="isAdminOnly() ? goToPage('admin') : goToPage('profile')"
     />
 
-    <UserProfile
+     <UserProfile
       v-else-if="currentView === 'profile'"
       :key="selectedUserId"
       :username="username"
@@ -134,6 +144,7 @@ const handleLogout = () => {
       @go-to-admin="goToPage('admin')"
       @view-profile="(id) => goToPage('profile', id)"
       @go-to-identity="(id) => goToPage('identity', id)"
+      @go-to-register="goToPage('register')"
       @logout="handleLogout"
     />
   </div>

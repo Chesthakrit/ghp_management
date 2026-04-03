@@ -152,7 +152,7 @@ import { reactive, ref, watch } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
 
-defineEmits(['go-to-login'])
+const emit = defineEmits(['go-to-login'])
 
 const showPass  = ref(false)
 const showPass2 = ref(false)

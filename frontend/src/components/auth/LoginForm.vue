@@ -32,10 +32,6 @@
         </div>
 
         <button class="signin-button" @click="handleLogin">Sign In</button>
-
-        <p class="switch-text">
-          Don't have an account? <span @click="handleRegisterClick">Register here</span>
-        </p>
       </div>
     </div>
   </div>
@@ -117,34 +113,6 @@ const handleLogin = async () => {
         })
     }
 }
-
-const handleRegisterClick = async () => {
-    const { value: adminCode } = await Swal.fire({
-        title: 'Admin Authorization Required',
-        input: 'password',
-        inputLabel: 'Enter Admin Code to register new employee',
-        inputPlaceholder: 'Admin Code',
-        showCancelButton: true,
-        inputValidator: (value) => {
-            if (!value) {
-                return 'You need to write something!'
-            }
-        }
-    })
-
-    if (adminCode) {
-        try {
-            await api.post('/auth/verify-admin-code', { code: adminCode })
-            emit('go-to-register')
-        } catch (error) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Access Denied',
-                text: 'Incorrect Admin Code'
-            })
-        }
-    }
-}
 </script>
 
 <style scoped>
@@ -198,17 +166,5 @@ const handleRegisterClick = async () => {
     border: none;
     border-radius: 25px;
     cursor: pointer;
-}
-
-.switch-text {
-    margin-top: 20px;
-    font-size: 14px;
-    color: #666;
-}
-
-.switch-text span {
-    color: #4a90e2;
-    cursor: pointer;
-    font-weight: bold;
 }
 </style>
