@@ -12,6 +12,7 @@ import oauth2
 from database import get_db
 from models import attendance as models
 from schemas import attendance as schemas
+from utils.attendance_utils import calculate_attendance_status
 
 router = APIRouter(
     prefix="/attendance",
@@ -67,11 +68,19 @@ def check_in(
     # ดึง IP Address (มีประโยชน์มากถ้าเช็คอินด้วยเน็ตโรงงาน)
     client_ip = request.client.host if request.client else None
 
+    # --- ลอจิกการคำนวณสถานะสาย (Server-side Calculation) ---
+    all_configs = db.query(models.AttendanceConfig).all()
+    cfg_dict = {c.key: c.value for c in all_configs}
+    check_in_dt = datetime.now()
+    
+    # เรียกใช้ฟังก์ชันจาก utils เพิื่อคำนวณสถานะสาย (Clean Code)
+    status = calculate_attendance_status(current_user.id, check_in_dt, cfg_dict)
+
     # สร้าง Record ใหม่ในตาราง attendance_logs
     new_attendance = models.AttendanceLog(
         user_id=current_user.id,
         date=today,
-        check_in_time=datetime.now(),
+        check_in_time=check_in_dt,
         check_in_type=check_in_data.check_in_type,
         location_lat=check_in_data.location_lat,
         location_lon=check_in_data.location_lon,
@@ -79,7 +88,7 @@ def check_in(
         ip_address=client_ip,
         check_in_image=check_in_data.check_in_image,
         note=check_in_data.note,
-        status="present" # ค่าเริ่มต้น (ค่อยเขียนลอจิกเช็คสายทีหลัง)
+        status=status # บันทึกสถานะที่คำนวณได้ลง DB ทันที
     )
 
     db.add(new_attendance)
