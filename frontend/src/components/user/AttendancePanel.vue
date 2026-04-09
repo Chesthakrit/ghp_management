@@ -96,6 +96,30 @@
         </table>
       </div>
     </div>
+
+    <!-- User Check-in Modal -->
+    <div v-if="isUserCheckinModalOpen" class="modal-overlay" @click="isUserCheckinModalOpen = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3><i class="fas fa-user-clock"></i> User Check-in / Out</h3>
+          <button class="close-btn" @click="isUserCheckinModalOpen = false"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">กรุณาเลือกรายการบันทึกเวลาของคุณ</p>
+          <div class="modal-actions-row">
+            <button class="action-btn btn-checkin" @click="performUserCheckin">
+              <i class="fas fa-sign-in-alt"></i>
+              <span>Clock IN</span>
+            </button>
+            <button class="action-btn btn-checkout" @click="performUserCheckout">
+              <i class="fas fa-sign-out-alt"></i>
+              <span>Clock OUT</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -119,6 +143,8 @@ const historyLogs = ref([])
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const selectedMonth = ref(new Date().getMonth())
 const selectedYear = ref(new Date().getFullYear())
+
+const isUserCheckinModalOpen = ref(false)
 
 let timerInterval = null
 
@@ -251,7 +277,18 @@ const handleOnSiteCheckin = () => {
 }
 
 const handleCheckinUser = () => {
-  alert("Check-in by User feature will be implemented soon.")
+  // alert("Check-in by User feature will be implemented soon.")
+  isUserCheckinModalOpen.value = true
+}
+
+const performUserCheckin = () => {
+  alert("Simulating Check-In...")
+  isUserCheckinModalOpen.value = false
+}
+
+const performUserCheckout = () => {
+  alert("Simulating Check-Out...")
+  isUserCheckinModalOpen.value = false
 }
 
 const handleCheckinFactory = () => {
@@ -374,4 +411,53 @@ onUnmounted(() => {
   .header-titles { min-width: 150px; }
   .time-display-large { font-size: 2rem; }
 }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+
+.modal-content {
+  background: white; border-radius: 20px; width: 90%; max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+  overflow: hidden; animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid #f1f5f9;
+  display: flex; justify-content: space-between; align-items: center;
+  background: #f8fafc;
+}
+
+.modal-header h3 { margin: 0; font-size: 1.15rem; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+.modal-header i { color: #3b82f6; }
+.close-btn { background: transparent; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer; transition: 0.2s; }
+.close-btn:hover { color: #ef4444; transform: scale(1.1); }
+
+.modal-body { padding: 24px; }
+.modal-desc { margin: 0 0 20px 0; color: #64748b; font-size: 0.95rem; text-align: center; }
+
+.modal-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.action-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 20px; border-radius: 14px; border: none; cursor: pointer;
+  transition: all 0.2s; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; color: white;
+}
+
+.action-btn i { font-size: 2rem; }
+
+.btn-checkin { background: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+.btn-checkin:hover { background: #059669; transform: translateY(-3px); }
+
+.btn-checkout { background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+.btn-checkout:hover { background: #dc2626; transform: translateY(-3px); }
+
 </style>
