@@ -18,11 +18,15 @@
           <div class="rules-summary">
              <div class="rule-item">
                <span class="dot std"></span>
-               Standard: <strong>{{ configs.ot_normal_start || '17:00' }} - {{ configs.ot_normal_end || '22:00' }}</strong>
+               Evening: <strong>{{ configs.ot_normal_start || '17:00' }} - {{ configs.ot_normal_end || '22:00' }}</strong>
+             </div>
+             <div v-if="configs.ot_morning_start" class="rule-item">
+               <span class="dot morn"></span>
+               Morning: <strong>{{ configs.ot_morning_start }} - {{ configs.ot_morning_end }}</strong>
              </div>
              <div class="rule-item">
                <span class="dot sp"></span>
-               Special: <strong>{{ configs.ot_special_start || '22:00' }} - {{ configs.ot_special_end || '06:00' }}</strong>
+               Midnight/Holiday: <strong>{{ configs.ot_special_start || '22:00' }} - {{ configs.ot_special_end || '06:00' }}</strong>
              </div>
           </div>
 
@@ -56,7 +60,7 @@
 
           <!-- ข้อความแจ้งเตือนถ้ากรอกนอกช่วงเวลา -->
           <p v-if="!isStartTimeValid || !isEndTimeValid" class="warning-text">
-            * กรุณาเลือกเวลาในช่วง {{ configs.ot_normal_start || '17:00' }} ถึง {{ configs.ot_special_end || '06:00' }}
+            * เวลาที่เลือกไม่อยู่ในช่วงที่บริษัทกำหนดให้ทำโอทีได้
           </p>
 
           <div class="form-group full">
@@ -169,12 +173,23 @@ const isEndTimeValid = computed(() => validateTime(otForm.value.end_time))
 
 function validateTime(time) {
   if (!time) return true
-  const min = timeToMin(configs.value.ot_normal_start || '17:00')
-  const max = timeToMin(configs.value.ot_special_end || '06:00')
   const cur = timeToMin(time)
   
-  if (min > max) return cur >= min || cur <= max
-  return cur >= min && cur <= max
+  // ช่วงเย็น/ดึก (Evening/Midnight)
+  const normS = timeToMin(configs.value.ot_normal_start || '17:00')
+  const specE = timeToMin(configs.value.ot_special_end || '06:00')
+  
+  // ช่วงเช้า (Morning)
+  const mornS = timeToMin(configs.value.ot_morning_start || '05:00')
+  const mornE = timeToMin(configs.value.ot_morning_end || '08:00')
+  
+  // เช็คช่วงเย็น (ข้ามคืน)
+  const isInEveningRange = (normS > specE) ? (cur >= normS || cur <= specE) : (cur >= normS && cur <= specE)
+  
+  // เช็คช่วงเช้า
+  const isInMorningRange = (cur >= mornS && cur <= mornE)
+  
+  return isInEveningRange || isInMorningRange
 }
 
 const otSummary = computed(() => {
@@ -184,10 +199,12 @@ const otSummary = computed(() => {
   const startMin = timeToMin(start_time)
   const endMin = timeToMin(end_time)
   
-  // กฎเวลาจาก Config (ถ้าไม่มีใช้ 17:00 - 22:00 - 06:00)
+  // กฎเวลาจาก Config
   const normStart = timeToMin(configs.value.ot_normal_start || '17:00')
   const normEnd = timeToMin(configs.value.ot_normal_end || '22:00')
-  const specEnd = timeToMin(configs.value.ot_special_end || '06:00')
+  
+  const mornStart = timeToMin(configs.value.ot_morning_start || '05:00')
+  const mornEnd = timeToMin(configs.value.ot_morning_end || '08:00')
 
   // คำนวณชั่วโมงทั้งหมด (รองรับข้ามคืน)
   let totalMin = endMin - startMin
@@ -195,30 +212,25 @@ const otSummary = computed(() => {
   
   const isWeekend = [0, 6].includes(new Date(request_date).getDay())
   
-  // ถ้าเป็นวันหยุด (Weekend) ให้เป็น Special ทั้งหมด
   if (isWeekend) {
-    return {
-      total: (totalMin / 60).toFixed(1),
-      std: '0.0',
-      sp: (totalMin / 60).toFixed(1)
-    }
+    return { total: (totalMin / 60).toFixed(1), std: '0.0', sp: (totalMin / 60).toFixed(1) }
   }
 
-  // --- ลอจิกการ "ผ่าช่วง" สำหรับวันทำงานปกติ ---
   let stdMin = 0
   let spMin = 0
   
-  // จำลองเวลาเป็นจุดๆ ใน 24-48 ชม. เพื่อให้คำนวณช่วงรอยต่อได้ง่าย
   for (let m = 0; m < totalMin; m++) {
     const current = (startMin + m) % 1440
     
-    // ตรวจสอบว่านาทีนี้อยู่ในช่วง Standard (Normal Start -> Normal End) หรือไม่
-    // หมายเหตุ: ลอจิกนี้รองรับกรณี Normal End อยู่หลังเที่ยงคืนด้วย
-    const isInStandard = (normStart < normEnd) 
+    // ช่วง Standard ปกติ (เย็น)
+    const isInEveningStandard = (normStart < normEnd) 
       ? (current >= normStart && current < normEnd)
       : (current >= normStart || current < normEnd)
       
-    if (isInStandard) {
+    // ช่วง Standard ใหม่ (เช้า)
+    const isInMorningStandard = (current >= mornStart && current < mornEnd)
+      
+    if (isInEveningStandard || isInMorningStandard) {
       stdMin++
     } else {
       spMin++
@@ -312,6 +324,7 @@ const submitOTRequest = async () => {
 .rule-item { font-size: 0.8rem; color: #0369a1; display: flex; align-items: center; gap: 8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .dot.std { background: #0ea5e9; }
+.dot.morn { background: #f59e0b; }
 .dot.sp { background: #22c55e; }
 
 .form-grid { 

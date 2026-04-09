@@ -91,6 +91,18 @@
                   <input type="text" class="time-text-input" v-model="config.ot_special_end" placeholder="HH:mm" @blur="validateTime('ot_special_end')" />
                 </div>
               </div>
+              <!-- เพิ่มโอทีเช้า (Morning OT) -->
+              <div class="ot-row morning-ot">
+                <div class="ot-info">
+                  <span class="ot-name">Morning Overtime <span class="tag-24h-ot">24H</span></span>
+                  <small>Pre-work shift / Early arrival</small>
+                </div>
+                <div class="ot-inputs">
+                  <input type="text" class="time-text-input" v-model="config.ot_morning_start" placeholder="HH:mm" @blur="validateTime('ot_morning_start')" />
+                  <span class="sep">to</span>
+                  <input type="text" class="time-text-input" v-model="config.ot_morning_end" placeholder="HH:mm" @blur="validateTime('ot_morning_end')" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -263,6 +275,7 @@ const config = ref({
   late_grace_period_mins_t2: '15', 
   late_grace_period_mins_t3: '30',
   ot_normal_start: '17:00', ot_normal_end: '22:00', ot_special_start: '22:00', ot_special_end: '06:00',
+  ot_morning_start: '05:00', ot_morning_end: '08:00', // เพิ่มโอทีเช้า
   quota_sick_leave: '30', quota_annual_leave: '6', quota_personal_leave: '3'
 })
 
@@ -369,7 +382,7 @@ const saveConfigs = async (type) => {
   try {
     let keys = []
     if (type === 'hours') keys = ['check_in_time', 'check_out_time', 'late_grace_period_mins', 'late_grace_period_mins_t2', 'late_grace_period_mins_t3']
-    if (type === 'ot') keys = ['ot_normal_start', 'ot_normal_end', 'ot_special_start', 'ot_special_end']
+    if (type === 'ot') keys = ['ot_normal_start', 'ot_normal_end', 'ot_special_start', 'ot_special_end', 'ot_morning_start', 'ot_morning_end']
     if (type === 'leaves') keys = ['quota_sick_leave', 'quota_annual_leave', 'quota_personal_leave']
     const payload = keys.map(k => ({ key: k, value: String(config.value[k]) }))
     await api.put('/attendance/settings', payload)
@@ -475,6 +488,8 @@ onMounted(() => { fetchConfigs(); fetchLocations(); fetchHolidays() })
   transition: 0.2s;
 }
 .ot-row:hover { border-color: #1a2a3a; background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.ot-row.morning-ot { border-left: 4px solid #f59e0b; } /* Orange border for Morning OT */
+.ot-row.morning-ot:hover { border-left-color: #d97706; }
 
 .ot-info { display: flex; flex-direction: column; gap: 2px; }
 .ot-name { font-size: 0.82rem; font-weight: 800; color: #1a2a3a; text-transform: uppercase; letter-spacing: 0.01em; }

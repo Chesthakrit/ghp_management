@@ -12,7 +12,7 @@ import oauth2
 from database import get_db
 from models import attendance as models
 from schemas import attendance as schemas
-from utils.attendance_utils import calculate_attendance_status
+from utils.attendance_utils import calculate_attendance_status, calculate_ot_hours # เพิ่มการคำนวณ OT
 
 router = APIRouter(
     prefix="/attendance",
@@ -222,6 +222,48 @@ def update_attendance_configs(
 def get_holidays_by_year(year: int, db: Session = Depends(get_db), current_user = Depends(oauth2.get_current_user)):
     check_time_permission(current_user)
     return db.query(models.CompanyHoliday).filter(models.CompanyHoliday.year == year).order_by(models.CompanyHoliday.date).all()
+
+
+@router.post("/ot-requests", response_model=schemas.OTRequestResponse)
+def create_ot_request(
+    ot_data: schemas.OTRequestCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """
+    บันทึกคำขอทำ OT พร้อมตรวจสอบความถูกต้องจากฝั่ง Server
+    """
+    # 1. ดึง Config เพื่อใช้คำนวณ
+    all_configs = db.query(models.AttendanceConfig).all()
+    cfg_dict = {c.key: c.value for c in all_configs}
+    
+    # 2. ตรวจสอบว่าเป็นวันหยุดหรือไม่ (ใช้ Logic เดียวกับหน้าบ้าน)
+    is_weekend = ot_data.request_date.weekday() in [5, 6] # 5=Sat, 6=Sun
+    
+    # 3. คำนวณชั่วโมงใหม่จากฝั่ง Server เพื่อ Validate (Security)
+    srv_std, srv_sp = calculate_ot_hours(
+        ot_data.start_time, 
+        ot_data.end_time, 
+        cfg_dict, 
+        is_weekend
+    )
+    
+    new_ot = models.OTRequest(
+        user_id=current_user.id,
+        request_date=ot_data.request_date,
+        start_time=ot_data.start_time,
+        end_time=ot_data.end_time,
+        standard_hours=srv_std, # ใช้ค่าที่คำนวณจาก Server เพื่อความปลอดภัย
+        special_hours=srv_sp,
+        total_hours=srv_std + srv_sp,
+        reason=ot_data.reason,
+        status="pending"
+    )
+    
+    db.add(new_ot)
+    db.commit()
+    db.refresh(new_ot)
+    return new_ot
 
 
 @router.post("/holidays", response_model=schemas.CompanyHolidayResponse)
