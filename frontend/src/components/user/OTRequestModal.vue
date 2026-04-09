@@ -31,6 +31,14 @@
             <div class="form-group full">
               <label>วันที่ขอ (Date)</label>
               <input type="date" v-model="otForm.request_date" class="form-input" />
+              
+              <!-- ปุ่มกดดึงเวลาจริง (ปลาบปลื้มใจแน่นอนครับ) -->
+              <div v-if="actualDayLog?.check_out_time" class="actual-info-row">
+                <span>เลิกงานจริง: <strong>{{ formatActualTime(actualDayLog.check_out_time) }}</strong></span>
+                <button class="btn-text-action" @click="useActualTime">
+                  <i class="fas fa-magic"></i> ใช้เวลาเลิกงานจริง
+                </button>
+              </div>
             </div>
 
             <div class="form-group">
@@ -89,13 +97,13 @@ import api from '../../api'
 
 const props = defineProps({
   isOpen: Boolean,
-  requesterName: String
+  requesterName: String,
+  attendanceLogs: { type: Array, default: () => [] } 
 })
 
 const emit = defineEmits(['close', 'submitted'])
 
 // --- 1. State ---
-const isSubmitting = ref(false)
 const configs = ref({}) 
 const otForm = ref({
   request_date: new Date().toISOString().split('T')[0],
@@ -103,8 +111,32 @@ const otForm = ref({
   end_time: '20:30',
   reason: ''
 })
+const isSubmitting = ref(false)
+const actualDayLog = ref(null) // เก็บ Log จริงของวันที่เลือก
 
-// --- 2. Fetch Logic (ดึงค่าจาก DB มาเก็บไว้แบบที่นายสั่ง) ---
+// --- 2. Watchers & Actions ---
+// ค้นหา Log จริงเมื่อเปลี่ยนวันที่
+watch(() => otForm.value.request_date, (newDate) => {
+  if (!newDate) {
+    actualDayLog.value = null
+    return
+  }
+  actualDayLog.value = props.attendanceLogs.find(l => l.date === newDate) || null
+}, { immediate: true })
+
+// ฟังก์ชันดึงเวลาเลิกงานจริงมาใส่ในฟอร์ม
+const useActualTime = () => {
+  if (actualDayLog.value?.check_out_time) {
+    const checkOut = new Date(actualDayLog.value.check_out_time)
+    const hh = String(checkOut.getHours()).padStart(2, '0')
+    const mm = String(checkOut.getMinutes()).padStart(2, '0')
+    
+    otForm.value.start_time = configs.value.ot_normal_start || '17:00'
+    otForm.value.end_time = `${hh}:${mm}`
+  }
+}
+
+// --- 3. Fetch Logic (ดึงค่าจาก DB มาเก็บไว้แบบที่นายสั่ง) ---
 const fetchOTRules = async () => {
   try {
     const res = await api.get('/attendance/ot-rules')
@@ -117,6 +149,13 @@ const fetchOTRules = async () => {
 onMounted(() => {
   fetchOTRules()
 })
+
+// ช่วยแสดงผลเวลาจริงบน UI
+const formatActualTime = (isoStr) => {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
 
 // --- 3. Calculation Logic ---
 const timeToMin = (timeStr) => {
@@ -337,6 +376,40 @@ textarea.form-input { min-height: 80px; resize: none; width: 95%; text-align: le
 .btn-submit { padding: 12px; background: #0ea5e9; border: none; border-radius: 12px; font-weight: 700; color: white; cursor: pointer; transition: 0.2s; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3); }
 .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4); background: #0284c7; }
 .btn-submit:disabled { opacity: 0.6; transform: none; cursor: not-allowed; }
-.btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4); }
-.btn-submit:disabled { opacity: 0.6; transform: none; cursor: not-allowed; }
+
+/* สไตล์ปุ่มดึงเวลาจริง */
+.actual-info-row {
+  margin-top: 10px;
+  width: 95%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px dashed #3498db66;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.btn-text-action {
+  background: white;
+  border: 1px solid #3498db;
+  color: #3498db;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: 0.2s;
+  font-size: 0.75rem;
+}
+
+.btn-text-action:hover {
+  background: #3498db;
+  color: white;
+  box-shadow: 0 4px 10px rgba(52, 152, 219, 0.2);
+}
 </style>

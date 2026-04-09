@@ -191,6 +191,7 @@
     <OTRequestModal 
       :isOpen="isOTModalOpen" 
       :requesterName="requesterName" 
+      :attendanceLogs="historyLogs"
       @close="isOTModalOpen = false"
       @submitted="fetchMyAttendance"
     />
