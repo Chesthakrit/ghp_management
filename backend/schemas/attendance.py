@@ -59,3 +59,23 @@ class AttendanceConfigResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class AttendanceLocationCreate(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    radius: int = 100
+    is_fixed: bool = True
+    project_id: Optional[int] = None
+
+class AttendanceLocationResponse(BaseModel):
+    id: int
+    name: str
+    lat: float
+    lon: float
+    radius: int
+    is_fixed: bool
+    project_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True

@@ -55,3 +55,18 @@ class AttendanceConfig(Base):
     key = Column(String, unique=True, index=True, nullable=False) # เช่น check_in_time
     value = Column(String, nullable=False) # เช่น 08:00
     description = Column(String, nullable=True) # คำอธิบาย (ใส่ไว้ให้ admin อ่านใน DB ง่ายๆ)
+
+class AttendanceLocation(Base):
+    """ตารางเก็บสถานที่อนุญาตให้เช็คอิน (Fixed และ Onsite)"""
+    __tablename__ = "attendance_locations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False) # ชื่อสถานที่ เช่น สำนักงานใหญ่, โปรเจกต์ A
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    radius = Column(Integer, default=100) # รัศมีที่ยอมให้เช็คอินได้ (เป็นเมตร)
+    is_fixed = Column(Boolean, default=True) # True=Fixed (โรงงาน/ออฟฟิศ), False=Onsite (ดึงมาจากโปรเจกต์)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True) # เชื่อมกับโปรเจกต์ (ถ้ามี)
+    
+    # Relationship (Optional: to project if needed later)
+    project = relationship("Project", backref="attendance_locations")

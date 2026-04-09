@@ -256,3 +256,41 @@ def update_holiday(
     db.commit()
     db.refresh(db_holiday)
     return db_holiday
+
+
+# --- Location Management Endpoints ---
+
+@router.get("/locations", response_model=list[schemas.AttendanceLocationResponse])
+def get_locations(db: Session = Depends(get_db), current_user = Depends(oauth2.get_current_user)):
+    """ดึงรายการสถานที่เช็คอินทั้งหมด"""
+    check_time_permission(current_user)
+    return db.query(models.AttendanceLocation).all()
+
+@router.post("/locations", response_model=schemas.AttendanceLocationResponse)
+def create_location(
+    loc_data: schemas.AttendanceLocationCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """เพิ่มสถานที่เช็คอินใหม่ (Fixed/Onsite)"""
+    check_time_permission(current_user, 'action.time.edit_location')
+    new_loc = models.AttendanceLocation(**loc_data.dict())
+    db.add(new_loc)
+    db.commit()
+    db.refresh(new_loc)
+    return new_loc
+
+@router.delete("/locations/{loc_id}")
+def delete_location(
+    loc_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """ลบสถานที่เช็คอิน"""
+    check_time_permission(current_user, 'action.time.edit_location')
+    db_loc = db.query(models.AttendanceLocation).filter(models.AttendanceLocation.id == loc_id).first()
+    if not db_loc:
+        raise HTTPException(status_code=404, detail="Location not found")
+    db.delete(db_loc)
+    db.commit()
+    return {"message": "Location deleted"}
