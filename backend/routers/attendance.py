@@ -20,13 +20,15 @@ router = APIRouter(
 )
 
 @router.get("/ot-rules")
-def get_ot_rules(db: Session = Depends(get_db)):
+def get_ot_rules(
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user) # บังคับ Login เพื่อดูกฎบริษัท
+):
     """
-    [PUBLIC] ดึงเฉพาะกฎเวลา OT มาเก็บไว้ในตัวแปรเพื่อใช้คำนวณที่หน้าจอ (ไม่ต้อง Login)
+    ดึงกฎเวลา OT (เฉพาะพนักงานในระบบ)
     """
-    keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end"]
+    keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end", "ot_morning_start", "ot_morning_end"]
     configs = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key.in_(keys)).all()
-    # คืนค่าเป็นรูปแบบ { key: value }
     return {c.key: c.value for c in configs}
 
 # Setup Upload Directory
@@ -157,13 +159,17 @@ def check_time_permission(user, action_perm=None):
     is_admin = (user.role and user.role.name.lower() == 'admin') or (user.username.lower() == 'admin')
     perms = user.permissions or []
 
-    # หากเป็นแอดมิน หรือได้รับสิทธิ์เข้าหน้า Time & Leave ถือว่าผ่านเบื้องต้น
-    if not is_admin and 'page.time_leave' not in perms:
-         raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์จัดการข้อมูลเวลาและวันหยุด")
+    # ถ้าเป็น Admin ให้ผ่านทุกกรณี
+    if is_admin:
+        return True
+
+    # หากไม่ใช่แอดมิน ต้องมีสิทธิ์เข้าหน้า Time & Leave
+    if 'page.time_leave' not in perms:
+         raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์เข้าถึงข้อมูลส่วนนี้")
     
-    # เช็คสิทธิ์การกระทำที่เฉพาะเจาะจง (ถ้ามีการระบุ)
-    if not is_admin and action_perm and action_perm not in perms:
-        raise HTTPException(status_code=403, detail=f"ไม่มีสิทธิ์ทำรายการ: {action_perm}")
+    # เช็คสิทธิ์การกระทำเฉพาะเจาะจง (ถ้ามีระบุ)
+    if action_perm and action_perm not in perms:
+        raise HTTPException(status_code=403, detail=f"คุณไม่มีสิทธิ์ทำรายการนี้: {action_perm}")
 
     return True
 
@@ -175,10 +181,11 @@ def get_user_attendance(
     current_user = Depends(oauth2.get_current_user)
 ):
     """
-    ดึงประวัติการเข้า-ออกงานของพนักงานระบุบุคคล (สำหรับ Admin/HR)
+    ดึงประวัติการเข้างาน (Security: เฉพาะเจ้าของข้อมุล หรือ Admin/HR เท่านั้น)
     """
-    # Bypassed: All authenticated users can view logs
-    pass
+    # 1. ถ้าไม่ใช่เจ้าของข้อมูล ต้องเช็คสิทธิ์ Admin/HR
+    if current_user.id != user_id:
+        check_time_permission(current_user) # ฟังก์ชันนี้จะคัดกรองสิทธิ์ให้
             
     return db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == user_id).order_by(models.AttendanceLog.date.desc()).all()
 
