@@ -19,6 +19,16 @@ router = APIRouter(
     tags=["Attendance System"]
 )
 
+@router.get("/ot-rules")
+def get_ot_rules(db: Session = Depends(get_db)):
+    """
+    [PUBLIC] ดึงเฉพาะกฎเวลา OT มาเก็บไว้ในตัวแปรเพื่อใช้คำนวณที่หน้าจอ (ไม่ต้อง Login)
+    """
+    keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end"]
+    configs = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key.in_(keys)).all()
+    # คืนค่าเป็นรูปแบบ { key: value }
+    return {c.key: c.value for c in configs}
+
 # Setup Upload Directory
 UPLOAD_DIR = "uploads/attendance"
 os.makedirs(UPLOAD_DIR, exist_ok=True)

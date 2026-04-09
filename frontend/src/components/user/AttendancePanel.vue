@@ -187,12 +187,21 @@
       </div>
     </div>
 
+    <!-- [7] หน้าต่าง Modal สำหรับขอโอที (OT Request) -->
+    <OTRequestModal 
+      :isOpen="isOTModalOpen" 
+      :requesterName="requesterName" 
+      @close="isOTModalOpen = false"
+      @submitted="fetchMyAttendance"
+    />
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../api'
+import OTRequestModal from './OTRequestModal.vue'
 
 const props = defineProps(['userId'])
 
@@ -205,9 +214,11 @@ const isLoading = ref(true)        // สถานะโหลดข้อมู
 const baseDate = ref(new Date())   // วันที่ฐานสำหรับแสดงผลในตาราง
 const weekDays = ref([])           // อาร์เรย์เก็บข้อมูล 7 วันที่จะโชว์ในตาราง
 const historyLogs = ref([])        // ประวัติการเข้างานที่ดึงมาจาก API
+const requesterName = ref('User')  // ชื่อผู้ขอ (สำหรับส่งไปใน Modal)
 
 // --- 2. ตัวแปรสถานะเช็คอิน (Registration State) ---
 const isUserCheckinModalOpen = ref(false)
+const isOTModalOpen = ref(false)   // สถานะเปิด/ปิดหน้าต่างขอ OT
 const checkInType = ref('factory')
 const cameraInput = ref(null)
 const currentAction = ref(null) 
@@ -386,9 +397,14 @@ const fetchUserData = async () => {
   try {
     const endpoint = props.userId ? `/users/${props.userId}` : '/users/me'
     const res = await api.get(endpoint)
-    if (res.data?.employee_profile) {
-      salaryType.value = res.data.employee_profile.salary_type || 'monthly'
-      hireDateStr.value = res.data.employee_profile.hire_date || ''
+    const u = res.data
+    
+    // เก็บชื่อเพื่อแสดงใน Modal
+    requesterName.value = `${u.first_name} ${u.last_name}`
+
+    if (u.employee_profile) {
+      salaryType.value = u.employee_profile.salary_type || 'monthly'
+      hireDateStr.value = u.employee_profile.hire_date || ''
     }
   } catch (e) { console.error(e) }
 }
@@ -524,7 +540,9 @@ const handlePhotoTaken = async (event) => {
 // ฟังก์ชันรอการพัฒนาเพิ่มเติม
 const handleOnSiteCheckin = () => alert("Featured in BY USER section.")
 const handleCheckinFactory = () => alert("Featured in BY USER section.")
-const handleOTRequest = () => alert("OT Request feature will be implemented soon.")
+const handleOTRequest = () => {
+  isOTModalOpen.value = true
+}
 
 // --- 10. วงจรชีวิตของคอมโพเนนต์ (Lifecycle Hooks) ---
 onMounted(async () => {
