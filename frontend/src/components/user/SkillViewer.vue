@@ -27,87 +27,76 @@
           </div>
 
           <div class="skill-category-group" v-for="(skills, catName) in groupedSkills" :key="catName">
-            <h4 class="category-title"># {{ catName }}</h4>
-            <div class="skill-items-list">
+            <div class="category-header-row" @click="toggleCategory(catName)">
+              <h4 class="category-title" style="margin: 0; padding: 0;"># {{ catName }}</h4>
+              <i class="fas" :class="collapsedCategories[catName] ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+            </div>
+            <div v-show="!collapsedCategories[catName]" class="skill-items-list">
               <div 
                 v-for="skill in skills" 
                 :key="skill.id" 
                 class="skill-item-row"
                 :class="{ 'active-selection': selectedSkill?.id === skill.id }"
               >
-                <div class="skill-info-box" @click="selectSkill(skill)">
-                  <div class="skill-name-text">{{ skill.name }}</div>
-                </div>
-                <div class="skill-progress-box">
-                    <i 
-                      v-if="skill.description" 
-                      class="fas fa-info-circle skill-info-btn-inline" 
-                      @click="selectSkill(skill)"
-                      :class="{ 'active': selectedSkill?.id === skill.id }"
-                      title="View Details"
-                    ></i>
-                    <div class="progress-bar-wrapper">
-                      <div class="progress-bar-track">
-                        <div 
-                          class="progress-bar-fill" 
-                          :style="{ width: (userEvaluations[skill.id] || 0) + '%' }"
-                          :class="getProgressColor(skill.id)"
-                        ></div>
+                <!-- 1) Accordion Header -->
+                <div class="skill-item-header" @click="selectSkill(skill)">
+                  <div class="skill-info-box">
+                    <div class="skill-name-text">{{ skill.name }}</div>
+                  </div>
+                  <div class="skill-progress-box">
+                      <div class="progress-bar-wrapper">
+                        <div class="progress-bar-track">
+                          <div 
+                            class="progress-bar-fill" 
+                            :style="{ width: (userEvaluations[skill.id] || 0) + '%' }"
+                            :class="getProgressColor(skill.id)"
+                          ></div>
+                        </div>
+                        <span class="progress-pct">{{ userEvaluations[skill.id] || 0 }}%</span>
                       </div>
-                      <span class="progress-pct">{{ userEvaluations[skill.id] || 0 }}%</span>
+                      <i class="fas chevron-icon" :class="selectedSkill?.id === skill.id ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </div>
+                </div>
+
+                <!-- 2) Accordion Body (Dropdown) -->
+                <div v-if="selectedSkill?.id === skill.id" class="skill-dropdown-content">
+                  <div class="doc-inner-section">
+                    <label class="doc-inner-label">DESCRIPTION / DETAILS</label>
+                    <div class="doc-inner-content-box" style="margin-bottom: 20px;">
+                      {{ skill.description || 'No detailed description available.' }}
                     </div>
+
+                    <label v-if="skill.sub_duties?.length" class="doc-inner-label">CHECKLIST / REQUIREMENTS</label>
+                    <div v-if="skill.sub_duties?.length" class="sub-skills-checklist">
+                        <div 
+                          v-for="sub in skill.sub_duties" 
+                          :key="sub.id" 
+                          class="checklist-item"
+                          :class="{ 'is-checked': !!subEvaluations[sub.id], 'can-toggle': canEvaluate }"
+                          @click="canEvaluate && toggleSubDuty(sub.id)"
+                        >
+                          <div class="checkbox-box">
+                            <i v-if="subEvaluations[sub.id]" class="fas fa-check"></i>
+                          </div>
+                          <div class="sub-skill-content">
+                            <span class="sub-skill-name">{{ sub.name }}</span>
+                            <button 
+                              v-if="sub.tutorial_url" 
+                              class="sub-skill-video-link" 
+                              @click.stop="openVideoPlayer(sub.tutorial_url)"
+                              title="รับชมวิดีโอสอนงาน"
+                            >
+                              <i class="fas fa-play-circle"></i> Tutorial
+                            </button>
+                          </div>
+                        </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </template>
-      </div>
-    </div>
-
-    <!-- Inline Detail Box (Pane ขวา) -->
-    <div class="skills-detail-side">
-      <div v-if="selectedSkill" class="inline-doc-card">
-        <div class="doc-header-blue-small"></div>
-        <div class="doc-body-inner">
-          <h1 class="doc-inner-title">{{ selectedSkill.name }}</h1>
-          <div class="doc-inner-section">
-            <label class="doc-inner-label">DESCRIPTION / DETAILS</label>
-            <div class="doc-inner-content-box" style="margin-bottom: 30px;">
-              {{ selectedSkill.description || 'No detailed description available.' }}
-            </div>
-
-            <!-- Checklist Section -->
-            <label v-if="selectedSkill.sub_duties?.length" class="doc-inner-label">CHECKLIST / REQUIREMENTS</label>
-            <div v-if="selectedSkill.sub_duties?.length" class="sub-skills-checklist">
-                <div 
-                  v-for="sub in selectedSkill.sub_duties" 
-                  :key="sub.id" 
-                  class="checklist-item"
-                  :class="{ 'is-checked': !!subEvaluations[sub.id], 'can-toggle': canEvaluate }"
-                  @click="canEvaluate && toggleSubDuty(sub.id)"
-                >
-                  <div class="checkbox-box">
-                    <i v-if="subEvaluations[sub.id]" class="fas fa-check"></i>
-                  </div>
-                  <div class="sub-skill-content">
-                    <span class="sub-skill-name">{{ sub.name }}</span>
-                    <button 
-                      v-if="sub.tutorial_url" 
-                      class="sub-skill-video-link" 
-                      @click.stop="openVideoPlayer(sub.tutorial_url)"
-                      title="รับชมวิดีโอสอนงาน"
-                    >
-                      <i class="fas fa-play-circle"></i> Tutorial
-                    </button>
-                  </div>
-                </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-else class="no-selection-placeholder">
-        <i class="fas fa-book-open"></i>
-        <p>เลือก Skill เพื่อดูรายละเอียดการทำงาน</p>
       </div>
     </div>
 
@@ -131,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import api from '../../api'
 
 const props = defineProps({
@@ -167,6 +156,21 @@ const emit = defineEmits(['select-skill', 'toggle-sub-duty'])
 const showVideoPlayer = ref(false)
 const currentVideoUrl = ref('')
 const videoElement = ref(null)
+
+// Subskills Expander State
+const showSubSkills = ref(true)
+
+// Categories Expander State
+const collapsedCategories = ref({})
+
+const toggleCategory = (catName) => {
+  collapsedCategories.value[catName] = !collapsedCategories.value[catName]
+}
+
+watch(() => props.selectedSkill, () => {
+  // เมื่อเปลี่ยน Skill ให้เปิด Checklist ไว้เสมอ
+  showSubSkills.value = true
+})
 
 const openVideoPlayer = (url) => {
   if (!url) return
@@ -216,7 +220,11 @@ const groupedSkills = computed(() => {
 })
 
 const selectSkill = (skill) => {
-  emit('select-skill', skill)
+  if (props.selectedSkill?.id === skill.id) {
+    emit('select-skill', null)
+  } else {
+    emit('select-skill', skill)
+  }
 }
 
 const toggleSubDuty = (subId) => {
@@ -340,19 +348,13 @@ const getOverallColor = (pct) => {
 }
 
 .skills-list-side {
-  flex: 1;
-  max-width: 450px;
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   padding-right: 12px;
-}
-
-.skills-detail-side {
-  flex: 2;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
 }
 
 .no-skills-notice {
@@ -377,31 +379,79 @@ const getOverallColor = (pct) => {
 }
 
 .category-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #64748b;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #f8fafc;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0 12px;
-  margin: 0 0 12px 0;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.category-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-radius: 12px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.15);
+  border: 1px solid #475569;
+}
+
+.category-header-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(30, 41, 59, 0.25);
+  background: linear-gradient(135deg, #334155 0%, #475569 100%);
+}
+
+.category-header-row i {
+  color: #f8fafc;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.1);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .skill-items-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  animation: fadeInDown 0.3s ease;
 }
 
 .skill-item-row {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+
+.skill-item-header {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  gap: 16px;
+  background: #fff;
+  transition: background 0.2s;
+}
+
+.skill-item-row:hover .skill-item-header {
+  background: #f8fafc;
 }
 
 .skill-item-row:hover {
@@ -411,12 +461,25 @@ const getOverallColor = (pct) => {
 
 .skill-item-row.active-selection {
   border-color: #3b82f6;
-  background: #f8fafc;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
 }
 
 .skill-info-box {
-  cursor: pointer;
+  flex: 1;
+}
+
+.skill-dropdown-content {
+  padding: 16px;
+  background: #f8fafc;
+  border-top: 1px dashed #e2e8f0;
+  animation: fadeInDown 0.3s ease;
+}
+
+.chevron-icon {
+  color: #94a3b8;
+  margin-left: 12px;
+  font-size: 0.85rem;
+  transition: transform 0.2s;
 }
 
 .skill-name-text {
@@ -430,9 +493,10 @@ const getOverallColor = (pct) => {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f8fafc;
+  background: #f1f5f9;
   padding: 8px 12px;
   border-radius: 8px;
+  min-width: 150px;
 }
 
 .progress-bar-wrapper {
@@ -545,6 +609,36 @@ const getOverallColor = (pct) => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  animation: fadeInDown 0.3s ease;
+}
+
+.toggle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+
+.toggle-header:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e0;
+}
+
+.toggle-header i {
+  color: #64748b;
+  font-size: 0.85rem;
+  transition: transform 0.2s;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .checklist-item {
@@ -600,10 +694,12 @@ const getOverallColor = (pct) => {
 }
 
 .sub-skill-name {
+  flex: 1;
   color: #334155;
   font-size: 0.95rem;
   line-height: 1.5;
   padding-top: 2px;
+  overflow-wrap: break-word;
 }
 
 .sub-skill-video-link {
@@ -682,14 +778,34 @@ const getOverallColor = (pct) => {
   background: #94a3b8;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 850px) {
   .skills-view-wrapper {
     flex-direction: column;
     height: auto;
+    min-height: auto;
+    gap: 20px;
   }
   .skills-list-side {
     max-width: none;
-    height: 400px;
+    height: auto;
+    padding-right: 0;
+    flex-shrink: 0;
+  }
+  .overall-progress-card {
+    padding: 16px;
+    gap: 16px;
+  }
+  .overall-circle {
+    width: 64px;
+    height: 64px;
+  }
+  .overall-pct-text {
+    font-size: 1rem;
+  }
+  .sub-skill-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
 
