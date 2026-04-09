@@ -27,6 +27,8 @@ class AttendanceLogResponse(BaseModel):
     ip_address: Optional[str] = None
     note: Optional[str] = None
     is_approved: bool
+    check_in_image: Optional[str] = None
+    check_out_image: Optional[str] = None
 
     class Config:
         orm_mode = True

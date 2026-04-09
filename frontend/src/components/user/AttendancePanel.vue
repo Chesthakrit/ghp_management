@@ -84,8 +84,18 @@
                 <span class="day-label">{{ day.dayName }}</span>
                 <span class="date-label">{{ day.dateStr }}</span>
               </td>
-              <td class="col-time">{{ day.clockIn }}</td>
-              <td class="col-time">{{ day.clockOut }}</td>
+              <td class="col-time">
+                <span v-if="day.clockIn !== '—'" @click="showPhotoPreview(day.inImage, day.inFullTime, 'Clock IN')" class="clickable-time">
+                  {{ day.clockIn }}
+                </span>
+                <span v-else>—</span>
+              </td>
+              <td class="col-time">
+                <span v-if="day.clockOut !== '—'" @click="showPhotoPreview(day.outImage, day.outFullTime, 'Clock OUT')" class="clickable-time">
+                  {{ day.clockOut }}
+                </span>
+                <span v-else>—</span>
+              </td>
               <td class="col-ot">{{ day.ot }}</td>
               <td class="col-location">
                 <span v-if="day.location !== '—'" class="location-badge onsite">{{ day.location }}</span>
@@ -97,6 +107,30 @@
       </div>
     </div>
 
+    <!-- Photo Preview Modal -->
+    <div v-if="isPreviewModalOpen" class="modal-overlay preview" @click="isPreviewModalOpen = false">
+      <div class="modal-content preview-content" @click.stop>
+        <div class="modal-header">
+          <h3><i class="fas fa-camera"></i> {{ previewTitle }}</h3>
+          <button class="close-btn" @click="isPreviewModalOpen = false"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body preview-body">
+          <div v-if="previewImage" class="photo-frame">
+            <img :src="previewImage" alt="Attendance Photo" class="preview-img" />
+          </div>
+          <div v-else class="no-photo">
+            <i class="fas fa-image-slash"></i>
+            <p>ไม่มีรูปถ่ายสำหรับรายการนี้</p>
+          </div>
+          <div class="photo-info">
+            <span class="info-label">Timestamp:</span>
+            <span class="info-value">{{ previewTimestamp }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <!-- User Check-in Modal -->
     <div v-if="isUserCheckinModalOpen" class="modal-overlay" @click="isUserCheckinModalOpen = false">
       <div class="modal-content" @click.stop>
@@ -105,17 +139,29 @@
           <button class="close-btn" @click="isUserCheckinModalOpen = false"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-          <p class="modal-desc">กรุณาเลือกรายการบันทึกเวลาของคุณ</p>
+          <div class="checkin-form">
+            <label class="form-label">สถานที่ลงเวลา (Location)</label>
+            <div class="location-tabs">
+              <button :class="['loc-tab', { active: checkInType === 'factory' }]" @click="checkInType = 'factory'">Factory</button>
+              <button :class="['loc-tab', { active: checkInType === 'site' }]" @click="checkInType = 'site'">On-Site</button>
+            </div>
+            
+            <p v-if="geoError" class="geo-error">{{ geoError }}</p>
+          </div>
+
           <div class="modal-actions-row">
-            <button class="action-btn btn-checkin" @click="performUserCheckin">
+            <button class="action-btn btn-checkin" @click="triggerCamera('in')" :disabled="isUploading">
               <i class="fas fa-sign-in-alt"></i>
-              <span>Clock IN</span>
+              <span>{{ isUploading && currentAction === 'in' ? 'Processing...' : 'Clock IN' }}</span>
             </button>
-            <button class="action-btn btn-checkout" @click="performUserCheckout">
+            <button class="action-btn btn-checkout" @click="triggerCamera('out')" :disabled="isUploading">
               <i class="fas fa-sign-out-alt"></i>
-              <span>Clock OUT</span>
+              <span>{{ isUploading && currentAction === 'out' ? 'Processing...' : 'Clock OUT' }}</span>
             </button>
           </div>
+
+          <!-- Hidden Camera Input -->
+          <input type="file" ref="cameraInput" accept="image/*" capture="user" style="display: none;" @change="handlePhotoTaken" />
         </div>
       </div>
     </div>
@@ -129,7 +175,7 @@ import api from '../../api'
 
 const props = defineProps(['userId'])
 
-// Core States
+// --- 1. Core State ---
 const currentTime = ref('00:00:00')
 const currentDate = ref('')
 const salaryType = ref('')
@@ -139,23 +185,31 @@ const baseDate = ref(new Date())
 const weekDays = ref([])
 const historyLogs = ref([])
 
-// Constants
+// --- 2. Registration / Check-in State ---
+const isUserCheckinModalOpen = ref(false)
+const checkInType = ref('factory')
+const cameraInput = ref(null)
+const currentAction = ref(null) 
+const isUploading = ref(false)
+const currentLat = ref(null)
+const currentLon = ref(null)
+const geoError = ref('')
+
+// --- 3. Preview Modal State ---
+const isPreviewModalOpen = ref(false)
+const previewImage = ref('')
+const previewTimestamp = ref('')
+const previewTitle = ref('')
+
+// --- 4. Constants & Intervals ---
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const selectedMonth = ref(new Date().getMonth())
 const selectedYear = ref(new Date().getFullYear())
-
-const isUserCheckinModalOpen = ref(false)
-
 let timerInterval = null
 
-// Helper
-const isToday = (dateStr) => {
-  const today = new Date()
-  today.setMinutes(today.getMinutes() - today.getTimezoneOffset()) // Handle local timezone issues
-  return dateStr === today.toISOString().split('T')[0]
-}
+const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
-// Computed: Dropdown Years
+// --- 5. Computed Properties ---
 const availableYears = computed(() => {
   const currentYear = new Date().getFullYear()
   const startYear = hireDateStr.value ? new Date(hireDateStr.value).getFullYear() : currentYear
@@ -164,7 +218,6 @@ const availableYears = computed(() => {
   return years
 })
 
-// Computed: Navigation Constraints
 const isAtHireDate = computed(() => {
   if (!hireDateStr.value || weekDays.value.length === 0) return false
   const mondayOfView = new Date(weekDays.value[0].fullDate)
@@ -189,7 +242,34 @@ const isFutureWeek = computed(() => {
   return mondayOfView >= todayMonday
 })
 
-// Methods: Week Generation
+// --- 6. Helper Methods ---
+const isToday = (dateStr) => {
+  const today = new Date()
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset())
+  return dateStr === today.toISOString().split('T')[0]
+}
+
+const formatTime = (isoStr) => {
+  if (!isoStr) return '—'
+  return new Date(isoStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+const formatFullTime = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString('en-US', { 
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', 
+    hour12: false 
+  })
+}
+
+const updateClock = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', { hour12: false })
+  currentDate.value = now.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// --- 7. Attendance Log Logic ---
 const generateWeek = (date = new Date()) => {
   const days = []
   const dayOfWeek = date.getDay()
@@ -209,6 +289,10 @@ const generateWeek = (date = new Date()) => {
       fullDate: logDate,
       clockIn: log?.check_in_time ? formatTime(log.check_in_time) : '—',
       clockOut: log?.check_out_time ? formatTime(log.check_out_time) : '—',
+      inImage: log?.check_in_image,
+      outImage: log?.check_out_image,
+      inFullTime: log?.check_in_time ? formatFullTime(log.check_in_time) : '',
+      outFullTime: log?.check_out_time ? formatFullTime(log.check_out_time) : '',
       ot: log ? "0.0" : "0.0",
       location: log ? log.site_name : '—'
     })
@@ -216,12 +300,6 @@ const generateWeek = (date = new Date()) => {
   weekDays.value = days
 }
 
-const formatTime = (isoStr) => {
-  if (!isoStr) return '—'
-  return new Date(isoStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-}
-
-// API Calls
 const fetchUserData = async () => {
   try {
     const endpoint = props.userId ? `/users/${props.userId}` : '/users/me'
@@ -242,7 +320,7 @@ const fetchMyAttendance = async () => {
   } catch (e) { console.error(e) }
 }
 
-// Navigation
+// --- 8. UI Interactions ---
 const changeWeek = (diff) => {
   const d = new Date(baseDate.value)
   d.setDate(d.getDate() + (diff * 7))
@@ -266,40 +344,93 @@ const goToCurrentWeek = () => {
   selectedYear.value = now.getFullYear()
 }
 
-const updateClock = () => {
-  const now = new Date()
-  currentTime.value = now.toLocaleTimeString('en-US', { hour12: false })
-  currentDate.value = now.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+const showPhotoPreview = (img, ts, title) => {
+  if (!img) {
+    previewImage.value = ''
+    previewTimestamp.value = ts
+    previewTitle.value = title
+    isPreviewModalOpen.value = true
+    return
+  }
+  
+  const currentOrigin = window.location.origin.replace(':5173', ':8000')
+  let cleanPath = img.replace(/^uploads\//, '').replace(/^\//, '')
+  
+  previewImage.value = `${currentOrigin}/uploads/${cleanPath}`
+  previewTimestamp.value = ts
+  previewTitle.value = title
+  isPreviewModalOpen.value = true
 }
 
-const handleOnSiteCheckin = () => {
-  alert("Live Check-in feature will be implemented soon.")
-}
-
+// --- 9. Check-in / Camera Flow ---
 const handleCheckinUser = () => {
-  // alert("Check-in by User feature will be implemented soon.")
   isUserCheckinModalOpen.value = true
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        currentLat.value = pos.coords.latitude
+        currentLon.value = pos.coords.longitude
+      },
+      (err) => geoError.value = "GPS Error: Please enable location services"
+    )
+  }
 }
 
-const performUserCheckin = () => {
-  alert("Simulating Check-In...")
-  isUserCheckinModalOpen.value = false
+const triggerCamera = (action) => {
+  currentAction.value = action
+  if (cameraInput.value) cameraInput.value.click()
 }
 
-const performUserCheckout = () => {
-  alert("Simulating Check-Out...")
-  isUserCheckinModalOpen.value = false
+const handlePhotoTaken = async (event) => {
+  const file = event.target.files[0]
+  if (!file) {
+    currentAction.value = null
+    return
+  }
+
+  isUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const uploadRes = await api.post('/attendance/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    
+    const imagePath = uploadRes.data.path
+
+    if (currentAction.value === 'in') {
+      await api.post('/attendance/check-in', {
+        check_in_type: checkInType.value,
+        location_lat: currentLat.value,
+        location_lon: currentLon.value,
+        check_in_image: imagePath
+      })
+      alert("✅ Clock IN Successful")
+    } else {
+      await api.put('/attendance/check-out', {
+        check_out_image: imagePath
+      })
+      alert("✅ Clock OUT Successful")
+    }
+
+    isUserCheckinModalOpen.value = false
+    await fetchMyAttendance()
+  } catch (error) {
+    console.error(error)
+    alert(error.response?.data?.detail || "Upload Error")
+  } finally {
+    isUploading.value = false
+    currentAction.value = null
+    if (cameraInput.value) cameraInput.value.value = ""
+  }
 }
 
-const handleCheckinFactory = () => {
-  alert("Check-in on Factory feature will be implemented soon.")
-}
+const handleOnSiteCheckin = () => alert("Featured in BY USER section.")
+const handleCheckinFactory = () => alert("Featured in BY USER section.")
+const handleOTRequest = () => alert("OT Request feature will be implemented soon.")
 
-const handleOTRequest = () => {
-  alert("OT Request feature will be implemented soon.")
-}
-
-// Lifecycle
+// --- 10. Lifecycle ---
 onMounted(async () => {
   isLoading.value = true
   updateClock()
@@ -317,27 +448,23 @@ onUnmounted(() => {
 <style scoped>
 .attendance-panel-container { padding: 20px; }
 
+/* 1. Header Section */
 .attendance-header {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #ecf0f1;
 }
 
 .header-titles { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 200px; }
-
 .attendance-header h1 { margin: 0 0 5px 0; font-size: 1.6rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
-
 .time-display-large { font-size: 2.8rem; font-weight: 800; font-family: 'Courier New', Courier, monospace; color: #2ecc71; line-height: 1; margin: 5px 0; letter-spacing: -1px; }
-
 .date-text-small { font-size: 0.85rem; color: #95a5a6; margin-top: 2px; font-weight: 500; }
 
 .header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-
 .salary-type-badge { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px; }
 .salary-type-badge.monthly { background-color: #e8f4fd; color: #3498db; border: 1px solid #3498db; }
 .salary-type-badge.daily { background-color: #fef9e7; color: #f1c40f; border: 1px solid #f1c40f; }
 
 .action-group { display: flex; gap: 12px; margin-top: 5px; }
-
 .btn-action-square { width: 85px; height: 85px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; color: #475569; border: 1px solid #e2e8f0; border-radius: 14px; cursor: pointer; transition: all 0.2s ease; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 .btn-action-square i { font-size: 1.5rem; margin-bottom: 8px; transition: transform 0.2s; }
 .btn-action-square span { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; padding: 0 4px; letter-spacing: 0.02em; }
@@ -347,20 +474,14 @@ onUnmounted(() => {
 /* Theme Accents */
 .btn-onsite { border-bottom: 3px solid #3b82f6; }
 .btn-onsite i { color: #3b82f6; }
-.btn-onsite:hover { background-color: #eff6ff; color: #1e40af; border-bottom-color: #2563eb; }
-
 .btn-factory { border-bottom: 3px solid #f59e0b; }
 .btn-factory i { color: #f59e0b; }
-.btn-factory:hover { background-color: #fffbeb; color: #b45309; border-bottom-color: #d97706; }
-
 .btn-user { border-bottom: 3px solid #10b981; }
 .btn-user i { color: #10b981; }
-.btn-user:hover { background-color: #ecfdf5; color: #047857; border-bottom-color: #059669; }
-
 .btn-ot { border-bottom: 3px solid #8b5cf6; }
 .btn-ot i { color: #8b5cf6; }
-.btn-ot:hover { background-color: #f5f3ff; color: #5b21b6; border-bottom-color: #7c3aed; }
 
+/* 2. Navigation Section */
 .attendance-body { margin-top: 1rem; }
 .week-navigation { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background-color: #fcfcfc; padding: 10px 15px; border-radius: 12px; border: 1px solid #f1f1f1; gap: 10px; }
 .nav-selectors { display: flex; gap: 8px; }
@@ -372,10 +493,12 @@ onUnmounted(() => {
 .nav-btn:hover:not(:disabled) { border-color: #3498db; color: #3498db; }
 .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* 3. Table Section */
 .table-container { overflow-x: auto; border-radius: 12px; background: white; border: 1px solid #f1f1f1; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); }
 .attendance-table { width: 100%; border-collapse: collapse; text-align: left; }
 .attendance-table th { background: #f8fafc; color: #7f8c8d; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; padding: 16px; border-bottom: 2px solid #f1f1f1; }
 .attendance-table td { padding: 16px; border-bottom: 1px solid #f9f9f9; font-size: 0.95rem; color: #2c3e50; }
+
 .col-date { display: flex; flex-direction: column; }
 .day-label { font-weight: 700; color: #34495e; }
 .date-label { font-size: 0.8rem; color: #95a5a6; }
@@ -384,80 +507,57 @@ onUnmounted(() => {
 .location-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
 .location-badge.onsite { background: #e8f8f5; color: #1abc9c; }
 
-/* Highlight Current Day */
-.attendance-table tr.current-day {
-  background-color: #eff6ff; 
-}
-.attendance-table tr.current-day td:first-child {
-  border-left: 5px solid #3b82f6;
-  padding-left: 11px; /* Adjust padding to compensate for the border */
-}
-.attendance-table tr.current-day td {
-  border-bottom: 1px solid #bfdbfe;
-}
-.attendance-table tr.current-day .day-label {
-  color: #1e3a8a;
-}
-.attendance-table tr.current-day .date-label {
-  color: #3b82f6;
-  font-weight: 700;
-}
+.clickable-time { color: #3498db; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; transition: 0.2s; font-weight: 700; }
+.clickable-time:hover { color: #2980b9; }
+
+.attendance-table tr.current-day { background-color: #eff6ff; }
+.attendance-table tr.current-day td:first-child { border-left: 5px solid #3b82f6; padding-left: 11px; }
+.attendance-table tr.current-day .date-label { color: #3b82f6; font-weight: 700; }
+
+/* 4. Modal Base Styles */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal-content { background: white; border-radius: 20px; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; animation: slideUp 0.3s ease; }
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.modal-header { padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+.modal-header h3 { margin: 0; font-size: 1.15rem; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+.close-btn { background: transparent; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer; transition: 0.2s; }
+.close-btn:hover { color: #ef4444; transform: scale(1.1); }
+.modal-body { padding: 24px; }
+
+/* 5. Check-in Modal Elements */
+.checkin-form { margin-bottom: 24px; }
+.form-label { display: block; font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 10px; text-transform: uppercase; }
+.location-tabs { display: flex; background: #f1f5f9; border-radius: 12px; overflow: hidden; padding: 4px; }
+.loc-tab { flex: 1; padding: 12px 0; font-size: 0.95rem; font-weight: 700; color: #64748b; background: transparent; border: none; cursor: pointer; }
+.loc-tab.active { background: white; color: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 8px; }
+
+.modal-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px; border-radius: 14px; border: none; cursor: pointer; transition: all 0.2s; font-weight: 800; color: white; }
+.action-btn i { font-size: 2rem; }
+.btn-checkin { background: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+.btn-checkin:hover { background: #059669; transform: translateY(-3px); }
+.btn-checkout { background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+.btn-checkout:hover { background: #dc2626; transform: translateY(-3px); }
+
+/* 6. Preview Modal Specifics */
+.modal-overlay.preview { background: rgba(0, 0, 0, 0.7); }
+.preview-content { max-width: 450px; }
+.photo-frame { width: 100%; border-radius: 12px; overflow: hidden; background: #000; margin-bottom: 20px; aspect-ratio: 3/4; display: flex; align-items: center; }
+.preview-img { width: 100%; height: 100%; object-fit: cover; }
+.photo-info { background: #f8fafc; padding: 12px 16px; border-radius: 10px; display: flex; justify-content: space-between; }
+.info-label { font-size: 0.85rem; color: #64748b; font-weight: 600; }
+.info-value { font-size: 0.9rem; color: #1e293b; font-weight: 800; }
+
+.no-photo { text-align: center; padding: 40px; color: #94a3b8; }
+.no-photo i { font-size: 3rem; margin-bottom: 10px; }
 
 @media (max-width: 480px) {
   .attendance-header { flex-direction: column; align-items: center; gap: 20px; }
   .header-actions { align-items: center; width: 100%; }
   .action-group { width: 100%; justify-content: center; gap: 8px; flex-wrap: wrap; }
   .btn-action-square { width: 22%; max-width: 85px; height: 75px; }
-  .header-titles { min-width: 150px; }
   .time-display-large { font-size: 2rem; }
 }
-
-/* Modal Styles */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center; z-index: 100;
-}
-
-.modal-content {
-  background: white; border-radius: 20px; width: 90%; max-width: 400px;
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-  overflow: hidden; animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.modal-header {
-  padding: 20px 24px; border-bottom: 1px solid #f1f5f9;
-  display: flex; justify-content: space-between; align-items: center;
-  background: #f8fafc;
-}
-
-.modal-header h3 { margin: 0; font-size: 1.15rem; color: #1e293b; display: flex; align-items: center; gap: 10px; }
-.modal-header i { color: #3b82f6; }
-.close-btn { background: transparent; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer; transition: 0.2s; }
-.close-btn:hover { color: #ef4444; transform: scale(1.1); }
-
-.modal-body { padding: 24px; }
-.modal-desc { margin: 0 0 20px 0; color: #64748b; font-size: 0.95rem; text-align: center; }
-
-.modal-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-.action-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px; padding: 20px; border-radius: 14px; border: none; cursor: pointer;
-  transition: all 0.2s; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; color: white;
-}
-
-.action-btn i { font-size: 2rem; }
-
-.btn-checkin { background: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-.btn-checkin:hover { background: #059669; transform: translateY(-3px); }
-
-.btn-checkout { background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
-.btn-checkout:hover { background: #dc2626; transform: translateY(-3px); }
-
 </style>

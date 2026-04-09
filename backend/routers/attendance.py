@@ -2,9 +2,12 @@
 ไฟล์จัดการระบบบันทึกเวลาเข้า-ออกงาน (Attendance Router)
 รองรับการ Check-in, Check-out และการดูประวัติการลงเวลา
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from datetime import date, datetime
+import os
+import shutil
+import uuid
 import oauth2
 from database import get_db
 from models import attendance as models
@@ -14,6 +17,30 @@ router = APIRouter(
     prefix="/attendance",
     tags=["Attendance System"]
 )
+
+# Setup Upload Directory
+UPLOAD_DIR = "uploads/attendance"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.post("/upload-image")
+def upload_attendance_image(
+    file: UploadFile = File(...),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """
+    อัปโหลดรูปภาพ Check-In / Check-Out
+    """
+    try:
+        file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        new_filename = f"attd_{current_user.username}_{uuid.uuid4().hex[:8]}.{file_ext}"
+        file_path = os.path.join(UPLOAD_DIR, new_filename)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        return {"filename": new_filename, "path": f"uploads/attendance/{new_filename}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/check-in", response_model=schemas.AttendanceLogResponse)
 def check_in(
