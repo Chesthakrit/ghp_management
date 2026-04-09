@@ -42,6 +42,14 @@
         </button>
 
         <button
+          v-if="isAdmin || hasPerm('page.attendance_dash')"
+          :class="['nav-item', { active: activeTab === 'attendance_dash' }]"
+          @click="activeTab = 'attendance_dash'; sidebarOpen = false"
+        >
+          <i class="fas fa-chart-line"></i> Attendance Dashboard
+        </button>
+
+        <button
           :class="['nav-item', { active: activeTab === 'time_leave' }]"
           @click="activeTab = 'time_leave'; sidebarOpen = false"
         >
@@ -71,6 +79,7 @@
             activeTab === 'hr' ? 'HR Settings' : 
             activeTab === 'salary' ? 'Salary Settings' : 
             activeTab === 'access' ? 'Access Control' : 
+            activeTab === 'attendance_dash' ? 'Attendance Dashboard' :
             activeTab === 'time_leave' ? 'Time & Leave' : 
             activeTab === 'policies' ? 'Policy Management' : 'Dashboard'
           }}
@@ -120,6 +129,11 @@
           />
         </div>
 
+        <!-- TAB: Attendance Dashboard -->
+        <div v-if="activeTab === 'attendance_dash'">
+          <AttendanceDashboard />
+        </div>
+
         <!-- TAB: Time & Leave Settings -->
         <div v-if="activeTab === 'time_leave'">
           <AttendanceSettings />
@@ -144,6 +158,7 @@ import SalaryManagement from '../shared/SalaryManagement.vue'
 import HRManagement from '../shared/HRManagement.vue'
 import PolicyManagement from '../shared/PolicyManagement.vue'
 import AttendanceSettings from '../shared/AttendanceSettings.vue'
+import AttendanceDashboard from '../user/AttendanceDashboard.vue'
 
 const props = defineProps({
   embedded: { type: String, default: null }

@@ -218,6 +218,14 @@ const permissionLayout = ref([
     ]
   },
   {
+    title: 'Attendance Dashboard',
+    pageId: 'page.attendance_dash',
+    icon: 'fas fa-chart-line',
+    badge: 'Analytics',
+    expanded: false,
+    actions: []
+  },
+  {
     title: 'Salary Management',
     pageId: 'page.salary',
     icon: 'fas fa-money-check-alt',

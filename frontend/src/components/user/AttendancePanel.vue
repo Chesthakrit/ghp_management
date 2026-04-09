@@ -16,10 +16,24 @@
         </div>
         
         <div class="action-group">
-          <!-- Standard ON-SITE Button only -->
-          <button class="btn-onsite-square" @click="handleOnSiteCheckin">
+          <button class="btn-action-square btn-onsite" @click="handleOnSiteCheckin">
             <i class="fas fa-map-marker-alt"></i>
             <span>ON-SITE</span>
+          </button>
+          
+          <button class="btn-action-square btn-user" @click="handleCheckinUser">
+            <i class="fas fa-user-clock"></i>
+            <span>BY USER</span>
+          </button>
+          
+          <button class="btn-action-square btn-factory" @click="handleCheckinFactory">
+            <i class="fas fa-industry"></i>
+            <span>FACTORY</span>
+          </button>
+          
+          <button class="btn-action-square btn-ot" @click="handleOTRequest">
+            <i class="fas fa-business-time"></i>
+            <span>OT REQ</span>
           </button>
         </div>
       </div>
@@ -65,7 +79,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="day in weekDays" :key="day.fullDate">
+            <tr v-for="day in weekDays" :key="day.fullDate" :class="{ 'current-day': isToday(day.fullDate) }">
               <td class="col-date">
                 <span class="day-label">{{ day.dayName }}</span>
                 <span class="date-label">{{ day.dateStr }}</span>
@@ -107,6 +121,13 @@ const selectedMonth = ref(new Date().getMonth())
 const selectedYear = ref(new Date().getFullYear())
 
 let timerInterval = null
+
+// Helper
+const isToday = (dateStr) => {
+  const today = new Date()
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset()) // Handle local timezone issues
+  return dateStr === today.toISOString().split('T')[0]
+}
 
 // Computed: Dropdown Years
 const availableYears = computed(() => {
@@ -229,6 +250,18 @@ const handleOnSiteCheckin = () => {
   alert("Live Check-in feature will be implemented soon.")
 }
 
+const handleCheckinUser = () => {
+  alert("Check-in by User feature will be implemented soon.")
+}
+
+const handleCheckinFactory = () => {
+  alert("Check-in on Factory feature will be implemented soon.")
+}
+
+const handleOTRequest = () => {
+  alert("OT Request feature will be implemented soon.")
+}
+
 // Lifecycle
 onMounted(async () => {
   isLoading.value = true
@@ -266,10 +299,30 @@ onUnmounted(() => {
 .salary-type-badge.monthly { background-color: #e8f4fd; color: #3498db; border: 1px solid #3498db; }
 .salary-type-badge.daily { background-color: #fef9e7; color: #f1c40f; border: 1px solid #f1c40f; }
 
-.btn-onsite-square { width: 90px; height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f39c12; color: white; border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3); padding: 0; }
-.btn-onsite-square i { font-size: 1.8rem; margin-bottom: 5px; }
-.btn-onsite-square span { font-size: 0.75rem; font-weight: 800; }
-.btn-onsite-square:hover { background-color: #e67e22; transform: translateY(-2px); }
+.action-group { display: flex; gap: 12px; margin-top: 5px; }
+
+.btn-action-square { width: 85px; height: 85px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #ffffff; color: #475569; border: 1px solid #e2e8f0; border-radius: 14px; cursor: pointer; transition: all 0.2s ease; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.btn-action-square i { font-size: 1.5rem; margin-bottom: 8px; transition: transform 0.2s; }
+.btn-action-square span { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; padding: 0 4px; letter-spacing: 0.02em; }
+.btn-action-square:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); border-color: #cbd5e1; }
+.btn-action-square:hover i { transform: scale(1.1); }
+
+/* Theme Accents */
+.btn-onsite { border-bottom: 3px solid #3b82f6; }
+.btn-onsite i { color: #3b82f6; }
+.btn-onsite:hover { background-color: #eff6ff; color: #1e40af; border-bottom-color: #2563eb; }
+
+.btn-factory { border-bottom: 3px solid #f59e0b; }
+.btn-factory i { color: #f59e0b; }
+.btn-factory:hover { background-color: #fffbeb; color: #b45309; border-bottom-color: #d97706; }
+
+.btn-user { border-bottom: 3px solid #10b981; }
+.btn-user i { color: #10b981; }
+.btn-user:hover { background-color: #ecfdf5; color: #047857; border-bottom-color: #059669; }
+
+.btn-ot { border-bottom: 3px solid #8b5cf6; }
+.btn-ot i { color: #8b5cf6; }
+.btn-ot:hover { background-color: #f5f3ff; color: #5b21b6; border-bottom-color: #7c3aed; }
 
 .attendance-body { margin-top: 1rem; }
 .week-navigation { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background-color: #fcfcfc; padding: 10px 15px; border-radius: 12px; border: 1px solid #f1f1f1; gap: 10px; }
@@ -294,9 +347,31 @@ onUnmounted(() => {
 .location-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
 .location-badge.onsite { background: #e8f8f5; color: #1abc9c; }
 
+/* Highlight Current Day */
+.attendance-table tr.current-day {
+  background-color: #eff6ff; 
+}
+.attendance-table tr.current-day td:first-child {
+  border-left: 5px solid #3b82f6;
+  padding-left: 11px; /* Adjust padding to compensate for the border */
+}
+.attendance-table tr.current-day td {
+  border-bottom: 1px solid #bfdbfe;
+}
+.attendance-table tr.current-day .day-label {
+  color: #1e3a8a;
+}
+.attendance-table tr.current-day .date-label {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
 @media (max-width: 480px) {
+  .attendance-header { flex-direction: column; align-items: center; gap: 20px; }
+  .header-actions { align-items: center; width: 100%; }
+  .action-group { width: 100%; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .btn-action-square { width: 22%; max-width: 85px; height: 75px; }
   .header-titles { min-width: 150px; }
   .time-display-large { font-size: 2rem; }
-  .btn-onsite-square { width: 75px; height: 75px; }
 }
 </style>

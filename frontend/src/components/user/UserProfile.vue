@@ -128,7 +128,7 @@
           </div>
 
           <!-- Dynamic Rendering of other Admin Modules (using AdminPanel's embedded mode) -->
-          <div v-else-if="['manage_hr', 'manage_salary', 'manage_access', 'manage_time_leave'].includes(activeMenu)" class="management-tab-embedded">
+          <div v-else-if="['manage_hr', 'manage_salary', 'manage_access', 'manage_time_leave', 'manage_attendance_dash'].includes(activeMenu)" class="management-tab-embedded">
             <AdminPanel 
               :embedded="activeMenu.replace('manage_', '')"
               @view-profile="(id) => $emit('view-profile', id)"
@@ -241,6 +241,9 @@ const menuItems = computed(() => {
   if (perms.includes('page.access') || isAdmin.value) {
     baseItems.push({ id: 'manage_access', label: 'Admin (Access Control)', icon: 'fas fa-shield-alt' })
   }
+  if (perms.includes('page.attendance_dash') || isAdmin.value) {
+    baseItems.push({ id: 'manage_attendance_dash', label: 'Admin (Attendance Dash)', icon: 'fas fa-chart-line' })
+  }
 
   return baseItems
 })
@@ -266,7 +269,7 @@ const isAdmin = computed(() => {
 
 const hasAdminModulesAccess = computed(() => {
   const perms = currentUserPermissions.value
-  return isAdmin.value || perms.some(p => ['page.hr', 'page.salary', 'page.access', 'page.time_leave'].includes(p))
+  return isAdmin.value || perms.some(p => ['page.hr', 'page.salary', 'page.access', 'page.time_leave', 'page.attendance_dash'].includes(p))
 })
 
 const canEvaluate = computed(() => {
