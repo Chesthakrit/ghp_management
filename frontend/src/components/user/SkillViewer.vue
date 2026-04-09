@@ -28,10 +28,19 @@
 
           <div class="skill-category-group" v-for="(skills, catName) in groupedSkills" :key="catName">
             <div class="category-header-row" @click="toggleCategory(catName)">
-              <h4 class="category-title" style="margin: 0; padding: 0;"># {{ catName }}</h4>
-              <i class="fas" :class="collapsedCategories[catName] ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+              <div class="category-header-info">
+                <h4 class="category-title" style="margin: 0; padding: 0;"># {{ catName }}</h4>
+                <!-- Category Progress -->
+                <div class="cat-progress-box">
+                  <div class="cat-progress-track">
+                    <div class="cat-progress-fill" :class="getOverallColor(getCategoryProgress(catName))" :style="{ width: getCategoryProgress(catName) + '%' }"></div>
+                  </div>
+                  <span class="cat-progress-text">{{ getCategoryProgress(catName) }}%</span>
+                </div>
+              </div>
+              <i class="fas" :class="expandedCategories[catName] ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
             </div>
-            <div v-show="!collapsedCategories[catName]" class="skill-items-list">
+            <div v-show="expandedCategories[catName]" class="skill-items-list">
               <div 
                 v-for="skill in skills" 
                 :key="skill.id" 
@@ -161,10 +170,22 @@ const videoElement = ref(null)
 const showSubSkills = ref(true)
 
 // Categories Expander State
-const collapsedCategories = ref({})
+const expandedCategories = ref({})
 
 const toggleCategory = (catName) => {
-  collapsedCategories.value[catName] = !collapsedCategories.value[catName]
+  expandedCategories.value[catName] = !expandedCategories.value[catName]
+}
+
+const getCategoryProgress = (catName) => {
+  const skills = groupedSkills.value[catName]
+  if (!skills || skills.length === 0) return 0
+  
+  let totalScore = 0
+  skills.forEach(s => {
+    totalScore += (props.userEvaluations[s.id] || 0)
+  })
+  
+  return Math.round(totalScore / skills.length)
 }
 
 watch(() => props.selectedSkill, () => {
@@ -378,9 +399,17 @@ const getOverallColor = (pct) => {
   margin-bottom: 24px;
 }
 
+.category-header-info {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 20px;
+}
+
 .category-title {
   font-size: 0.95rem;
   font-weight: 800;
+  min-width: 120px;
   color: #f8fafc;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -411,6 +440,8 @@ const getOverallColor = (pct) => {
 .category-header-row i {
   color: #f8fafc;
   font-size: 0.85rem;
+  margin-left: 16px;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.1);
   width: 28px;
   height: 28px;
@@ -419,6 +450,42 @@ const getOverallColor = (pct) => {
   justify-content: center;
   border-radius: 50%;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cat-progress-box {
+  flex: 1;
+  max-width: 250px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cat-progress-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15); /* Light glass effect against dark background */
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.cat-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #94a3b8;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cat-progress-fill.color-amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.cat-progress-fill.color-blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.cat-progress-fill.color-green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+
+.cat-progress-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  min-width: 38px;
+  text-align: right;
+  letter-spacing: 0.05em;
 }
 
 .skill-items-list {
