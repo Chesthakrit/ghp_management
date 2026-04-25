@@ -99,9 +99,9 @@
                         :style="{ color: getStatusColor(day.status) }">
                     {{ day.clockIn }}
                   </span>
-                  <!-- ป้ายสถานะ (On-Time / Late T1-T3) -->
+                  <!-- ป้ายสถานะ (แสดงจำนวนนาทีที่สาย) -->
                   <span class="status-mini-label" :style="{ backgroundColor: getStatusBg(day.status), color: getStatusColor(day.status) }">
-                    {{ formatStatusLabel(day.status) }}
+                    {{ formatStatusLabel(day.status, day.lateMinutes) }}
                   </span>
                 </div>
                 <span v-else class="empty-val">—</span>
@@ -353,10 +353,11 @@ const getStatusBg = (status) => {
 }
 
 // แปลงรหัสสถานะเป็นชื่อแสดงผล
-const formatStatusLabel = (status) => {
-  if (status === 'late_t1') return 'Late T1'
-  if (status === 'late_t2') return 'Late T2'
-  if (status === 'late_t3') return 'Late T3'
+const formatStatusLabel = (status, lateMins = 0) => {
+  if (status === 'late_t1' || status === 'late_t2' || status === 'late_t3') {
+    return `Late ${lateMins} min`
+  }
+  if (status === 'none') return ''
   return 'On-Time'
 }
 
@@ -381,7 +382,8 @@ const generateWeek = (date = new Date()) => {
       fullDate: logDate,
       clockIn: log?.check_in_time ? formatTime(log.check_in_time) : '—',
       clockOut: log?.check_out_time ? formatTime(log.check_out_time) : '—',
-      status: log?.status || 'none', // ดึงสถานะที่ Server คำนวณไว้แล้วมาใช้ตรงๆ
+      status: log?.status || 'none',
+      lateMinutes: log?.late_minutes || 0, // เพิ่มข้อมูลนาทีที่สาย
       inImage: log?.check_in_image,
       outImage: log?.check_out_image,
       inFullTime: log?.check_in_time ? formatFullTime(log.check_in_time) : '',
@@ -622,13 +624,13 @@ onUnmounted(() => {
 /* เลย์เอาต์เวลาและสเตตัส (ยัดรวมในกระเป๋าเดียวกัน) */
 .time-status-wrap { display: flex; flex-direction: column; gap: 4px; }
 .status-mini-label { 
-  font-size: 0.6rem; 
+  font-size: 0.55rem; 
   font-weight: 800; 
   text-transform: uppercase; 
-  padding: 2px 6px; 
+  padding: 1px 5px; 
   border-radius: 4px; 
   align-self: flex-start;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .col-time { font-weight: 700; }

@@ -4,3 +4,4 @@
 from .users import *
 from .projects import *
 from .attendance import *
+from .payroll import *

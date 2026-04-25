@@ -10,6 +10,59 @@
       </div>
     </div>
 
+    <!-- 24H Schedule Ring Overview -->
+    <div class="card ring-overview-card">
+      <div class="card-header">
+        <h3><i class="fas fa-dot-circle"></i> 24-Hour Schedule Overview</h3>
+        <span class="status-badge live-badge">
+          <i class="fas fa-circle" style="font-size:0.45rem;color:#22c55e;"></i> Live Preview
+        </span>
+      </div>
+      <div class="ring-overview-body">
+        <!-- SVG Ring -->
+        <div class="ring-wrap">
+          <svg viewBox="0 0 300 300" class="ring-svg" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background track -->
+            <circle cx="150" cy="150" r="100" fill="none" stroke="#f1f5f9" stroke-width="26"/>
+            <!-- Time period arcs -->
+            <path v-for="arc in ringArcs" :key="arc.id"
+              :d="arc.d" fill="none" :stroke="arc.color" stroke-width="26" stroke-linecap="butt"/>
+            <!-- Hour tick marks -->
+            <line v-for="(tick, i) in ringHourTicks" :key="'tick'+i"
+              :x1="tick.x1.toFixed(2)" :y1="tick.y1.toFixed(2)"
+              :x2="tick.x2.toFixed(2)" :y2="tick.y2.toFixed(2)"
+              :stroke="tick.isMajor ? '#94a3b8' : '#cbd5e1'"
+              :stroke-width="tick.isMajor ? 2 : 1"/>
+            <!-- Hour labels at 0, 6, 12, 18 -->
+            <text v-for="(lbl, i) in ringHourLabels" :key="'lbl'+i"
+              :x="lbl.x.toFixed(2)" :y="lbl.y.toFixed(2)"
+              :text-anchor="lbl.anchor"
+              dominant-baseline="middle"
+              class="ring-hour-label">{{ lbl.text }}</text>
+            <!-- Center info -->
+            <text x="150" y="136" text-anchor="middle" dominant-baseline="middle" class="ring-center-title">SCHEDULE</text>
+            <text x="150" y="156" text-anchor="middle" dominant-baseline="middle" class="ring-center-hours">{{ config.check_in_time }}</text>
+            <text x="150" y="172" text-anchor="middle" dominant-baseline="middle" class="ring-center-sub">check-in</text>
+          </svg>
+        </div>
+        <!-- Legend / Summary -->
+        <div class="ring-legend-panel">
+          <div class="legend-title">Time Block Summary</div>
+          <div v-for="arc in ringArcs" :key="'leg-'+arc.id" class="legend-row">
+            <div class="legend-dot" :style="{ background: arc.color }"></div>
+            <div class="legend-info">
+              <span class="legend-label">{{ arc.label }}</span>
+              <span class="legend-time">{{ arc.start }} – {{ arc.end }}</span>
+            </div>
+            <span class="legend-hrs">{{ arc.hours }}h</span>
+          </div>
+          <div v-if="ringArcs.length === 0" class="legend-empty">
+            <i class="fas fa-info-circle"></i> Configure times to preview schedule
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="settings-grid">
       <!-- LEFT COLUMN -->
       <div class="settings-col">
@@ -413,6 +466,83 @@ const deleteHoliday = async (hol) => {
   try { await api.delete(`/attendance/holidays/${hol.id}`); fetchHolidays() } catch (err) { console.error(err) }
 }
 
+// ─────────────────────────────────────────────
+//  24H Ring Visualization Helpers
+// ─────────────────────────────────────────────
+const _polarXY = (cx, cy, r, angleDeg) => {
+  const rad = (angleDeg * Math.PI) / 180
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+const _timeToAngleDeg = (timeStr) => {
+  if (!timeStr || !timeStr.includes(':')) return null
+  const [h, m] = timeStr.split(':').map(Number)
+  if (isNaN(h) || isNaN(m)) return null
+  return ((h * 60 + m) / 1440) * 360 - 90
+}
+
+const _makeArcD = (startDeg, endDeg, cx, cy, r) => {
+  let sweep = (endDeg - startDeg + 360) % 360
+  if (sweep === 0) return ''
+  const largeArc = sweep > 180 ? 1 : 0
+  const s = _polarXY(cx, cy, r, startDeg)
+  const e = _polarXY(cx, cy, r, endDeg)
+  return `M ${s.x.toFixed(3)} ${s.y.toFixed(3)} A ${r} ${r} 0 ${largeArc} 1 ${e.x.toFixed(3)} ${e.y.toFixed(3)}`
+}
+
+const _calcHours = (sk, ek) => {
+  const s = config.value[sk], e = config.value[ek]
+  if (!s || !e) return '0.0'
+  const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  let diff = toMin(e) - toMin(s)
+  if (diff <= 0) diff += 1440
+  return (diff / 60).toFixed(1)
+}
+
+const ringArcs = computed(() => {
+  const cx = 150, cy = 150, r = 100
+  const arcs = []
+  const add = (id, sk, ek, color, label) => {
+    const sa = _timeToAngleDeg(config.value[sk])
+    const ea = _timeToAngleDeg(config.value[ek])
+    if (sa === null || ea === null || sa === ea) return
+    const d = _makeArcD(sa, ea, cx, cy, r)
+    if (!d) return
+    arcs.push({ id, d, color, label, start: config.value[sk], end: config.value[ek], hours: _calcHours(sk, ek) })
+  }
+  add('work',    'check_in_time',    'check_out_time',  '#3b82f6', 'Work Hours')
+  add('std-ot',  'ot_normal_start',  'ot_normal_end',   '#f59e0b', 'Standard OT')
+  add('morn-ot', 'ot_morning_start', 'ot_morning_end',  '#8b5cf6', 'Morning OT')
+  add('sp-ot',   'ot_special_start', 'ot_special_end',  '#ef4444', 'Special OT')
+  return arcs
+})
+
+const ringHourTicks = computed(() => {
+  const cx = 150, cy = 150, r = 100, sw = 26
+  const ticks = []
+  for (let h = 0; h < 24; h++) {
+    const deg = (h / 24) * 360 - 90
+    const isMajor = h % 6 === 0
+    const innerR = r + sw / 2 + 3
+    const outerR = r + sw / 2 + (isMajor ? 13 : 7)
+    const p1 = _polarXY(cx, cy, innerR, deg)
+    const p2 = _polarXY(cx, cy, outerR, deg)
+    ticks.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, isMajor })
+  }
+  return ticks
+})
+
+const ringHourLabels = computed(() => {
+  const cx = 150, cy = 150, r = 100, sw = 26
+  const labelR = r + sw / 2 + 26
+  return [0, 6, 12, 18].map(h => {
+    const deg = (h / 24) * 360 - 90
+    const p = _polarXY(cx, cy, labelR, deg)
+    const anchor = h === 6 ? 'start' : h === 18 ? 'end' : 'middle'
+    return { x: p.x, y: p.y, text: String(h), anchor }
+  })
+})
+
 onMounted(() => { fetchConfigs(); fetchLocations(); fetchHolidays() })
 </script>
 
@@ -618,5 +748,92 @@ onMounted(() => { fetchConfigs(); fetchLocations(); fetchHolidays() })
 @media (max-width: 768px) {
   .modal-body { flex-direction: column; }
   .modal-sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid #e2e8f0; }
+}
+
+/* ────────── 24H RING OVERVIEW ────────── */
+.ring-overview-card { margin-bottom: 0; }
+.ring-overview-body {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 24px 28px;
+}
+.ring-wrap { flex-shrink: 0; width: 220px; height: 220px; }
+.ring-svg { width: 100%; height: 100%; overflow: visible; }
+
+.ring-hour-label {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #64748b;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+.ring-center-title {
+  font-size: 8px;
+  font-weight: 800;
+  fill: #94a3b8;
+  letter-spacing: 2px;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+.ring-center-hours {
+  font-size: 20px;
+  font-weight: 900;
+  fill: #1a2a3a;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+.ring-center-sub {
+  font-size: 8px;
+  font-weight: 600;
+  fill: #94a3b8;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.ring-legend-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.legend-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 2px;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  transition: 0.15s;
+}
+.legend-row:hover { border-color: #cbd5e1; background: #fff; }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.legend-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.legend-label { font-size: 0.78rem; font-weight: 700; color: #1a2a3a; }
+.legend-time { font-size: 0.7rem; color: #64748b; font-family: monospace; }
+.legend-hrs {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #1a2a3a;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 3px 10px;
+  min-width: 48px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.legend-empty { color: #94a3b8; font-size: 0.8rem; padding: 20px; text-align: center; }
+.live-badge { display: flex; align-items: center; gap: 6px; }
+
+@media (max-width: 640px) {
+  .ring-overview-body { flex-direction: column; gap: 20px; }
+  .ring-wrap { width: 180px; height: 180px; }
 }
 </style>

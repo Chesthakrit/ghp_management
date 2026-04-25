@@ -62,8 +62,9 @@ def calculate_attendance_status(user_id: int, check_in_dt: datetime, config_dict
     except Exception as e:
         print(f"!!! MATH ERROR FOR ID {emp_id}: {e}")
         status = "present"
+        diff_mins = 0
         
-    return status
+    return status, max(0, diff_mins)
 
 def calculate_ot_hours(start_time: str, end_time: str, config_dict: dict, is_weekend: bool = False):
     """

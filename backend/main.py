@@ -16,7 +16,16 @@ app = FastAPI()
 # --- 1. การกำหนดค่า CORS (เปิดกว้างสำหรับการทดสอบบนมือถือ) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://165.22.107.146:5173",
+        "http://165.22.107.146:5174",
+        "http://165.22.107.146:5175",
+        "http://165.22.107.146:5176",
+        "http://165.22.107.146:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

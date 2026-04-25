@@ -3,14 +3,15 @@
 ใช้ SQLAlchemy สำหรับจัดการฐานข้อมูล PostgreSQL
 """
 
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# --- ตั้งค่า URL สำหรับการเชื่อมต่อฐานข้อมูล ---
-# รูปแบบ: postgresql://[ชื่อผู้ใช้]:[รหัสผ่าน]@[ที่อยู่โฮสต์]/[ชื่อฐานข้อมูล]
-# ในทีนี้ใช้ผู้ใช้ postgres และรหัสผ่าน 1900 เชื่อมต่อไปยังฐานข้อมูล ghp_db ที่เครื่องตัวเอง (localhost)
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:1900@localhost/ghp_db"
+load_dotenv()
+
+SQLALCHEMY_DATABASE_URL = os.environ["DATABASE_URL"]
 
 # สร้างเครื่องยนต์สำหรับเชื่อมต่อ (Engine) 
 # เป็นตัวจัดการการติดต่อสื่อสารระดับต่ำกับฐานข้อมูล

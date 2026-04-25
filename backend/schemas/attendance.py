@@ -27,6 +27,7 @@ class AttendanceLogResponse(BaseModel):
     ip_address: Optional[str] = None
     note: Optional[str] = None
     is_approved: bool
+    late_minutes: int = 0
     check_in_image: Optional[str] = None
     check_out_image: Optional[str] = None
 
@@ -79,3 +80,25 @@ class AttendanceLocationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class OTRequestCreate(BaseModel):
+    request_date: date
+    start_time: str
+    end_time: str
+    reason: Optional[str] = None
+
+class OTRequestResponse(BaseModel):
+    id: int
+    user_id: int
+    request_date: date
+    start_time: str
+    end_time: str
+    standard_hours: float
+    special_hours: float
+    total_hours: float
+    reason: Optional[str] = None
+    status: str
+    
+    class Config:
+        from_attributes = True
+        orm_mode = True

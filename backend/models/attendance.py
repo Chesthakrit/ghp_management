@@ -33,6 +33,7 @@ class AttendanceLog(Base):
     # อื่นๆ
     note = Column(String, nullable=True) # พนักงานสามารถโน้ตบอกได้ เช่น "รถเสีย"
     is_approved = Column(Boolean, default=False) # หัวหน้าได้กดอนุมัติสำหรับกรณีลดย่อนหรือมาสายหรือยัง
+    late_minutes = Column(Integer, default=0)    # จำนวนนาทีที่สายจริง (ใช้แสดงผลแทน Tier)
 
     # Relationship ไปยังตาราง User
     user = relationship("User", backref="attendance_logs")
@@ -70,3 +71,26 @@ class AttendanceLocation(Base):
     
     # Relationship (Optional: to project if needed later)
     project = relationship("Project", backref="attendance_locations")
+
+class OTRequest(Base):
+    """ตารางเก็บคำขอทำโอที (Overtime Requests)"""
+    __tablename__ = "ot_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    
+    request_date = Column(Date, nullable=False, index=True) # วันที่ที่ขอทำ OT
+    start_time = Column(String, nullable=False)            # เวลาเริ่ม เช่น "17:30"
+    end_time = Column(String, nullable=False)              # เวลาเลิก เช่น "20:30"
+    
+    standard_hours = Column(Float, default=0.0)            # จำนวนชั่วโมงเรทปกติ (1.5x)
+    special_hours = Column(Float, default=0.0)             # จำนวนชั่วโมงเรทพิเศษ (3.0x / ชดเชย)
+    total_hours = Column(Float, default=0.0)               # รวมทั้งหมด
+    
+    reason = Column(String, nullable=True)                 # เหตุผล/ลักษณะงาน
+    status = Column(String, default="pending")             # pending, approved, rejected
+    approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True) # ใครเป็นผู้อนุมัติ
+    
+    # Relationship
+    user = relationship("User", foreign_keys=[user_id], backref="ot_requests")
+    approver = relationship("User", foreign_keys=[approved_by_id])

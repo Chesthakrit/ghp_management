@@ -27,7 +27,7 @@ def get_ot_rules(
     """
     ดึงกฎเวลา OT (เฉพาะพนักงานในระบบ)
     """
-    keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end", "ot_morning_start", "ot_morning_end"]
+    keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end", "ot_morning_start", "ot_morning_end", "check_in_time"]
     configs = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key.in_(keys)).all()
     return {c.key: c.value for c in configs}
 
@@ -86,7 +86,7 @@ def check_in(
     check_in_dt = datetime.now()
     
     # เรียกใช้ฟังก์ชันจาก utils เพิื่อคำนวณสถานะสาย (Clean Code)
-    status = calculate_attendance_status(current_user.id, check_in_dt, cfg_dict)
+    status, late_mins = calculate_attendance_status(current_user.id, check_in_dt, cfg_dict)
 
     # สร้าง Record ใหม่ในตาราง attendance_logs
     new_attendance = models.AttendanceLog(
@@ -100,7 +100,8 @@ def check_in(
         ip_address=client_ip,
         check_in_image=check_in_data.check_in_image,
         note=check_in_data.note,
-        status=status # บันทึกสถานะที่คำนวณได้ลง DB ทันที
+        status=status,         # บันทึกสถานะ (T1, T2, T3)
+        late_minutes=late_mins # บันทึกจำนวนนาทีที่สายจริง
     )
 
     db.add(new_attendance)
