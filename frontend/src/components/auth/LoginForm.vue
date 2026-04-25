@@ -161,7 +161,7 @@ const handleLogin = async () => {
 .signin-button {
     width: 100%;
     padding: 15px;
-    background: #e53e3e;
+    background: #1a2a3a;
     color: white;
     border: none;
     border-radius: 25px;
