@@ -513,16 +513,22 @@ const videoElement = ref(null)
 const openVideoPlayer = (url) => {
   if (!url) return
   const apiHost = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/$/, '') : 'http://localhost:8000'
-  
+
+  // Spaces URL — ใช้ตรงๆ ไม่ต้องแปลงหรือแนบ token
+  if (url.startsWith('http') && !url.includes('localhost') && !url.includes('127.0.0.1') && !url.startsWith(apiHost)) {
+    currentVideoUrl.value = url
+    showVideoPlayer.value = true
+    return
+  }
+
   // 1. แปลงที่อยู่และเครื่องแม่ให้ตรงตามสถานะปัจจุบัน
   let resolvedUrl = url
   if (url.startsWith('http')) {
     resolvedUrl = url.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
   } else {
-    // ถ้าเป็น Path สั้น ให้ต่อชื่อเครื่องแม่เข้าไป
     resolvedUrl = apiHost + (url.startsWith('/') ? '' : '/') + url
   }
-  
+
   // 2. ถ้าเจอพาร์ทเก่า (/videos/) ให้ซ่อมเป็นพาร์ทใหม่ (/hr/videos/) ทันที
   if (resolvedUrl.includes('/videos/') && !resolvedUrl.includes('/hr/videos/')) {
     resolvedUrl = resolvedUrl.replace('/videos/', '/hr/videos/')
