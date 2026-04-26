@@ -1,0 +1,32 @@
+====================================
+คำสั่งที่ใช้บน Server (DigitalOcean)
+เข้าถึงระบบ: http://165.22.107.146:5175/
+====================================
+
+[ Deploy โค้ดใหม่ ]
+bash /var/www/ghp_management/deploy.sh
+
+[ ตรวจสอบสถานะ ]
+systemctl status ghp_backend   # Backend
+pm2 status                     # Frontend
+
+[ Restart Services ]
+systemctl restart ghp_backend  # Restart Backend
+pm2 restart frontend           # Restart Frontend
+pm2 resurrect                  # กู้คืน Frontend หลัง Server Reboot
+
+[ ดู Logs ]
+journalctl -u ghp_backend -n 50   # Log Backend
+pm2 logs frontend --lines 50      # Log Frontend
+
+[ แก้ปัญหา git ไม่ sync ]
+git fetch origin && git reset --hard origin/main
+
+====================================
+Deploy Workflow
+====================================
+1. แก้โค้ดใน Local
+2. git add .
+3. git commit -m "..."
+4. git push origin main
+5. bash /var/www/ghp_management/deploy.sh

@@ -16,6 +16,7 @@ from models import users as models
 from schemas import users as schemas
 from hashing import Hash
 import oauth2
+import storage
 
 router = APIRouter(
     prefix="/users",
@@ -116,9 +117,11 @@ def upload_user_files(
     if not user:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้งานนี้")
 
-    def delete_old_files(folder: str, stem: str):
-        """Helper: ลบไฟล์เดิมทิ้งก่อนอัปโหลดใหม่ เพื่อประหยัดเนื้อที่"""
+    def delete_old_local_files(folder: str, stem: str):
+        """ลบไฟล์เดิมใน local storage ก่อนอัปโหลดใหม่ (ใช้เฉพาะ dev mode)"""
         folder_path = os.path.join(UPLOAD_DIR, folder)
+        if not os.path.exists(folder_path):
+            return
         for f in os.listdir(folder_path):
             if f.startswith(stem + ".") or f == stem:
                 try:
@@ -129,20 +132,18 @@ def upload_user_files(
     # จัดการไฟล์รูปถ่ายหน้าตรง (Portrait)
     if photo and photo.filename:
         ext = os.path.splitext(photo.filename)[-1].lower()
-        delete_old_files("photos", f"user_{user_id}")
-        path = os.path.join(UPLOAD_DIR, "photos", f"user_{user_id}{ext}")
-        with open(path, "wb") as f:
-            shutil.copyfileobj(photo.file, f)
-        user.photo_path = f"uploads/photos/user_{user_id}{ext}"
+        if not storage.USE_SPACES:
+            delete_old_local_files("photos", f"user_{user_id}")
+        file_bytes = photo.file.read()
+        user.photo_path = storage.save_file(file_bytes, "photos", f"user_{user_id}{ext}", photo.content_type or "image/jpeg")
 
     # จัดการไฟล์รูปบัตรประชาชน/พาสปอร์ต
     if id_doc and id_doc.filename:
         ext = os.path.splitext(id_doc.filename)[-1].lower()
-        delete_old_files("id_docs", f"user_{user_id}")
-        path = os.path.join(UPLOAD_DIR, "id_docs", f"user_{user_id}{ext}")
-        with open(path, "wb") as f:
-            shutil.copyfileobj(id_doc.file, f)
-        user.id_doc_path = f"uploads/id_docs/user_{user_id}{ext}"
+        if not storage.USE_SPACES:
+            delete_old_local_files("id_docs", f"user_{user_id}")
+        file_bytes = id_doc.file.read()
+        user.id_doc_path = storage.save_file(file_bytes, "id_docs", f"user_{user_id}{ext}", id_doc.content_type or "image/jpeg")
 
     db.commit()
     db.refresh(user)

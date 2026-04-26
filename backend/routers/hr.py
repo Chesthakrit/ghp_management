@@ -5,7 +5,7 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
@@ -13,6 +13,7 @@ import shutil
 import time
 from database import get_db
 from models import users as models
+import storage
 from schemas import hr as schemas
 import oauth2
 
@@ -559,27 +560,20 @@ async def upload_video(
     # Bypassed: All authenticated users can upload videos
     pass
 
-    # กำหนดตำแหน่งเก็บไฟล์ (ในโปรเจกต์)
-    UPLOAD_DIR = os.path.join(os.getcwd(), "uploads", "videos")
-    if not os.path.exists(UPLOAD_DIR):
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-
     # ทำความสะอาดชื่อไฟล์และใส่ Timestamp
     timestamp = int(time.time())
     safe_filename = file.filename.replace(" ", "_").replace("(", "").replace(")", "")
     unique_name = f"{timestamp}_{safe_filename}"
-    file_path = os.path.join(UPLOAD_DIR, unique_name)
 
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        file_bytes = await file.read()
+        url = storage.save_file(file_bytes, "videos", unique_name, file.content_type or "video/mp4")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
     finally:
         file.file.close()
 
-    # คืนค่า URL สำหรับเรียกดูผ่านด่านตรวจ (Protected)
-    return {"url": f"/hr/videos/{unique_name}"}
+    return {"url": url if storage.USE_SPACES else f"/hr/videos/{unique_name}"}
 
 
 @router.get("/videos/{filename}")

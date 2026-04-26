@@ -3,6 +3,7 @@
 รองรับการ Check-in, Check-out และการดูประวัติการลงเวลา
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+import storage
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 import os
@@ -31,10 +32,6 @@ def get_ot_rules(
     configs = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key.in_(keys)).all()
     return {c.key: c.value for c in configs}
 
-# Setup Upload Directory
-UPLOAD_DIR = "uploads/attendance"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 @router.post("/upload-image")
 def upload_attendance_image(
     file: UploadFile = File(...),
@@ -46,12 +43,9 @@ def upload_attendance_image(
     try:
         file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
         new_filename = f"attd_{current_user.username}_{uuid.uuid4().hex[:8]}.{file_ext}"
-        file_path = os.path.join(UPLOAD_DIR, new_filename)
-        
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        return {"filename": new_filename, "path": f"uploads/attendance/{new_filename}"}
+        file_bytes = file.file.read()
+        path = storage.save_file(file_bytes, "attendance", new_filename, file.content_type or "image/jpeg")
+        return {"filename": new_filename, "path": path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
