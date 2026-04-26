@@ -33,7 +33,7 @@
           @click="selectUser(user); sidebarOpen = false"
         >
           <div class="emp-avatar">
-            <img v-if="user.photo_path" :src="`${apiBase}/${user.photo_path}`" />
+            <img v-if="user.photo_path" :src="mediaUrl(user.photo_path)" />
             <span v-else>{{ getInitials(user) }}</span>
           </div>
           <div class="emp-info">
@@ -124,7 +124,7 @@
                 <label>Portrait Photo</label>
                 <div class="upload-box upload-box--portrait" @click="$refs.photoInput.click()">
                   <img v-if="previewPhoto" :src="previewPhoto" />
-                  <img v-else-if="selectedUser.photo_path" :src="`${apiBase}/${selectedUser.photo_path}?t=${cacheBust}`" />
+                  <img v-else-if="selectedUser.photo_path" :src="mediaUrl(selectedUser.photo_path) + '?t=' + cacheBust" />
                   <div v-else class="placeholder">
                     <span class="upload-icon">👤</span>
                     <span>Click to upload</span>
@@ -142,7 +142,7 @@
                     <span>PDF selected</span>
                     <span class="upload-hint">Ready to upload</span>
                   </div>
-                  <img v-else-if="selectedUser.id_doc_path && selectedUser.id_doc_path.match(/\.(jpg|jpeg|png|gif)$/i)" :src="`${apiBase}/${selectedUser.id_doc_path}?t=${cacheBust}`" />
+                  <img v-else-if="selectedUser.id_doc_path && selectedUser.id_doc_path.match(/\.(jpg|jpeg|png|gif)$/i)" :src="mediaUrl(selectedUser.id_doc_path) + '?t=' + cacheBust" />
                   <div v-else-if="selectedUser.id_doc_path" class="placeholder">
                     <span class="upload-icon">📄</span>
                     <span>PDF / File Uploaded</span>
@@ -177,8 +177,7 @@
 import { ref, computed, onMounted, reactive, watch } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
-
-const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+import { mediaUrl } from '../../utils/mediaUrl'
 
 const props = defineProps(['initialUserId'])
 const emit = defineEmits(['go-back'])

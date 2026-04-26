@@ -944,11 +944,11 @@ const promptTutorialUrl = async (sub) => {
       // ดึง Base URL จาก config (เพื่อให้มือถือเข้าถึงได้ตาม IP ใน .env)
       const apiHost = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/$/, '') : 'http://localhost:8000'
 
-      if (processed.includes('/uploads/videos/')) {
+      if (!processed.startsWith('http') && processed.includes('/uploads/videos/')) {
         processed = processed.replace(/.*\/uploads\/videos\//, `${apiHost}/hr/videos/`)
       }
-      
-      if (processed.includes('/videos/') && !processed.includes('/hr/videos/')) {
+
+      if (!processed.startsWith('http') && processed.includes('/videos/') && !processed.includes('/hr/videos/')) {
         processed = processed.replace('/videos/', '/hr/videos/')
       }
 

@@ -27,7 +27,7 @@
       <aside class="sidebar" :class="{ 'collapsed': !isSidebarOpen, 'mobile-open': isSidebarOpen }">
         <div class="sidebar-user-glance" v-if="isSidebarOpen">
           <div class="mini-avatar">
-            <img v-if="user?.photo_path" :src="`${apiBase}/${user.photo_path}`" />
+            <img v-if="user?.photo_path" :src="mediaUrl(user.photo_path)" />
             <span v-else>{{ user?.first_name?.[0] }}</span>
           </div>
           <div class="mini-info">
@@ -67,7 +67,7 @@
           <div class="profile-info-status">
             <div class="profile-pic-container">
               <div class="profile-pic-wrapper">
-                <img v-if="user?.photo_path" :src="`${apiBase}/${user.photo_path}`" class="profile-pic" />
+                <img v-if="user?.photo_path" :src="mediaUrl(user.photo_path)" class="profile-pic" />
                 <div v-else class="profile-placeholder">{{ user?.username?.[0]?.toUpperCase() }}</div>
               </div>
               <div class="photo-edit-badge">
@@ -165,11 +165,10 @@ import AdminPanel from '../admin/AdminPanel.vue'
 import SkillViewer from './SkillViewer.vue'
 import AttendancePanel from './AttendancePanel.vue'
 import CompanyPolicy from './CompanyPolicy.vue'
+import { mediaUrl } from '../../utils/mediaUrl'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
-
-const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const user = ref(null)
 const isLoading = ref(false)
 const isSidebarOpen = ref(window.innerWidth > 768)

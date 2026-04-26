@@ -461,10 +461,13 @@ const showPhotoPreview = (img, ts, title) => {
   }
   
   // แปลง Path รูปจาก DB เป็น URL ที่เข้าถึงได้จริง
-  const currentOrigin = window.location.origin.replace(':5173', ':8000')
-  let cleanPath = img.replace(/^uploads\//, '').replace(/^\//, '')
-  
-  previewImage.value = `${currentOrigin}/uploads/${cleanPath}`
+  if (img.startsWith('http')) {
+    previewImage.value = img
+  } else {
+    const currentOrigin = window.location.origin.replace(':5173', ':8000')
+    let cleanPath = img.replace(/^uploads\//, '').replace(/^\//, '')
+    previewImage.value = `${currentOrigin}/uploads/${cleanPath}`
+  }
   previewTimestamp.value = ts
   previewTitle.value = title
   isPreviewModalOpen.value = true

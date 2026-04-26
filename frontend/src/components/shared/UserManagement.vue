@@ -87,8 +87,8 @@
             <tr v-for="user in filteredUsers" :key="user.id">
               <td>
                 <div class="name-cell">
-                  <div class="avatar" :class="{ 'has-photo': user.photo_path }" @click="user.photo_path && openPhoto(`${apiBase}/${user.photo_path}`)">
-                    <img v-if="user.photo_path" :src="`${apiBase}/${user.photo_path}`" class="avatar-img" :alt="getInitials(user)" />
+                  <div class="avatar" :class="{ 'has-photo': user.photo_path }" @click="user.photo_path && openPhoto(mediaUrl(user.photo_path))">
+                    <img v-if="user.photo_path" :src="mediaUrl(user.photo_path)" class="avatar-img" :alt="getInitials(user)" />
                     <span v-else>{{ getInitials(user) }}</span>
                   </div>
                   <div 
@@ -158,7 +158,7 @@
         <h3><i class="fas fa-user-cog"></i> Employment & Access</h3>
         <div class="modal-user-info">
           <div class="avatar large">
-            <img v-if="editingUser?.photo_path" :src="`${apiBase}/${editingUser.photo_path}`" class="avatar-img" />
+            <img v-if="editingUser?.photo_path" :src="mediaUrl(editingUser.photo_path)" class="avatar-img" />
             <span v-else>{{ getInitials(editingUser) }}</span>
           </div>
           <div>
@@ -237,6 +237,7 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
+import { mediaUrl } from '../../utils/mediaUrl'
 
 const emit = defineEmits(['go-to-identity', 'view-profile', 'go-to-register'])
 
@@ -246,8 +247,6 @@ const props = defineProps({
   departments: { type: Array, default: () => [] },
   jobTitles: { type: Array, default: () => [] }
 })
-
-const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const users = ref([])
 const departments = ref([])
 const jobTitlesByDept = ref({})

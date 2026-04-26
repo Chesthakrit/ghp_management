@@ -20,7 +20,7 @@
           <div class="employee-list">
             <div v-for="user in users" :key="user.id" class="employee-card">
               <div class="emp-photo-wrapper">
-                <img v-if="user.photo_path" :src="`${apiBase}/${user.photo_path}`" class="emp-photo" alt="Profile Photo" />
+                <img v-if="user.photo_path" :src="mediaUrl(user.photo_path)" class="emp-photo" alt="Profile Photo" />
                 <div v-else class="emp-photo-placeholder">
                   {{ user.first_name ? user.first_name[0].toUpperCase() : user.username[0].toUpperCase() }}
                 </div>
@@ -53,8 +53,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../api'
-
-const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+import { mediaUrl } from '../../utils/mediaUrl'
 
 const loading = ref(false)
 const users = ref([])
