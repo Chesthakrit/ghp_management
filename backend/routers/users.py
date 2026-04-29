@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import users as models
+from models.projects import Project
+from models.attendance import OTRequest
 from schemas import users as schemas
 from hashing import Hash
 import oauth2
@@ -313,6 +315,16 @@ def delete_user(
     # 🔒 ข้อห้าม: ห้ามลบบัญชี Master Admin อย่างเด็ดขาด
     if user.username == 'admin':
         raise HTTPException(status_code=403, detail="ไม่สามารถลบบัญชี Master Admin ได้")
+
+    # ตัด FK ที่ไม่มี CASCADE ก่อนลบ
+    db.query(Project).filter(Project.owner_id == user_id).update({"owner_id": None})
+    db.query(OTRequest).filter(OTRequest.approved_by_id == user_id).update({"approved_by_id": None})
+    db.query(models.UserDutyEvaluation).filter(
+        models.UserDutyEvaluation.evaluated_by_id == user_id
+    ).update({"evaluated_by_id": None})
+
+    # ลบ UserPageAccess
+    db.query(models.UserPageAccess).filter(models.UserPageAccess.user_id == user_id).delete()
 
     # ลบข้อมูลพ่วงอื่นๆ (Cascade)
     profile = db.query(models.EmployeeProfile).filter(models.EmployeeProfile.user_id == user_id).first()
