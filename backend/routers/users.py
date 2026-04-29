@@ -317,15 +317,18 @@ def delete_user(
     if user.username == 'admin':
         raise HTTPException(status_code=403, detail="ไม่สามารถลบบัญชี Master Admin ได้")
 
-    # ตัด FK ที่ไม่มี CASCADE ก่อนลบ
-    db.query(Project).filter(Project.owner_id == user_id).update({"owner_id": None})
-    db.query(OTRequest).filter(OTRequest.approved_by_id == user_id).update({"approved_by_id": None})
-    db.query(models.UserDutyEvaluation).filter(
-        models.UserDutyEvaluation.evaluated_by_id == user_id
-    ).update({"evaluated_by_id": None})
+    from sqlalchemy.exc import ProgrammingError
 
-    # ลบ UserPageAccess
-    db.query(models.UserPageAccess).filter(models.UserPageAccess.user_id == user_id).delete()
+    # ตัด FK ที่ไม่มี CASCADE ก่อนลบ
+    try:
+        db.query(Project).filter(Project.owner_id == user_id).update({"owner_id": None})
+        db.query(OTRequest).filter(OTRequest.approved_by_id == user_id).update({"approved_by_id": None})
+        db.query(models.UserDutyEvaluation).filter(
+            models.UserDutyEvaluation.evaluated_by_id == user_id
+        ).update({"evaluated_by_id": None})
+        db.query(models.UserPageAccess).filter(models.UserPageAccess.user_id == user_id).delete()
+    except ProgrammingError:
+        db.rollback()
 
     # ลบข้อมูลพ่วงอื่นๆ (Cascade)
     profile = db.query(models.EmployeeProfile).filter(models.EmployeeProfile.user_id == user_id).first()
