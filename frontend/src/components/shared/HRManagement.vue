@@ -521,27 +521,20 @@ const openVideoPlayer = (url) => {
     return
   }
 
-  // 1. แปลงที่อยู่และเครื่องแม่ให้ตรงตามสถานะปัจจุบัน
-  let resolvedUrl = url
-  if (url.startsWith('http')) {
-    resolvedUrl = url.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
-  } else {
-    resolvedUrl = apiHost + (url.startsWith('/') ? '' : '/') + url
+  let videoUrl = url.startsWith('http')
+    ? url.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/, apiHost)
+    : apiHost + (url.startsWith('/') ? '' : '/') + url
+
+  if (videoUrl.includes('/videos/') && !videoUrl.includes('/hr/videos/')) {
+    videoUrl = videoUrl.replace('/videos/', '/hr/videos/')
   }
 
-  // 2. ถ้าเจอพาร์ทเก่า (/videos/) ให้ซ่อมเป็นพาร์ทใหม่ (/hr/videos/) ทันที
-  if (resolvedUrl.includes('/videos/') && !resolvedUrl.includes('/hr/videos/')) {
-    resolvedUrl = resolvedUrl.replace('/videos/', '/hr/videos/')
-  }
-
-  // 3. แนบกุญแจ (Token) สำหรับวิดีโอนิรภัย
-  let finalUrl = resolvedUrl
-  if (resolvedUrl.includes('/hr/videos/')) {
+  if (videoUrl.includes('/hr/videos/')) {
     const token = localStorage.getItem('token')
-    finalUrl = resolvedUrl.includes('?') ? `${resolvedUrl}&token=${token}` : `${resolvedUrl}?token=${token}`
+    videoUrl += videoUrl.includes('?') ? `&token=${token}` : `?token=${token}`
   }
 
-  currentVideoUrl.value = finalUrl
+  currentVideoUrl.value = videoUrl
   showVideoPlayer.value = true
 }
 

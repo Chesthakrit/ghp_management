@@ -570,8 +570,6 @@ async def upload_video(
         url = storage.save_file(file_bytes, "videos", unique_name, file.content_type or "video/mp4")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
-    finally:
-        file.file.close()
 
     return {"url": url if storage.USE_SPACES else f"/hr/videos/{unique_name}"}
 

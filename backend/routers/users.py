@@ -120,11 +120,12 @@ def upload_user_files(
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้งานนี้")
 
     def delete_old_local_files(folder: str, stem: str):
-        """ลบไฟล์เดิมใน local storage ก่อนอัปโหลดใหม่ (ใช้เฉพาะ dev mode)"""
         folder_path = os.path.join(UPLOAD_DIR, folder)
-        if not os.path.exists(folder_path):
+        try:
+            entries = os.listdir(folder_path)
+        except FileNotFoundError:
             return
-        for f in os.listdir(folder_path):
+        for f in entries:
             if f.startswith(stem + ".") or f == stem:
                 try:
                     os.remove(os.path.join(folder_path, f))

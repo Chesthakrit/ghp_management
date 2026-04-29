@@ -203,6 +203,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../api'
 import OTRequestModal from './OTRequestModal.vue'
+import { mediaUrl } from '../../utils/mediaUrl'
 
 const props = defineProps(['userId'])
 
@@ -460,14 +461,7 @@ const showPhotoPreview = (img, ts, title) => {
     return
   }
   
-  // แปลง Path รูปจาก DB เป็น URL ที่เข้าถึงได้จริง
-  if (img.startsWith('http')) {
-    previewImage.value = img
-  } else {
-    const currentOrigin = window.location.origin.replace(':5173', ':8000')
-    let cleanPath = img.replace(/^uploads\//, '').replace(/^\//, '')
-    previewImage.value = `${currentOrigin}/uploads/${cleanPath}`
-  }
+  previewImage.value = mediaUrl(img)
   previewTimestamp.value = ts
   previewTitle.value = title
   isPreviewModalOpen.value = true

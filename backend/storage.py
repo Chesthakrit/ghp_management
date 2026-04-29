@@ -18,6 +18,7 @@ if USE_SPACES:
     _endpoint = os.environ["SPACES_ENDPOINT"]
 
 _local_base = os.path.join(os.path.dirname(__file__), "uploads")
+_known_dirs: set = set()
 
 
 def save_file(file_bytes: bytes, folder: str, filename: str, content_type: str = "application/octet-stream") -> str:
@@ -34,7 +35,9 @@ def save_file(file_bytes: bytes, folder: str, filename: str, content_type: str =
         return f"{_endpoint}/{_bucket}/{key}"
     else:
         dir_path = os.path.join(_local_base, folder)
-        os.makedirs(dir_path, exist_ok=True)
+        if dir_path not in _known_dirs:
+            os.makedirs(dir_path, exist_ok=True)
+            _known_dirs.add(dir_path)
         with open(os.path.join(dir_path, filename), "wb") as f:
             f.write(file_bytes)
         return f"uploads/{folder}/{filename}"
