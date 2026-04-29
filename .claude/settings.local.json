@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"venv/Scripts/python.exe\" -c \"from database import engine; from database import Base; import models.attendance; import models.users; import models.projects; import models.payroll; Base.metadata.create_all\\(bind=engine\\); print\\('Done!'\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}

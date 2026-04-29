@@ -40,9 +40,9 @@
               dominant-baseline="middle"
               class="ring-hour-label">{{ lbl.text }}</text>
             <!-- Center info -->
-            <text x="150" y="136" text-anchor="middle" dominant-baseline="middle" class="ring-center-title">SCHEDULE</text>
-            <text x="150" y="156" text-anchor="middle" dominant-baseline="middle" class="ring-center-hours">{{ config.check_in_time }}</text>
-            <text x="150" y="172" text-anchor="middle" dominant-baseline="middle" class="ring-center-sub">check-in</text>
+            <text x="150" y="138" text-anchor="middle" dominant-baseline="middle" class="ring-center-title">TIMELINE</text>
+            <text x="150" y="158" text-anchor="middle" dominant-baseline="middle" class="ring-center-hours">24H</text>
+            <text x="150" y="176" text-anchor="middle" dominant-baseline="middle" class="ring-center-sub">OVERVIEW</text>
           </svg>
         </div>
         <!-- Legend / Summary -->
@@ -522,9 +522,9 @@ const ringHourTicks = computed(() => {
   const ticks = []
   for (let h = 0; h < 24; h++) {
     const deg = (h / 24) * 360 - 90
-    const isMajor = h % 6 === 0
-    const innerR = r + sw / 2 + 3
-    const outerR = r + sw / 2 + (isMajor ? 13 : 7)
+    const isMajor = h % 6 === 0 // Major tick every 6 hours for visual hierarchy
+    const innerR = r + sw / 2 + 2
+    const outerR = r + sw / 2 + (isMajor ? 10 : 5)
     const p1 = _polarXY(cx, cy, innerR, deg)
     const p2 = _polarXY(cx, cy, outerR, deg)
     ticks.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, isMajor })
@@ -534,12 +534,21 @@ const ringHourTicks = computed(() => {
 
 const ringHourLabels = computed(() => {
   const cx = 150, cy = 150, r = 100, sw = 26
-  const labelR = r + sw / 2 + 26
-  return [0, 6, 12, 18].map(h => {
+  const labelR = r + sw / 2 + 18 // Adjust distance to fit 24 labels
+  const hoursToShow = Array.from({ length: 24 }, (_, i) => i) // Show every hour (0-23)
+  return hoursToShow.map(h => {
     const deg = (h / 24) * 360 - 90
     const p = _polarXY(cx, cy, labelR, deg)
-    const anchor = h === 6 ? 'start' : h === 18 ? 'end' : 'middle'
-    return { x: p.x, y: p.y, text: String(h), anchor }
+    
+    // Dynamically adjust text anchor to prevent overlapping the ring
+    let anchor = 'middle'
+    if (h > 0 && h < 12) anchor = 'start'
+    else if (h > 12 && h < 24) anchor = 'end'
+    
+    // Add leading zero for better alignment
+    const text = h.toString().padStart(2, '0')
+    
+    return { x: p.x, y: p.y, text, anchor }
   })
 })
 
@@ -762,28 +771,29 @@ onMounted(() => { fetchConfigs(); fetchLocations(); fetchHolidays() })
 .ring-svg { width: 100%; height: 100%; overflow: visible; }
 
 .ring-hour-label {
-  font-size: 11px;
+  font-size: 8px; /* Reduced to fit 24 hours */
   font-weight: 700;
   fill: #64748b;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Inter', monospace;
 }
 .ring-center-title {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   fill: #94a3b8;
   letter-spacing: 2px;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 .ring-center-hours {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 900;
   fill: #1a2a3a;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 .ring-center-sub {
-  font-size: 8px;
-  font-weight: 600;
-  fill: #94a3b8;
+  font-size: 9px;
+  font-weight: 700;
+  fill: #64748b;
+  letter-spacing: 1px;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
