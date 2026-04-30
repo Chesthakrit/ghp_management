@@ -292,6 +292,8 @@ def update_employee_profile(
         profile.base_salary = request.base_salary
     if request.bank_account is not None:
         profile.bank_account = request.bank_account
+    if request.scan_id is not None:
+        profile.scan_id = request.scan_id
 
     db.commit()
     db.refresh(user)

@@ -212,6 +212,10 @@
             <label>Bank Account No.</label>
             <input v-model="form.bank_account" type="text" class="form-input" placeholder="XXX-X-XXXXX-X" />
           </div>
+          <div class="form-group">
+            <label>Face Scan ID (ZKTeco)</label>
+            <input v-model="form.scan_id" type="text" class="form-input" placeholder="Leave empty to use System ID" />
+          </div>
         </div>
 
         <div class="modal-actions">
@@ -272,7 +276,8 @@ const form = ref({
   employment_status: 'intern',
   salary_type: 'monthly',
   base_salary: 0,
-  bank_account: ''
+  bank_account: '',
+  scan_id: ''
 })
 
 const openPhoto  = (url) => { photoPopup.value = url }
@@ -441,6 +446,7 @@ const openEdit = (user) => {
     salary_type: user.employee_profile?.salary_type || 'monthly',
     base_salary: user.employee_profile?.base_salary || 0,
     bank_account: user.employee_profile?.bank_account || '',
+    scan_id: user.employee_profile?.scan_id || '',
   }
   showModal.value = true
 }
@@ -472,6 +478,7 @@ const saveUser = async () => {
       salary_type: form.value.salary_type,
       base_salary: form.value.base_salary,
       bank_account: form.value.bank_account,
+      scan_id: form.value.scan_id || null,
     })
 
     Swal.fire({ icon: 'success', title: 'Saved successfully!', timer: 1500, showConfirmButton: false })

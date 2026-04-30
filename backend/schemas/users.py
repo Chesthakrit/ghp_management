@@ -15,6 +15,7 @@ class EmployeeProfileBase(BaseModel):
     salary_type: Optional[str] = 'monthly'      # รูปแบบการจ่ายเงิน
     base_salary: Optional[int] = 0        # ยอดเงินเดือน/ค่าจ้าง
     bank_account: Optional[str] = None    # เลขบัญชีธนาคาร (ถ้ามี)
+    scan_id: Optional[str] = None         # รหัสสแกนหน้า (ZKTeco PIN)
 
 class EmployeeProfileOut(EmployeeProfileBase):
     """ข้อมูลประวัติพนักงานสำหรับส่งออกไปยัง Frontend"""
@@ -61,6 +62,7 @@ class EmployeeProfileUpdate(BaseModel):
     salary_type: Optional[str] = None       # แก้ไขรูปแบบการจ่ายเงิน
     base_salary: Optional[int] = None       # แก้ไขยอดเงินเดือน/ค่าจ้าง
     bank_account: Optional[str] = None      # แก้ไขเลขบัญชีธนาคาร
+    scan_id: Optional[str] = None           # แก้ไขรหัสสแกนหน้า
 
 # --- ข้อมูลผู้ใช้งานสำหรับส่งออก (User Out - ส่งข้อมูลกลับไปยังหน้าจอ) ---
 class UserOut(BaseModel):

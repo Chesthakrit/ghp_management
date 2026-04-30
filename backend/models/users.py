@@ -269,5 +269,7 @@ class EmployeeProfile(Base):
     base_salary = Column(Integer, default=0)               # ยอดเงินเดือนพื้นฐาน หรือ ค่าจ้างรายวัน
     bank_account = Column(String, nullable=True)           # เลขบัญชีธนาคาร (ถ้ามี)
     termination_date = Column(String, nullable=True)       # วันลาออก (ถ้ามี)
+    scan_id = Column(String, nullable=True)                # รหัสสแกนหน้า/ลายนิ้วมือ (ZKTeco PIN)
 
     user = relationship("User", back_populates="employee_profile")
+

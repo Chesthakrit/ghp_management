@@ -16,25 +16,7 @@
           {{ salaryType === 'monthly' ? 'Monthly Paid' : 'Daily Paid' }}
         </div>
         
-        <div class="action-group">
-          <!-- ปุ่ม On-Site (ใช้ลงเวลานอกสถานที่) -->
-          <button class="btn-action-square btn-onsite" @click="handleOnSiteCheckin">
-            <i class="fas fa-map-marker-alt"></i>
-            <span>ON-SITE</span>
-          </button>
-          
-          <!-- ปุ่ม By User (ลงเวลาผ่านแอปมือถือ/ถ่ายรูป) -->
-          <button class="btn-action-square btn-user" @click="handleCheckinUser">
-            <i class="fas fa-user-clock"></i>
-            <span>BY USER</span>
-          </button>
-          
-          <!-- ปุ่ม Factory (ลงเวลาในโรงงาน) -->
-          <button class="btn-action-square btn-factory" @click="handleCheckinFactory">
-            <i class="fas fa-industry"></i>
-            <span>FACTORY</span>
-          </button>
-          
+      <div class="action-group">
           <!-- ปุ่มขอ OT -->
           <button class="btn-action-square btn-ot" @click="handleOTRequest">
             <i class="fas fa-business-time"></i>
@@ -90,16 +72,11 @@
                 <span class="day-label">{{ day.dayName }}</span>
                 <span class="date-label">{{ day.dateStr }}</span>
               </td>
-              <!-- แสดงเวลาเข้างาน และสถานะสาย (มาพร้อมตัวบ่งชี้สี) -->
               <td class="col-time">
-                <div v-if="day.clockIn !== '—'" class="time-status-wrap">
-                  <!-- คลิกที่เวลาเพื่อดูรูปถ่ายตอนเช็คอิน -->
-                  <span @click="showPhotoPreview(day.inImage, day.inFullTime, 'Clock IN')" 
-                        class="clickable-time"
-                        :style="{ color: getStatusColor(day.status) }">
+                <div v-if="day.clockIn !== '\u2014'" class="time-status-wrap">
+                  <span class="clickable-time" :style="{ color: getStatusColor(day.status) }">
                     {{ day.clockIn }}
                   </span>
-                  <!-- ป้ายสถานะ (แสดงจำนวนนาทีที่สาย) -->
                   <span class="status-mini-label" :style="{ backgroundColor: getStatusBg(day.status), color: getStatusColor(day.status) }">
                     {{ formatStatusLabel(day.status, day.lateMinutes) }}
                   </span>
@@ -108,7 +85,7 @@
               </td>
               <!-- แสดงเวลาออกงาน -->
               <td class="col-time">
-                <span v-if="day.clockOut !== '—'" @click="showPhotoPreview(day.outImage, day.outFullTime, 'Clock OUT')" class="clickable-time">
+                <span v-if="day.clockOut !== '\u2014'" class="clickable-time">
                   {{ day.clockOut }}
                 </span>
                 <span v-else class="empty-val">—</span>
@@ -150,43 +127,6 @@
     </div>
 
 
-    <!-- [6] หน้าต่าง Modal สำหรับพนักงานกดลงเวลาเอง (BY USER) -->
-    <div v-if="isUserCheckinModalOpen" class="modal-overlay" @click="isUserCheckinModalOpen = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3><i class="fas fa-user-clock"></i> User Check-in / Out</h3>
-          <button class="close-btn" @click="isUserCheckinModalOpen = false"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-          <div class="checkin-form">
-            <label class="form-label">สถานที่ลงเวลา (Location)</label>
-            <!-- เลือกโหมด: ทำงานที่โรงงาน หรือ ออกไซด์งานข้างนอก -->
-            <div class="location-tabs">
-              <button :class="['loc-tab', { active: checkInType === 'factory' }]" @click="checkInType = 'factory'">Factory</button>
-              <button :class="['loc-tab', { active: checkInType === 'site' }]" @click="checkInType = 'site'">On-Site</button>
-            </div>
-            
-            <p v-if="geoError" class="geo-error">{{ geoError }}</p>
-          </div>
-
-          <!-- ปุ่มกดยืนยัน เข้างาน / ออกงาน (ระบบจะเรียกกล้องมือถือให้อัตโนมัติ) -->
-          <div class="modal-actions-row">
-            <button class="action-btn btn-checkin" @click="triggerCamera('in')" :disabled="isUploading">
-              <i class="fas fa-sign-in-alt"></i>
-              <span>{{ isUploading && currentAction === 'in' ? 'Processing...' : 'Clock IN' }}</span>
-            </button>
-            <button class="action-btn btn-checkout" @click="triggerCamera('out')" :disabled="isUploading">
-              <i class="fas fa-sign-out-alt"></i>
-              <span>{{ isUploading && currentAction === 'out' ? 'Processing...' : 'Clock OUT' }}</span>
-            </button>
-          </div>
-
-          <!-- Input ลับสำหรับเปิดกล้องถ่ายภาพ (Hidden) -->
-          <input type="file" ref="cameraInput" accept="image/*" capture="user" style="display: none;" @change="handlePhotoTaken" />
-        </div>
-      </div>
-    </div>
-
     <!-- [7] หน้าต่าง Modal สำหรับขอโอที (OT Request) -->
     <OTRequestModal 
       :isOpen="isOTModalOpen" 
@@ -203,11 +143,9 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../api'
 import OTRequestModal from './OTRequestModal.vue'
-import { mediaUrl } from '../../utils/mediaUrl'
 
 const props = defineProps(['userId'])
 
-// --- 1. ตัวแปรสถานะระบบ (Core State) ---
 const currentTime = ref('00:00:00') // เวลาปัจจุบัน 24H
 const currentDate = ref('')        // วันที่ปัจจุบัน
 const salaryType = ref('')         // ประเภทเงินเดิอนพนักงาน
@@ -218,29 +156,12 @@ const weekDays = ref([])           // อาร์เรย์เก็บข้
 const historyLogs = ref([])        // ประวัติการเข้างานที่ดึงมาจาก API
 const requesterName = ref('User')  // ชื่อผู้ขอ (สำหรับส่งไปใน Modal)
 
-// --- 2. ตัวแปรสถานะเช็คอิน (Registration State) ---
-const isUserCheckinModalOpen = ref(false)
-const isOTModalOpen = ref(false)   // สถานะเปิด/ปิดหน้าต่างขอ OT
-const checkInType = ref('factory')
-const cameraInput = ref(null)
-const currentAction = ref(null) 
-const isUploading = ref(false)
-const currentLat = ref(null)
-const currentLon = ref(null)
-const geoError = ref('')
+const isOTModalOpen  = ref(false)
 
-// --- 3. ตัวแปรสถานะ Modal Preview รูปภาพ ---
-const isPreviewModalOpen = ref(false)
-const previewImage = ref('')
-const previewTimestamp = ref('')
-const previewTitle = ref('')
-
-// --- 4. ตัวแปรคงที่ (Constants) ---
-const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const months        = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const selectedMonth = ref(new Date().getMonth())
-const selectedYear = ref(new Date().getFullYear())
-const configs = ref({}) // เก็บค่าการตั้งค่าบริษัท (เวลาเข้างาน, Grace Period)
-let timerInterval = null
+const selectedYear  = ref(new Date().getFullYear())
+let timerInterval   = null
 
 // --- 5. การคำนวณอัตโนมัติ (Computed) ---
 // สร้างรายการปีที่เลือกได้ในปฏิทิน
@@ -278,9 +199,7 @@ const isFutureWeek = computed(() => {
   return mondayOfView >= todayMonday
 })
 
-// --- 6. ฟังก์ชันช่วยจัดการรูปแบบ (Helper Methods) ---
-
-// --- 6. ฟังก์ชันช่วยจัดการรูปแบบ (Helper Methods) ---
+// ─── Helper Methods ───────────────────────────────────────────────────────────
 
 /**
  * ฟังก์ชันช่วยสร้าง Date Object แบบปลอดภัย สำหรับแสดงผลเวลา
@@ -378,19 +297,15 @@ const generateWeek = (date = new Date()) => {
     const log = historyLogs.value.find(l => l.date === logDate) // จับคู่ข้อมูลจริงจาก DB
     
     days.push({
-      dateStr: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      dayName: day.toLocaleDateString('en-US', { weekday: 'short' }),
-      fullDate: logDate,
-      clockIn: log?.check_in_time ? formatTime(log.check_in_time) : '—',
-      clockOut: log?.check_out_time ? formatTime(log.check_out_time) : '—',
-      status: log?.status || 'none',
-      lateMinutes: log?.late_minutes || 0, // เพิ่มข้อมูลนาทีที่สาย
-      inImage: log?.check_in_image,
-      outImage: log?.check_out_image,
-      inFullTime: log?.check_in_time ? formatFullTime(log.check_in_time) : '',
-      outFullTime: log?.check_out_time ? formatFullTime(log.check_out_time) : '',
-      ot: log ? "0.0" : "0.0",
-      location: log ? log.site_name : '—'
+      dateStr:     day.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      dayName:     day.toLocaleDateString('en-US', { weekday: 'short' }),
+      fullDate:    logDate,
+      clockIn:     log?.check_in_time  ? formatTime(log.check_in_time)  : '—',
+      clockOut:    log?.check_out_time ? formatTime(log.check_out_time) : '—',
+      status:      log?.status       || 'none',
+      lateMinutes: log?.late_minutes || 0,
+      ot:          '0.0',
+      location:    log?.site_name    || '—',
     })
   }
   weekDays.value = days
@@ -451,98 +366,9 @@ const goToCurrentWeek = () => {
   selectedYear.value = now.getFullYear()
 }
 
-// แสดงรูปถ่ายขยายใหญ่ใน Modal
-const showPhotoPreview = (img, ts, title) => {
-  if (!img) {
-    previewImage.value = ''
-    previewTimestamp.value = ts
-    previewTitle.value = title
-    isPreviewModalOpen.value = true
-    return
-  }
-  
-  previewImage.value = mediaUrl(img)
-  previewTimestamp.value = ts
-  previewTitle.value = title
-  isPreviewModalOpen.value = true
-}
 
-// --- 9. กระบวนการเช็คอินและจัดการกล้อง (Check-in / Camera Flow) ---
-// เมื่อพนักงานกดปุ่มเริ่มเช็คอิน
-const handleCheckinUser = () => {
-  isUserCheckinModalOpen.value = true
-  if (navigator.geolocation) {
-    // ดึงพิกัด GPS ทันทีที่เปิดหน้าต่าง
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        currentLat.value = pos.coords.latitude
-        currentLon.value = pos.coords.longitude
-      },
-      (err) => geoError.value = "GPS Error: Please enable location services"
-    )
-  }
-}
+const handleOTRequest = () => { isOTModalOpen.value = true }
 
-// สั่งเปิดกล้อง (โดยการไปกดปุ่ม <input file> ที่ซ่อนไว้)
-const triggerCamera = (action) => {
-  currentAction.value = action
-  if (cameraInput.value) cameraInput.value.click()
-}
-
-// เมื่อถ่ายรูปเสร็จแล้ว (เริ่มกระบวนการอัปโหลดและลงบันทึกใน DB)
-const handlePhotoTaken = async (event) => {
-  const file = event.target.files[0]
-  if (!file) {
-    currentAction.value = null
-    return
-  }
-
-  isUploading.value = true
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-    
-    // 1. อัปโหลดรูปภาพก่อน
-    const uploadRes = await api.post('/attendance/upload-image', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    
-    const imagePath = uploadRes.data.path
-
-    // 2. ส่งข้อมูลบันทึกเวลาพร้อมลิงก์รูปภาพและพิกัด GPS
-    if (currentAction.value === 'in') {
-      await api.post('/attendance/check-in', {
-        check_in_type: checkInType.value,
-        location_lat: currentLat.value,
-        location_lon: currentLon.value,
-        check_in_image: imagePath
-      })
-      alert("✅ Clock IN Successful")
-    } else {
-      await api.put('/attendance/check-out', {
-        check_out_image: imagePath
-      })
-      alert("✅ Clock OUT Successful")
-    }
-
-    isUserCheckinModalOpen.value = false
-    await fetchMyAttendance() // รีเฟรชตารางหลังลงเวลาเสร็จ
-  } catch (error) {
-    console.error(error)
-    alert(error.response?.data?.detail || "Upload Error")
-  } finally {
-    isUploading.value = false
-    currentAction.value = null
-    if (cameraInput.value) cameraInput.value.value = ""
-  }
-}
-
-// ฟังก์ชันรอการพัฒนาเพิ่มเติม
-const handleOnSiteCheckin = () => alert("Featured in BY USER section.")
-const handleCheckinFactory = () => alert("Featured in BY USER section.")
-const handleOTRequest = () => {
-  isOTModalOpen.value = true
-}
 
 // --- 10. วงจรชีวิตของคอมโพเนนต์ (Lifecycle Hooks) ---
 onMounted(async () => {

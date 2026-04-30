@@ -1,143 +1,35 @@
 """
 ไฟล์จัดการระบบบันทึกเวลาเข้า-ออกงาน (Attendance Router)
-รองรับการ Check-in, Check-out และการดูประวัติการลงเวลา
+ข้อมูลการสแกนถูกส่งเข้าระบบโดยเครื่อง ZKTeco ผ่าน /iclock endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
-import storage
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import date, datetime
-import os
-import shutil
-import uuid
+from datetime import date
 import oauth2
 from database import get_db
 from models import attendance as models
 from schemas import attendance as schemas
-from utils.attendance_utils import calculate_attendance_status, calculate_ot_hours # เพิ่มการคำนวณ OT
 
 router = APIRouter(
     prefix="/attendance",
     tags=["Attendance System"]
 )
 
+
 @router.get("/ot-rules")
 def get_ot_rules(
     db: Session = Depends(get_db),
-    current_user = Depends(oauth2.get_current_user) # บังคับ Login เพื่อดูกฎบริษัท
+    current_user = Depends(oauth2.get_current_user)
 ):
-    """
-    ดึงกฎเวลา OT (เฉพาะพนักงานในระบบ)
-    """
-    keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end", "ot_morning_start", "ot_morning_end", "check_in_time"]
+    """ดึงกฎเวลา OT สำหรับคำนวณใน Frontend"""
+    keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end",
+            "ot_morning_start", "ot_morning_end", "check_in_time"]
     configs = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key.in_(keys)).all()
     return {c.key: c.value for c in configs}
 
-@router.post("/upload-image")
-def upload_attendance_image(
-    file: UploadFile = File(...),
-    current_user = Depends(oauth2.get_current_user)
-):
-    """
-    อัปโหลดรูปภาพ Check-In / Check-Out
-    """
-    try:
-        file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
-        new_filename = f"attd_{current_user.username}_{uuid.uuid4().hex[:8]}.{file_ext}"
-        file_bytes = file.file.read()
-        path = storage.save_file(file_bytes, "attendance", new_filename, file.content_type or "image/jpeg")
-        return {"filename": new_filename, "path": path}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/check-in", response_model=schemas.AttendanceLogResponse)
-def check_in(
-    request: Request,
-    check_in_data: schemas.AttendanceCheckIn,
-    db: Session = Depends(get_db),
-    current_user = Depends(oauth2.get_current_user)
-):
-    """
-    บันทึกเวลาเข้างาน (Check-in)
-    รับข้อมูล พิกัด GPS, ประเภทการเข้างาน (On-Site/Factory), รูปถ่าย
-    """
-    today = date.today()
-    
-    # ตรวจสอบว่าวันนี้มีการเข้างานไปหรือยัง (เพื่อให้เช็คอินได้แค่วันละ 1 Record)
-    existing_log = db.query(models.AttendanceLog).filter(
-        models.AttendanceLog.user_id == current_user.id,
-        models.AttendanceLog.date == today
-    ).first()
-
-    if existing_log:
-        raise HTTPException(status_code=400, detail="คุณได้ทำการ Check-in สำหรับวันนี้ไปแล้ว")
-
-    # ดึง IP Address (มีประโยชน์มากถ้าเช็คอินด้วยเน็ตโรงงาน)
-    client_ip = request.client.host if request.client else None
-
-    # --- ลอจิกการคำนวณสถานะสาย (Server-side Calculation) ---
-    all_configs = db.query(models.AttendanceConfig).all()
-    cfg_dict = {c.key: c.value for c in all_configs}
-    check_in_dt = datetime.now()
-    
-    # เรียกใช้ฟังก์ชันจาก utils เพิื่อคำนวณสถานะสาย (Clean Code)
-    status, late_mins = calculate_attendance_status(current_user.id, check_in_dt, cfg_dict)
-
-    # สร้าง Record ใหม่ในตาราง attendance_logs
-    new_attendance = models.AttendanceLog(
-        user_id=current_user.id,
-        date=today,
-        check_in_time=check_in_dt,
-        check_in_type=check_in_data.check_in_type,
-        location_lat=check_in_data.location_lat,
-        location_lon=check_in_data.location_lon,
-        site_name=check_in_data.site_name,
-        ip_address=client_ip,
-        check_in_image=check_in_data.check_in_image,
-        note=check_in_data.note,
-        status=status,         # บันทึกสถานะ (T1, T2, T3)
-        late_minutes=late_mins # บันทึกจำนวนนาทีที่สายจริง
-    )
-
-    db.add(new_attendance)
-    db.commit()
-    db.refresh(new_attendance)
-    return new_attendance
-
-
-@router.put("/check-out", response_model=schemas.AttendanceLogResponse)
-def check_out(
-    check_out_data: schemas.AttendanceCheckOut,
-    db: Session = Depends(get_db),
-    current_user = Depends(oauth2.get_current_user)
-):
-    """
-    บันทึกเวลาเลิกงาน (Check-out)
-    จะไปอัปเดตช่อง check_out_time ของรายการที่ได้เปิดไว้เมื่อเช้า
-    """
-    today = date.today()
-    
-    # ค้นหารายการเช็คอินของวันนี้
-    log = db.query(models.AttendanceLog).filter(
-        models.AttendanceLog.user_id == current_user.id,
-        models.AttendanceLog.date == today
-    ).first()
-
-    if not log:
-        raise HTTPException(status_code=400, detail="ไม่พบประวัติการ Check-in ของวันนี้ โปรด Check-in ก่อน")
-    
-    if log.check_out_time:
-        raise HTTPException(status_code=400, detail="คุณได้ทำการ Check-out ไปแล้ว")
-
-    log.check_out_time = datetime.now()
-    if check_out_data.check_out_image:
-        log.check_out_image = check_out_data.check_out_image
-
-    db.commit()
-    db.refresh(log)
-    return log
-
 
 @router.get("/me", response_model=list[schemas.AttendanceLogResponse])
+
 def get_my_attendance(
     db: Session = Depends(get_db),
     current_user = Depends(oauth2.get_current_user)

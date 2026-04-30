@@ -1,6 +1,6 @@
 """
 ไฟล์หลักสำหรับการเริ่มต้นระบบ (Main Entry Point)
-ทำหน้าที่ตั้งค่า FastAPI, CORS, Static Files และเชื่อมต่อ Router ต่างๆ เข้าด้วยกัน
+ตั้งค่า FastAPI, CORS, Static Files และเชื่อมต่อ Router ต่างๆ
 """
 import os
 
@@ -8,39 +8,34 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routers import attendance, auth, hr, payroll, permissions, projects, users, access_control
+from routers import attendance, auth, hr, payroll, permissions, projects, users, access_control, zkteco
 
-# สร้างอินสแตนซ์ของ FastAPI
-app = FastAPI()
+app = FastAPI(title="GHP Management API")
 
-# --- 1. การกำหนดค่า CORS (เปิดกว้างสำหรับการทดสอบบนมือถือ) ---
+# ─── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:3000",
-        "http://165.22.107.146:5173",
-        "http://165.22.107.146:5174",
-        "http://165.22.107.146:5175",
-        "http://165.22.107.146:5176",
-        "http://165.22.107.146:3000",
+        "http://192.168.1.104:5173",
+        "http://192.168.1.104:5174",
+        "http://192.168.1.104:5175",
+        "http://192.168.1.104:5176",
+        "http://192.168.1.104:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- 2. ตั้งค่าการเก็บและเข้าถึงไฟล์ Static ---
+# ─── Static Files ──────────────────────────────────────────────────────────────
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(os.path.join(UPLOAD_DIR, "videos"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# จัดการโฟลเดอร์วิดีโอ (ตอนนี้ย้ายไปใช้ Protected Route ใน hr.py เพื่อความปลอดภัยสูงสุด)
-VIDEO_DIR = os.path.join(UPLOAD_DIR, "videos")
-os.makedirs(VIDEO_DIR, exist_ok=True)
-
-# --- 3. การรวมพาร์ท (Routes) ---
+# ─── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(projects.router)
@@ -49,7 +44,9 @@ app.include_router(hr.router)
 app.include_router(attendance.router)
 app.include_router(payroll.router)
 app.include_router(access_control.router)
+app.include_router(zkteco.router)
+
 
 @app.get("/")
 async def root():
-    return {"message": "GHP System is Running (PostgreSQL Mode)"}
+    return {"message": "GHP Management System is running."}
