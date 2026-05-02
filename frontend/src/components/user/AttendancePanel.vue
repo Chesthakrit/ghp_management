@@ -85,9 +85,14 @@
               </td>
               <!-- แสดงเวลาออกงาน -->
               <td class="col-time">
-                <span v-if="day.clockOut !== '\u2014'" class="clickable-time">
-                  {{ day.clockOut }}
-                </span>
+                <div v-if="day.clockOut !== '\u2014'" class="time-status-wrap">
+                  <span class="clickable-time" :style="{ color: getCheckoutColor(day) }">
+                    {{ day.clockOut }}
+                  </span>
+                  <span v-if="day.otRequest" class="status-mini-label" style="background-color: #e0e7ff; color: #4338ca;">
+                    OT {{ day.otRequest.total_hours }} hr ({{ day.otRequest.end_time }})
+                  </span>
+                </div>
                 <span v-else class="empty-val">—</span>
               </td>
               <!-- แสดงจำนวน OT ( hrs.) -->
@@ -161,6 +166,7 @@ const isOTModalOpen  = ref(false)
 const months        = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const selectedMonth = ref(new Date().getMonth())
 const selectedYear  = ref(new Date().getFullYear())
+const otRules       = ref({}) // เก็บกฎเวลาจาก Backend
 let timerInterval   = null
 
 // --- 5. การคำนวณอัตโนมัติ (Computed) ---
@@ -281,6 +287,36 @@ const formatStatusLabel = (status, lateMins = 0) => {
   return 'On-Time'
 }
 
+// --- 7.1 ลอจิกการแสดงสีเวลาออก (Checkout Color Logic) ---
+const getCheckoutColor = (day) => {
+  if (!day.actualCheckOut || !otRules.value.check_out_time) return '#1e293b'
+  
+  const actual = parseSafeDate(day.actualCheckOut)
+  if (!actual) return '#1e293b'
+
+  const actualTime = actual.getHours() * 60 + actual.getMinutes()
+  
+  // 1. ถ้ามีการขอโอที
+  if (day.otRequest) {
+    const [otH, otM] = day.otRequest.end_time.split(':').map(Number)
+    const otEndTime = otH * 60 + otM
+    
+    // ถ้าออกก่อนเวลาโอทีที่ขอ -> แดง
+    if (actualTime < otEndTime) return '#ef4444'
+    // ถ้าออกตามสั่งหรือหลัง -> น้ำเงิน
+    return '#3b82f6'
+  }
+
+  // 2. ถ้าไม่มีโอที
+  const [stdH, stdM] = otRules.value.check_out_time.split(':').map(Number)
+  const stdEndTime = stdH * 60 + stdM
+  
+  // ถ้าออกก่อนเวลาปกติ -> แดง
+  if (actualTime < stdEndTime) return '#ef4444'
+  // ถ้าออกหลังเวลาปกติ -> เขียว
+  return '#10b981'
+}
+
 // สร้างข้อมูลจำลอง 7 วันในสัปดาห์ปัจจุบัน
 const generateWeek = (date = new Date()) => {
   const days = []
@@ -301,10 +337,12 @@ const generateWeek = (date = new Date()) => {
       dayName:     day.toLocaleDateString('en-US', { weekday: 'short' }),
       fullDate:    logDate,
       clockIn:     log?.check_in_time  ? formatTime(log.check_in_time)  : '—',
-      clockOut:    log?.check_out_time ? formatTime(log.check_out_time) : '—',
+      clockOut:    log?.actual_check_out ? formatTime(log.actual_check_out) : '—', // แสดงเวลาจริง
+      actualCheckOut: log?.actual_check_out,
+      otRequest:   log?.ot_request,
       status:      log?.status       || 'none',
       lateMinutes: log?.late_minutes || 0,
-      ot:          '0.0',
+      ot:          log?.ot_request ? log.ot_request.total_hours.toFixed(1) : '0.0',
       location:    log?.site_name    || '—',
     })
   }
@@ -330,6 +368,10 @@ const fetchUserData = async () => {
 // ดึงประวัติการมาทำงานจริงจาก Database
 const fetchMyAttendance = async () => {
   try {
+    // ดึงกฎเวลาก่อนเพื่อใช้เปรียบเทียบ
+    const ruleRes = await api.get('/attendance/ot-rules')
+    otRules.value = ruleRes.data
+
     const endpoint = props.userId ? `/attendance/user/${props.userId}` : '/attendance/me'
     const res = await api.get(endpoint)
     historyLogs.value = res.data || []

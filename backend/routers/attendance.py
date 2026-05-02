@@ -23,23 +23,31 @@ def get_ot_rules(
 ):
     """ดึงกฎเวลา OT สำหรับคำนวณใน Frontend"""
     keys = ["ot_normal_start", "ot_normal_end", "ot_special_start", "ot_special_end",
-            "ot_morning_start", "ot_morning_end", "check_in_time",
+            "ot_morning_start", "ot_morning_end", "check_in_time", "check_out_time",
             "ot_request_start_time", "ot_request_end_time"]
     configs = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key.in_(keys)).all()
     return {c.key: c.value for c in configs}
 
 
 @router.get("/me", response_model=list[schemas.AttendanceLogResponse])
-
 def get_my_attendance(
     db: Session = Depends(get_db),
     current_user = Depends(oauth2.get_current_user)
 ):
     """
     ดึงประวัติการเข้า-ออกงานทั้งหมด ของตัวพนักงานเอง
-    นำไปทำ History Calendar
+    นำไปทำ History Calendar พร้อมข้อมูล OT
     """
-    return db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == current_user.id).order_by(models.AttendanceLog.date.desc()).all()
+    logs = db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == current_user.id).order_by(models.AttendanceLog.date.desc()).all()
+    
+    # ดึง OT Requests ทั้งหมดของ User นี้มาแมพเข้ากับ Logs
+    ot_requests = db.query(models.OTRequest).filter(models.OTRequest.user_id == current_user.id).all()
+    ot_map = {ot.request_date: ot for ot in ot_requests}
+    
+    for log in logs:
+        log.ot_request = ot_map.get(log.date)
+        
+    return logs
 
 
 def check_time_permission(user, action_perm=None):
@@ -75,7 +83,15 @@ def get_user_attendance(
     if current_user.id != user_id:
         check_time_permission(current_user) # ฟังก์ชันนี้จะคัดกรองสิทธิ์ให้
             
-    return db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == user_id).order_by(models.AttendanceLog.date.desc()).all()
+    logs = db.query(models.AttendanceLog).filter(models.AttendanceLog.user_id == user_id).order_by(models.AttendanceLog.date.desc()).all()
+    
+    ot_requests = db.query(models.OTRequest).filter(models.OTRequest.user_id == user_id).all()
+    ot_map = {ot.request_date: ot for ot in ot_requests}
+    
+    for log in logs:
+        log.ot_request = ot_map.get(log.date)
+
+    return logs
 
 
 @router.get("/settings", response_model=list[schemas.AttendanceConfigResponse])

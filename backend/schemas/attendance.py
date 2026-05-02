@@ -16,6 +16,7 @@ class AttendanceLogResponse(BaseModel):
     note:          Optional[str] = None
     is_approved:   bool
     late_minutes:  int = 0
+    ot_request:    Optional['OTRequestResponse'] = None # Join info
 
     class Config:
         from_attributes = True
