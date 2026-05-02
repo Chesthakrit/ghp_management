@@ -93,7 +93,7 @@
               <span class="hours special">{{ otSummary.sp }} hrs.</span>
             </div>
             <div class="calc-total">
-              Total: <strong>{{ otSummary.total }}</strong> hrs.
+              Total: <strong>{{ otCalculated.total }}</strong> hrs.
             </div>
           </div>
         </div>
@@ -111,54 +111,53 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import api from '../../api'
+import axios from 'axios'
 
 const props = defineProps({
   isOpen: Boolean,
-  requesterName: String,
+  user: Object,
   attendanceLogs: { type: Array, default: () => [] } 
 })
 
 const emit = defineEmits(['close', 'submitted'])
 
-// --- 1. State ---
-const configs = ref({}) 
 const otForm = ref({
   request_date: new Date().toISOString().split('T')[0],
-  start_time: '17:30',
-  end_time: '20:30',
+  start_time: '17:00',
+  end_time: '19:00',
   reason: ''
 })
 
-// ตัวแปรสำหรับคัดแยกชั่วโมงและนาทีเพื่อทำ Dropdown
 const startTime = ref({ h: '17', m: '00' })
 const endTime = ref({ h: '19', m: '00' })
 
-// คำนวณชั่วโมงที่อนุญาตให้เลือก (อ้างอิงจาก Standard OT Config)
+// --- 2. Initial Data & Rules ---
+const isSubmitting = ref(false)
+const isLoadingRules = ref(true)
+const actualDayLog = ref(null) 
+const configs = ref({})
+
+// --- 3. Computed & Logic ---
+const requesterName = computed(() => `${props.user?.first_name || ''} ${props.user?.last_name || ''}`)
+
 const hourOptions = computed(() => {
   const start = parseInt(configs.value.ot_normal_start?.split(':')[0] || '17')
   const end = parseInt(configs.value.ot_normal_end?.split(':')[0] || '22')
-  
   const options = []
   if (start <= end) {
     for (let i = start; i <= end; i++) options.push(String(i).padStart(2, '0'))
   } else {
-    // กรณีข้ามคืน (ถ้ามี)
     for (let i = start; i < 24; i++) options.push(String(i).padStart(2, '0'))
     for (let i = 0; i <= end; i++) options.push(String(i).padStart(2, '0'))
   }
   return options
 })
 
-// Sync กลับไปยัง otForm
+// Sync Dropdown -> otForm
 watch([startTime, endTime], () => {
   otForm.value.start_time = `${startTime.value.h}:${startTime.value.m}`
   otForm.value.end_time = `${endTime.value.h}:${endTime.value.m}`
 }, { deep: true })
-
-const isSubmitting = ref(false)
-const isLoadingRules = ref(true)
-const actualDayLog = ref(null) // เก็บ Log จริงของวันที่เลือก
 
 // --- 2. Watchers & Actions ---
 // ค้นหา Log จริงเมื่อเปลี่ยนวันที่
@@ -240,7 +239,7 @@ function validateTime(time) {
   return isInEveningRange || isInMorningRange
 }
 
-const otSummary = computed(() => {
+const otCalculated = computed(() => {
   const { start_time, end_time, request_date } = otForm.value
   if (!start_time || !end_time) return { total: '0.0', std: '0.0', sp: '0.0' }
   
