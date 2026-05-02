@@ -115,48 +115,79 @@
         </div>
 
         <!-- 3. OVERTIME RULES -->
-        <div class="card">
+        <div class="card ot-config-card">
           <div class="card-header">
-            <h3><i class="fas fa-business-time"></i> Overtime Configuration</h3>
-            <button class="btn-primary-sm" @click="saveConfigs('ot')">Update OT</button>
+            <h3><i class="fas fa-business-time"></i> Overtime Management</h3>
+            <button class="btn-primary-sm" @click="saveConfigs('ot')">Update All OT</button>
           </div>
           <div class="card-body">
-            <div class="ot-list">
-              <div class="ot-row">
-                <div class="ot-info">
-                  <span class="ot-name">Standard Overtime <span class="tag-24h-ot">24H</span></span>
-                  <small>Default after-hours rate</small>
-                </div>
-                <div class="ot-inputs">
-                  <input type="text" class="time-text-input" v-model="config.ot_normal_start" placeholder="HH:mm" @blur="validateTime('ot_normal_start')" />
-                  <span class="sep">to</span>
-                  <input type="text" class="time-text-input" v-model="config.ot_normal_end" placeholder="HH:mm" @blur="validateTime('ot_normal_end')" />
+            
+            <!-- A. Submission Policy (Top & Distinctive) -->
+            <div class="ot-policy-section">
+              <div class="policy-header">
+                <i class="fas fa-shield-halved"></i>
+                <div>
+                  <h4>Submission Policy</h4>
+                  <p>Define when employees are allowed to submit OT requests.</p>
                 </div>
               </div>
-              <div class="ot-row">
-                <div class="ot-info">
-                  <span class="ot-name">Special Overtime <span class="tag-24h-ot">24H</span></span>
-                  <small>Holiday / Midnight shift</small>
-                </div>
-                <div class="ot-inputs">
-                  <input type="text" class="time-text-input" v-model="config.ot_special_start" placeholder="HH:mm" @blur="validateTime('ot_special_start')" />
-                  <span class="sep">to</span>
-                  <input type="text" class="time-text-input" v-model="config.ot_special_end" placeholder="HH:mm" @blur="validateTime('ot_special_end')" />
-                </div>
-              </div>
-              <!-- เพิ่มโอทีเช้า (Morning OT) -->
-              <div class="ot-row morning-ot">
-                <div class="ot-info">
-                  <span class="ot-name">Morning Overtime <span class="tag-24h-ot">24H</span></span>
-                  <small>Pre-work shift / Early arrival</small>
-                </div>
-                <div class="ot-inputs">
-                  <input type="text" class="time-text-input" v-model="config.ot_morning_start" placeholder="HH:mm" @blur="validateTime('ot_morning_start')" />
-                  <span class="sep">to</span>
-                  <input type="text" class="time-text-input" v-model="config.ot_morning_end" placeholder="HH:mm" @blur="validateTime('ot_morning_end')" />
+              <div class="policy-body">
+                <div class="policy-row">
+                  <div class="policy-label">Request Window <span class="tag-24h-ot">24H</span></div>
+                  <div class="policy-inputs">
+                    <div class="time-box">
+                      <span>From</span>
+                      <input type="text" v-model="config.ot_request_start_time" placeholder="00:00" @blur="validateTime('ot_request_start_time')" />
+                    </div>
+                    <div class="time-box">
+                      <span>Until</span>
+                      <input type="text" v-model="config.ot_request_end_time" placeholder="23:59" @blur="validateTime('ot_request_end_time')" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- B. OT Time Blocks (Grouped) -->
+            <div class="ot-blocks-section">
+              <h5 class="section-title">Time Block Definitions</h5>
+              <div class="ot-list">
+                <div class="ot-row">
+                  <div class="ot-info">
+                    <span class="ot-name">Standard Overtime</span>
+                    <small>Evening shift rate</small>
+                  </div>
+                  <div class="ot-inputs">
+                    <input type="text" v-model="config.ot_normal_start" placeholder="HH:mm" @blur="validateTime('ot_normal_start')" />
+                    <span class="sep">to</span>
+                    <input type="text" v-model="config.ot_normal_end" placeholder="HH:mm" @blur="validateTime('ot_normal_end')" />
+                  </div>
+                </div>
+                <div class="ot-row">
+                  <div class="ot-info">
+                    <span class="ot-name">Morning Overtime</span>
+                    <small>Pre-work early shift</small>
+                  </div>
+                  <div class="ot-inputs">
+                    <input type="text" v-model="config.ot_morning_start" placeholder="HH:mm" @blur="validateTime('ot_morning_start')" />
+                    <span class="sep">to</span>
+                    <input type="text" v-model="config.ot_morning_end" placeholder="HH:mm" @blur="validateTime('ot_morning_end')" />
+                  </div>
+                </div>
+                <div class="ot-row special">
+                  <div class="ot-info">
+                    <span class="ot-name">Special Overtime</span>
+                    <small>Midnight rate</small>
+                  </div>
+                  <div class="ot-inputs">
+                    <input type="text" v-model="config.ot_special_start" placeholder="HH:mm" @blur="validateTime('ot_special_start')" />
+                    <span class="sep">to</span>
+                    <input type="text" v-model="config.ot_special_end" placeholder="HH:mm" @blur="validateTime('ot_special_end')" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -328,7 +359,8 @@ const config = ref({
   late_grace_period_mins_t2: '15', 
   late_grace_period_mins_t3: '30',
   ot_normal_start: '17:00', ot_normal_end: '22:00', ot_special_start: '22:00', ot_special_end: '06:00',
-  ot_morning_start: '05:00', ot_morning_end: '08:00', // เพิ่มโอทีเช้า
+  ot_morning_start: '05:00', ot_morning_end: '08:00',
+  ot_request_start_time: '08:00', ot_request_end_time: '16:00', // เพิ่มช่วงเวลาที่อนุญาตให้ขอ OT
   quota_sick_leave: '30', quota_annual_leave: '6', quota_personal_leave: '3'
 })
 
@@ -435,7 +467,7 @@ const saveConfigs = async (type) => {
   try {
     let keys = []
     if (type === 'hours') keys = ['check_in_time', 'check_out_time', 'late_grace_period_mins', 'late_grace_period_mins_t2', 'late_grace_period_mins_t3']
-    if (type === 'ot') keys = ['ot_normal_start', 'ot_normal_end', 'ot_special_start', 'ot_special_end', 'ot_morning_start', 'ot_morning_end']
+    if (type === 'ot') keys = ['ot_normal_start', 'ot_normal_end', 'ot_special_start', 'ot_special_end', 'ot_morning_start', 'ot_morning_end', 'ot_request_start_time', 'ot_request_end_time']
     if (type === 'leaves') keys = ['quota_sick_leave', 'quota_annual_leave', 'quota_personal_leave']
     const payload = keys.map(k => ({ key: k, value: String(config.value[k]) }))
     await api.put('/attendance/settings', payload)
@@ -615,36 +647,83 @@ onMounted(() => { fetchConfigs(); fetchLocations(); fetchHolidays() })
 .help-text { font-size: 0.7rem; color: #94a3b8; margin-top: 10px; font-style: italic; }
 
 /* ────────── OT LIST ────────── */
-.ot-list { display: flex; flex-direction: column; gap: 16px; }
+/* ────────── OT MANAGEMENT IMPROVED LAYOUT ────────── */
+.ot-policy-section {
+  padding: 8px 0;
+  margin-bottom: 20px;
+  border-bottom: 1px dashed #f1f5f9;
+}
+.policy-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.policy-header i { font-size: 1.1rem; color: #475569; }
+.policy-header h4 { margin: 0; font-size: 0.9rem; font-weight: 800; color: #1a2a3a; text-transform: uppercase; }
+.policy-header p { margin: 2px 0 0; font-size: 0.72rem; color: #94a3b8; }
+
+.policy-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+}
+.policy-label { font-size: 0.82rem; font-weight: 800; color: #475569; }
+.policy-inputs { display: flex; gap: 12px; }
+.time-box { display: flex; align-items: center; gap: 8px; }
+.time-box span { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+.time-box input {
+  width: 70px;
+  padding: 6px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  color: #1a2a3a;
+}
+
+.ot-blocks-section .section-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+}
+.ot-blocks-section .section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #f1f5f9;
+  margin-left: 10px;
+}
+
 .ot-row { 
   display: grid; 
-  grid-template-columns: 1fr 240px; 
+  grid-template-columns: 1fr 200px; 
   align-items: center; 
-  padding: 16px 20px; 
-  background: #f8fafc; 
-  border-radius: 12px; 
-  border: 1px solid #e2e8f0;
+  padding: 12px 16px; 
+  background: #fff; 
+  border-radius: 10px; 
+  border: 1px solid #f1f5f9;
+  margin-bottom: 8px;
   transition: 0.2s;
 }
-.ot-row:hover { border-color: #1a2a3a; background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-.ot-row.morning-ot { border-left: 4px solid #f59e0b; } /* Orange border for Morning OT */
-.ot-row.morning-ot:hover { border-left-color: #d97706; }
+.ot-row:hover { border-color: #cbd5e1; transform: translateX(3px); }
 
-.ot-info { display: flex; flex-direction: column; gap: 2px; }
-.ot-name { font-size: 0.82rem; font-weight: 800; color: #1a2a3a; text-transform: uppercase; letter-spacing: 0.01em; }
-.ot-info small { font-size: 0.72rem; color: #94a3b8; font-weight: 500; }
-
-.ot-inputs { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .ot-inputs input { 
-  width: 70px; 
-  padding: 8px 4px; 
-  border: 1.5px solid #cbd5e1; 
+  width: 65px; 
+  padding: 6px 4px; 
+  border: 1.5px solid #e2e8f0; 
   border-radius: 6px; 
-  font-size: 0.9rem; 
+  font-size: 0.85rem; 
   font-weight: 700; 
   text-align: center;
   color: #1a2a3a;
-  background: #fff;
 }
 .ot-inputs input:focus { border-color: #1a2a3a; outline: none; box-shadow: 0 0 0 3px rgba(26,42,58,0.1); }
 .sep { color: #94a3b8; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }

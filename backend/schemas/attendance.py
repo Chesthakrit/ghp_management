@@ -9,6 +9,8 @@ class AttendanceLogResponse(BaseModel):
     date: date
     check_in_time:  Optional[datetime] = None
     check_out_time: Optional[datetime] = None
+    actual_check_in:  Optional[datetime] = None
+    actual_check_out: Optional[datetime] = None
     status:        str
     site_name:     Optional[str] = None
     note:          Optional[str] = None

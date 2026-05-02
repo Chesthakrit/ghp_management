@@ -14,22 +14,6 @@
             <span class="value">{{ requesterName }}</span>
           </div>
 
-          <!-- ช่วงเวลาอ้างอิงจากบริษัท (ดึงจาก DB) -->
-          <div class="rules-summary">
-             <div class="rule-item">
-               <span class="dot std"></span>
-               Evening: <strong>{{ configs.ot_normal_start || '17:00' }} - {{ configs.ot_normal_end || '22:00' }}</strong>
-             </div>
-             <div v-if="configs.ot_morning_start" class="rule-item">
-               <span class="dot morn"></span>
-               Morning: <strong>{{ configs.ot_morning_start }} - {{ configs.ot_morning_end }}</strong>
-             </div>
-             <div class="rule-item">
-               <span class="dot sp"></span>
-               Midnight/Holiday: <strong>{{ configs.ot_special_start || '22:00' }} - {{ configs.ot_special_end || '06:00' }}</strong>
-             </div>
-          </div>
-
           <!-- แบบฟอร์มกรอกข้อมูล -->
           <div class="form-grid">
             <div class="form-group full">
@@ -37,24 +21,40 @@
               <input type="date" v-model="otForm.request_date" class="form-input" />
               
               <!-- ปุ่มกดดึงเวลาจริง (ปลาบปลื้มใจแน่นอนครับ) -->
-              <div v-if="actualDayLog?.check_out_time" class="actual-info-row">
-                <span>เลิกงานจริง: <strong>{{ formatActualTime(actualDayLog.check_out_time) }}</strong></span>
+              <div v-if="actualDayLog?.actual_check_out" class="actual-info-row">
+                <span>เลิกงานจริง: <strong>{{ formatActualTime(actualDayLog.actual_check_out) }}</strong></span>
                 <button class="btn-text-action" @click="useActualTime">
-                  <i class="fas fa-magic"></i> ใช้เวลาเลิกงานจริง
+                  <i class="fas fa-magic"></i> ใช้เวลาเลิกงานจริง (ปัดเศษ 30 นาที)
                 </button>
               </div>
             </div>
 
             <div class="form-group">
               <label>เวลาเริ่ม (Start)</label>
-              <input type="time" v-model="otForm.start_time" 
-                     :class="['form-input', { 'error': !isStartTimeValid }]" />
+              <div class="time-picker-custom">
+                <select v-model="startTime.h" class="time-select">
+                  <option v-for="h in hourOptions" :key="'sh'+h" :value="h">{{ h }}</option>
+                </select>
+                <span class="sep">:</span>
+                <select v-model="startTime.m" class="time-select">
+                  <option value="00">00</option>
+                  <option value="30">30</option>
+                </select>
+              </div>
             </div>
             
             <div class="form-group">
               <label>เวลาสิ้นสุด (End)</label>
-              <input type="time" v-model="otForm.end_time" 
-                     :class="['form-input', { 'error': !isEndTimeValid }]" />
+              <div class="time-picker-custom">
+                <select v-model="endTime.h" class="time-select">
+                  <option v-for="h in hourOptions" :key="'eh'+h" :value="h">{{ h }}</option>
+                </select>
+                <span class="sep">:</span>
+                <select v-model="endTime.m" class="time-select">
+                  <option value="00">00</option>
+                  <option value="30">30</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -62,6 +62,20 @@
           <p v-if="!isStartTimeValid || !isEndTimeValid" class="warning-text">
             * เวลาที่เลือกไม่อยู่ในช่วงที่บริษัทกำหนดให้ทำโอทีได้
           </p>
+
+          <!-- ข้อความแจ้งเตือนนาทีไม่ตรงรอบ -->
+          <p v-if="!isTimeStepValid && otForm.end_time" class="warning-text">
+            * กรุณาเลือกเวลาเป็นรอบ 00 หรือ 30 นาทีเท่านั้น
+          </p>
+
+          <!-- ข้อความแจ้งเตือนช่วงเวลาที่อนุญาตให้ขอ (Request Window) -->
+          <div v-if="!isInRequestWindow && !isLoadingRules" class="request-window-alert">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+              <strong>หมดเวลาส่งคำขอ OT</strong>
+              <p>บริษัทกำหนดให้ส่งคำขอได้เฉพาะช่วงเวลา {{ configs.ot_request_start_time || '08:00' }} - {{ configs.ot_request_end_time || '16:00' }} เท่านั้น</p>
+            </div>
+          </div>
 
           <div class="form-group full">
             <label>เหตุผล (Reason)</label>
@@ -86,7 +100,7 @@
 
         <div class="modal-actions">
           <button class="btn-cancel" @click="$emit('close')">Cancel</button>
-          <button class="btn-submit" @click="submitOTRequest" :disabled="isSubmitting">
+          <button class="btn-submit" @click="submitOTRequest" :disabled="isSubmitting || !isInRequestWindow || !isTimeStepValid">
             {{ isSubmitting ? 'Sending...' : 'Request OT' }}
           </button>
         </div>
@@ -115,7 +129,35 @@ const otForm = ref({
   end_time: '20:30',
   reason: ''
 })
+
+// ตัวแปรสำหรับคัดแยกชั่วโมงและนาทีเพื่อทำ Dropdown
+const startTime = ref({ h: '17', m: '00' })
+const endTime = ref({ h: '19', m: '00' })
+
+// คำนวณชั่วโมงที่อนุญาตให้เลือก (อ้างอิงจาก Standard OT Config)
+const hourOptions = computed(() => {
+  const start = parseInt(configs.value.ot_normal_start?.split(':')[0] || '17')
+  const end = parseInt(configs.value.ot_normal_end?.split(':')[0] || '22')
+  
+  const options = []
+  if (start <= end) {
+    for (let i = start; i <= end; i++) options.push(String(i).padStart(2, '0'))
+  } else {
+    // กรณีข้ามคืน (ถ้ามี)
+    for (let i = start; i < 24; i++) options.push(String(i).padStart(2, '0'))
+    for (let i = 0; i <= end; i++) options.push(String(i).padStart(2, '0'))
+  }
+  return options
+})
+
+// Sync กลับไปยัง otForm
+watch([startTime, endTime], () => {
+  otForm.value.start_time = `${startTime.value.h}:${startTime.value.m}`
+  otForm.value.end_time = `${endTime.value.h}:${endTime.value.m}`
+}, { deep: true })
+
 const isSubmitting = ref(false)
+const isLoadingRules = ref(true)
 const actualDayLog = ref(null) // เก็บ Log จริงของวันที่เลือก
 
 // --- 2. Watchers & Actions ---
@@ -128,25 +170,31 @@ watch(() => otForm.value.request_date, (newDate) => {
   actualDayLog.value = props.attendanceLogs.find(l => l.date === newDate) || null
 }, { immediate: true })
 
-// ฟังก์ชันดึงเวลาเลิกงานจริงมาใส่ในฟอร์ม
+// ฟังก์ชันดึงเวลาเลิกงานจริงมาใส่ในฟอร์ม (พร้อมปัดเศษลง 30 นาที)
 const useActualTime = () => {
-  if (actualDayLog.value?.check_out_time) {
-    const checkOut = new Date(actualDayLog.value.check_out_time)
+  if (actualDayLog.value?.actual_check_out) {
+    const checkOut = new Date(actualDayLog.value.actual_check_out)
     const hh = String(checkOut.getHours()).padStart(2, '0')
-    const mm = String(checkOut.getMinutes()).padStart(2, '0')
+    let mm = checkOut.getMinutes()
     
-    otForm.value.start_time = configs.value.ot_normal_start || '17:00'
-    otForm.value.end_time = `${hh}:${mm}`
+    // ปัดเศษนาทีลง
+    const mmStr = mm >= 30 ? '30' : '00'
+    
+    startTime.value = { h: configs.value.ot_normal_start?.split(':')[0] || '17', m: '00' }
+    endTime.value = { h: hh, m: mmStr }
   }
 }
 
 // --- 3. Fetch Logic (ดึงค่าจาก DB มาเก็บไว้แบบที่นายสั่ง) ---
 const fetchOTRules = async () => {
   try {
+    isLoadingRules.value = true
     const res = await api.get('/attendance/ot-rules')
     configs.value = res.data
   } catch (e) {
     console.warn('Using default OT rules.')
+  } finally {
+    isLoadingRules.value = false
   }
 }
 
@@ -244,12 +292,46 @@ const otSummary = computed(() => {
   }
 })
 
+// ตรวจสอบว่าตอนนี้อยู่ในช่วงเวลาที่อนุญาตให้กดขอหรือไม่
+const isInRequestWindow = computed(() => {
+  const start = configs.value.ot_request_start_time || '08:00'
+  const end = configs.value.ot_request_end_time || '16:00'
+  
+  const now = new Date()
+  const currentMin = now.getHours() * 60 + now.getMinutes()
+  
+  const timeToMinLocal = (t) => {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+  }
+  
+  const startMin = timeToMinLocal(start)
+  const endMin = timeToMinLocal(end)
+  
+  if (startMin <= endMin) {
+    return currentMin >= startMin && currentMin <= endMin
+  } else {
+    // กรณีข้ามคืน
+    return currentMin >= startMin || currentMin <= endMin
+  }
+})
+
+// ตรวจสอบว่านาทีลงท้ายด้วย 00 หรือ 30 หรือไม่
+const isTimeStepValid = computed(() => {
+  if (!otForm.value.start_time || !otForm.value.end_time) return false
+  const sMin = parseInt(otForm.value.start_time.split(':')[1])
+  const eMin = parseInt(otForm.value.end_time.split(':')[1])
+  return [0, 30].includes(sMin) && [0, 30].includes(eMin)
+})
+
 // --- 4. Watcher (Reset form when opened) ---
 watch(() => props.isOpen, (val) => {
   if (val) {
     fetchOTRules()
-    otForm.value.start_time = configs.value.ot_normal_start || '17:30'
-    otForm.value.end_time = configs.value.ot_special_end || '22:30'
+    const today = new Date().toISOString().split('T')[0]
+    otForm.value = { request_date: today, start_time: '17:00', end_time: '19:00', reason: '' }
+    startTime.value = { h: '17', m: '00' }
+    endTime.value = { h: '19', m: '00' }
   }
 })
 
@@ -425,4 +507,58 @@ textarea.form-input { min-height: 80px; resize: none; width: 95%; text-align: le
   color: white;
   box-shadow: 0 4px 10px rgba(52, 152, 219, 0.2);
 }
+
+/* Alert สำหรับช่วงเวลาที่ไม่อนุญาตให้ขอ OT */
+.request-window-alert {
+  background: #fff1f2;
+  border: 1px solid #fda4af;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: #9f1239;
+  margin-bottom: 10px;
+}
+.request-window-alert i { font-size: 1.2rem; margin-top: 2px; }
+.request-window-alert strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
+.request-window-alert p { margin: 0; font-size: 0.8rem; line-height: 1.4; opacity: 0.9; }
+
+/* Custom Time Picker Styles */
+.time-picker-custom {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.time-select {
+  flex: 1;
+  padding: 10px 5px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  background-color: #fff;
+  cursor: pointer;
+  appearance: none; /* Hide default arrow to make it cleaner */
+  -webkit-appearance: none;
+}
+.time-select:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+.time-picker-custom .sep {
+  font-weight: 900;
+  color: #64748b;
+}
+
+.step-info {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.step-info i { color: #3b82f6; }
 </style>

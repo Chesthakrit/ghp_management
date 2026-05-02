@@ -11,8 +11,12 @@ class AttendanceLog(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     date           = Column(Date,     nullable=False, index=True)
-    check_in_time  = Column(DateTime, nullable=True)
-    check_out_time = Column(DateTime, nullable=True)
+    check_in_time  = Column(DateTime, nullable=True) # Effective Check-in
+    check_out_time = Column(DateTime, nullable=True) # Effective Check-out (Cutoff applied)
+
+    # เก็บเวลาจริงจากเครื่องสแกนเพื่อตรวจสอบย้อนหลัง
+    actual_check_in  = Column(DateTime, nullable=True)
+    actual_check_out = Column(DateTime, nullable=True)
 
     status       = Column(String,  default="present")
     late_minutes = Column(Integer, default=0)

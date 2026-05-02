@@ -11,7 +11,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.attendance import AttendanceLog, AttendanceConfig
+from models.attendance import AttendanceLog, AttendanceConfig, OTRequest
 from models.users import User, EmployeeProfile
 from utils.attendance_utils import calculate_attendance_status
 
@@ -104,21 +104,47 @@ def _process_attlog(body: str, db: Session):
                 # ─ Check-in ─
                 status_val, late_mins = calculate_attendance_status(user.id, scan_time, configs)
                 db.add(AttendanceLog(
-                    user_id        = user.id,
-                    date           = scan_date,
-                    check_in_time  = scan_time,
-                    site_name      = "Factory",
-                    status         = status_val,
-                    late_minutes   = late_mins,
-                    note           = "Scanned via ZKTeco (Auto)",
+                    user_id         = user.id,
+                    date            = scan_date,
+                    check_in_time   = scan_time,
+                    actual_check_in = scan_time,
+                    site_name       = "Factory",
+                    status          = status_val,
+                    late_minutes    = late_mins,
+                    note            = "Scanned via ZKTeco (Auto)",
                 ))
             else:
                 # ─ Check-out (ถ้าห่างกันเกิน _DOUBLE_SCAN_SECS) ─
-                last_time = log.check_out_time or log.check_in_time
+                last_time = log.actual_check_out or log.actual_check_in or log.check_in_time
                 if (scan_time - last_time).total_seconds() > _DOUBLE_SCAN_SECS:
-                    log.check_out_time = scan_time
-                    log.site_name      = "Factory"
-                    log.note           = "Scanned out via ZKTeco (Auto)"
+                    # 1. บันทึกเวลาจริงไว้เสมอเพื่อเป็นหลักฐาน
+                    log.actual_check_out = scan_time
+                    log.site_name        = "Factory"
+
+                    # 2. ตรวจสอบเงื่อนไข Cutoff (17:00)
+                    normal_out_str = configs.get("check_out_time", "17:00")
+                    normal_out_h, normal_out_m = map(int, normal_out_str.split(":"))
+                    normal_out_time = scan_time.replace(hour=normal_out_h, minute=normal_out_m, second=0, microsecond=0)
+
+                    # เช็คว่ามี OT ที่อนุมัติแล้วในวันนั้นหรือไม่
+                    approved_ot = db.query(OTRequest).filter(
+                        OTRequest.user_id == user.id,
+                        OTRequest.request_date == scan_date,
+                        OTRequest.status == "approved"
+                    ).first()
+
+                    if not approved_ot:
+                        # ถ้าไม่มี OT และสแกนหลังเวลาเลิกงานปกติ -> ตัดจบที่เวลาเลิกงานปกติ
+                        if scan_time > normal_out_time:
+                            log.check_out_time = normal_out_time
+                            log.note = f"Scanned out at {scan_time.strftime('%H:%M')} (No OT: Cutoff applied)"
+                        else:
+                            log.check_out_time = scan_time
+                            log.note = "Scanned out via ZKTeco (Auto)"
+                    else:
+                        # ถ้ามี OT ให้บันทึกตามจริง (ลอจิก OT จะไปคำนวณแยกที่ตาราง OT อีกที)
+                        log.check_out_time = scan_time
+                        log.note = f"Scanned out via ZKTeco (OT Approved until {approved_ot.end_time})"
 
             success += 1
 
