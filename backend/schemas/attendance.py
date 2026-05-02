@@ -75,6 +75,9 @@ class OTRequestCreate(BaseModel):
     start_time: str
     end_time: str
     reason: Optional[str] = None
+    standard_hours: float = 0.0
+    special_hours: float = 0.0
+    total_hours: float = 0.0
 
 class OTRequestResponse(BaseModel):
     id: int

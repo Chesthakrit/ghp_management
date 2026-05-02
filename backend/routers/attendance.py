@@ -16,6 +16,10 @@ router = APIRouter(
 )
 
 
+@router.get("/debug-version")
+def debug_version():
+    return {"version": "1.0.1", "status": "OT routes should be active"}
+
 @router.get("/ot-rules")
 def get_ot_rules(
     db: Session = Depends(get_db),
@@ -27,6 +31,97 @@ def get_ot_rules(
             "ot_request_start_time", "ot_request_end_time"]
     configs = db.query(models.AttendanceConfig).filter(models.AttendanceConfig.key.in_(keys)).all()
     return {c.key: c.value for c in configs}
+
+
+@router.get("/me/ot-requests", response_model=list[schemas.OTRequestResponse])
+def get_my_ot_requests(
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """ดึงรายการขอ OT ทั้งหมดของตัวเอง"""
+    return db.query(models.OTRequest).filter(models.OTRequest.user_id == current_user.id).order_by(models.OTRequest.request_date.desc()).all()
+
+
+@router.get("/user/{user_id}/ot-requests", response_model=list[schemas.OTRequestResponse])
+def get_user_ot_requests(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """ดึงรายการขอ OT ของพนักงานคนอื่น (สำหรับ Admin/HR)"""
+    if current_user.id != user_id:
+        check_time_permission(current_user)
+    return db.query(models.OTRequest).filter(models.OTRequest.user_id == user_id).order_by(models.OTRequest.request_date.desc()).all()
+
+
+@router.post("/ot-request", response_model=schemas.OTRequestResponse)
+def create_ot_request(
+    request: schemas.OTRequestCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """ส่งคำขอทำโอที (OT Request)"""
+    new_ot = models.OTRequest(
+        user_id=current_user.id,
+        request_date=request.request_date,
+        start_time=request.start_time,
+        end_time=request.end_time,
+        reason=request.reason,
+        standard_hours=request.standard_hours,
+        special_hours=request.special_hours,
+        total_hours=request.total_hours,
+        status="pending"
+    )
+    db.add(new_ot)
+    db.commit()
+    db.refresh(new_ot)
+    return new_ot
+
+@router.get("/today")
+def get_today_attendance(
+    db: Session = Depends(get_db),
+    current_user = Depends(oauth2.get_current_user)
+):
+    """
+    ดึงข้อมูลการเข้างานของพนักงานทุกคน เฉพาะวันนี้
+    เพื่อแสดงผลใน Attendance Dashboard
+    """
+    check_time_permission(current_user)
+    
+    today = date.today()
+    
+    # 1. ดึงพนักงานทั้งหมด (ไม่เอา Admin และพนักงานที่ลาออก)
+    from models import users as user_models
+    users = db.query(user_models.User).join(user_models.EmployeeProfile).outerjoin(user_models.Role).filter(
+        user_models.User.username != 'admin',
+        user_models.EmployeeProfile.employment_status != 'terminated'
+    ).all()
+    
+    # 2. ดึง Attendance Logs ของวันนี้
+    logs = db.query(models.AttendanceLog).filter(models.AttendanceLog.date == today).all()
+    log_map = {log.user_id: log for log in logs}
+    
+    # 3. ดึง OT Requests ของวันนี้
+    ots = db.query(models.OTRequest).filter(models.OTRequest.request_date == today).all()
+    ot_map = {ot.user_id: ot for ot in ots}
+    
+    results = []
+    for u in users:
+        log = log_map.get(u.id)
+        ot = ot_map.get(u.id)
+        
+        results.append({
+            "user_id": u.id,
+            "username": u.username,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "photo_path": u.photo_path,
+            "job_title": u.employee_profile.job_title if u.employee_profile else None,
+            "attendance": schemas.AttendanceLogResponse.from_orm(log) if log else None,
+            "ot_request": schemas.OTRequestResponse.from_orm(ot) if ot else None
+        })
+        
+    return results
 
 
 @router.get("/me", response_model=list[schemas.AttendanceLogResponse])
@@ -92,6 +187,7 @@ def get_user_attendance(
         log.ot_request = ot_map.get(log.date)
 
     return logs
+
 
 
 @router.get("/settings", response_model=list[schemas.AttendanceConfigResponse])
@@ -261,6 +357,8 @@ def update_holiday(
     db.commit()
     db.refresh(db_holiday)
     return db_holiday
+
+
 
 
 # --- Location Management Endpoints ---

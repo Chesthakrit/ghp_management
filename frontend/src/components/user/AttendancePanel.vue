@@ -16,9 +16,9 @@
           {{ salaryType === 'monthly' ? 'Monthly Paid' : 'Daily Paid' }}
         </div>
         
-      <div class="action-group">
-          <!-- ปุ่มขอ OT -->
-          <button class="btn-action-square btn-ot" @click="handleOTRequest">
+        <div class="action-group">
+          <!-- ปุ่มขอ OT: แสดงเฉพาะเมื่อดูประวัติของตัวเองเท่านั้น (ป้องกันแอดมินกดแทน) -->
+          <button v-if="!props.userId" class="btn-action-square btn-ot" @click="handleOTRequest">
             <i class="fas fa-business-time"></i>
             <span>OT REQ</span>
           </button>
@@ -89,14 +89,21 @@
                   <span class="clickable-time" :style="{ color: getCheckoutColor(day) }">
                     {{ day.clockOut }}
                   </span>
-                  <span v-if="day.otRequest" class="status-mini-label" style="background-color: #e0e7ff; color: #4338ca;">
-                    OT {{ day.otRequest.total_hours }} hr ({{ day.otRequest.end_time }})
-                  </span>
                 </div>
                 <span v-else class="empty-val">—</span>
               </td>
-              <!-- แสดงจำนวน OT ( hrs.) -->
-              <td class="col-ot">{{ day.ot }}</td>
+              <!-- แสดงจำนวน OT ( hrs.) พร้อมสถานะและการแตะเพื่อดูรายละเอียด -->
+              <td class="col-ot">
+                <div v-if="day.otRequest" class="ot-info-wrap" @click="viewOTDetail(day.otRequest)">
+                  <div class="ot-hours">{{ day.ot }} hrs.</div>
+                  
+                  <!-- สถานะการอนุมัติ -->
+                  <span class="ot-status-badge" :class="day.otRequest.status">
+                    {{ formatOtStatus(day.otRequest.status) }}
+                  </span>
+                </div>
+                <span v-else class="empty-val">0.0</span>
+              </td>
               <!-- แสดงชื่อสถานที่เช็คอิน -->
               <td class="col-location">
                 <span v-if="day.location !== '—'" class="location-badge onsite">{{ day.location }}</span>
@@ -141,6 +148,54 @@
       @submitted="fetchMyAttendance"
     />
 
+    <!-- [8] Popup แสดงรายละเอียด OT (OT Detail Modal) -->
+    <div v-if="isOTDetailModalOpen" class="modal-overlay" @click="isOTDetailModalOpen = false">
+      <div class="modal-content detail-modal" @click.stop>
+        <div class="modal-header">
+          <h3><i class="fas fa-info-circle"></i> OT Details</h3>
+          <button class="close-btn" @click="isOTDetailModalOpen = false"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" v-if="selectedOtDetail">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label><i class="fas fa-calendar-alt"></i> Date</label>
+              <div class="val">{{ formatDate(selectedOtDetail.request_date) }}</div>
+            </div>
+            <div class="detail-item">
+              <label><i class="fas fa-signal"></i> Status</label>
+              <div class="val">
+                <span class="ot-status-badge" :class="selectedOtDetail.status">
+                  {{ formatOtStatus(selectedOtDetail.status) }}
+                </span>
+              </div>
+            </div>
+            <div class="detail-item full">
+              <label><i class="fas fa-clock"></i> Time Range</label>
+              <div class="val highlight">
+                {{ selectedOtDetail.start_time }} - {{ selectedOtDetail.end_time }}
+              </div>
+            </div>
+            <div class="detail-item">
+              <label><i class="fas fa-hourglass-start"></i> Standard OT</label>
+              <div class="val">{{ selectedOtDetail.standard_hours }} hrs.</div>
+            </div>
+            <div class="detail-item">
+              <label><i class="fas fa-star"></i> Special OT</label>
+              <div class="val text-special">{{ selectedOtDetail.special_hours }} hrs.</div>
+            </div>
+            <div class="detail-item full total-row">
+              <label><i class="fas fa-calculator"></i> Total Hours</label>
+              <div class="val large">{{ selectedOtDetail.total_hours }} hrs.</div>
+            </div>
+            <div class="detail-item full" v-if="selectedOtDetail.reason">
+              <label><i class="fas fa-comment-dots"></i> Reason</label>
+              <div class="reason-box">{{ selectedOtDetail.reason }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -162,6 +217,11 @@ const historyLogs = ref([])
 const currentUser = ref(null)      
 
 const isOTModalOpen  = ref(false)
+const myOtRequests   = ref([]) // เก็บรายการ OT แยกต่างหาก
+
+// สำหรับ Popup ดูรายละเอียด OT
+const isOTDetailModalOpen = ref(false)
+const selectedOtDetail    = ref(null)
 
 const months        = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const selectedMonth = ref(new Date().getMonth())
@@ -278,6 +338,24 @@ const getStatusBg = (status) => {
   return '#ecfdf5'
 }
 
+const formatOtStatus = (status) => {
+  if (status === 'pending') return 'Pending'
+  if (status === 'approved') return 'Approved'
+  if (status === 'rejected') return 'Rejected'
+  return status
+}
+
+const viewOTDetail = (ot) => {
+  selectedOtDetail.value = ot
+  isOTDetailModalOpen.value = true
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 // แปลงรหัสสถานะเป็นชื่อแสดงผล
 const formatStatusLabel = (status, lateMins = 0) => {
   if (status === 'late_t1' || status === 'late_t2' || status === 'late_t3') {
@@ -329,8 +407,17 @@ const generateWeek = (date = new Date()) => {
   for (let i = 0; i < 7; i++) {
     const day = new Date(monday)
     day.setDate(monday.getDate() + i)
-    const logDate = day.toISOString().split('T')[0]
-    const log = historyLogs.value.find(l => l.date === logDate) // จับคู่ข้อมูลจริงจาก DB
+    // สร้างวันที่แบบ YYYY-MM-DD ตามเวลาท้องถิ่น (ป้องกันบั๊ก Timezone)
+    const y = day.getFullYear()
+    const m = String(day.getMonth() + 1).padStart(2, '0')
+    const d = String(day.getDate()).padStart(2, '0')
+    const logDate = `${y}-${m}-${d}`
+
+    const log = historyLogs.value.find(l => String(l.date).substring(0, 10) === logDate)
+    
+    // ค้นหา OT (หาใน log ก่อน ถ้าไม่มีให้หาในรายการ OT แยก)
+    // ตัดเอาเฉพาะ YYYY-MM-DD มาเทียบเพื่อป้องกันเรื่องเวลาแฝง
+    const otReq = (log?.ot_request) || myOtRequests.value.find(r => String(r.request_date).substring(0, 10) === logDate)
     
     days.push({
       dateStr:     day.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -339,10 +426,10 @@ const generateWeek = (date = new Date()) => {
       clockIn:     log?.check_in_time  ? formatTime(log.check_in_time)  : '—',
       clockOut:    log?.actual_check_out ? formatTime(log.actual_check_out) : '—', // แสดงเวลาจริง
       actualCheckOut: log?.actual_check_out,
-      otRequest:   log?.ot_request,
+      otRequest:   otReq,
       status:      log?.status       || 'none',
       lateMinutes: log?.late_minutes || 0,
-      ot:          log?.ot_request ? log.ot_request.total_hours.toFixed(1) : '0.0',
+      ot:          otReq ? otReq.total_hours.toFixed(1) : '0.0',
       location:    log?.site_name    || '—',
     })
   }
@@ -375,6 +462,12 @@ const fetchMyAttendance = async () => {
     const endpoint = props.userId ? `/attendance/user/${props.userId}` : '/attendance/me'
     const res = await api.get(endpoint)
     historyLogs.value = res.data || []
+
+    // ดึงรายการ OT แยกมาด้วย
+    const otEndpoint = props.userId ? `/attendance/user/${props.userId}/ot-requests` : '/attendance/me/ot-requests'
+    const otRes = await api.get(otEndpoint)
+    myOtRequests.value = otRes.data || []
+
     generateWeek(baseDate.value)
   } catch (e) { console.error(e) }
 }
@@ -547,4 +640,130 @@ onUnmounted(() => {
   .btn-action-square { width: 22%; max-width: 85px; height: 75px; }
   .time-display-large { font-size: 2rem; }
 }
+/* --- OT Detail Modal (Premium Design) --- */
+.detail-modal {
+  max-width: 450px !important;
+  border-radius: 24px !important;
+  background: #1e2227 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6) !important;
+  overflow: hidden;
+}
+
+.detail-modal .modal-header {
+  background: rgba(255, 255, 255, 0.03) !important;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.detail-modal .modal-header h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-modal .modal-header h3 i {
+  color: #3b82f6;
+  font-size: 1.4rem;
+}
+
+.detail-modal .modal-body {
+  padding: 24px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-item.full {
+  grid-column: span 2;
+}
+
+.detail-item label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94a3b8 !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-item .val {
+  font-size: 1rem;
+  color: #f1f5f9 !important;
+  font-weight: 500;
+}
+
+.val.highlight {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.1));
+  padding: 16px;
+  border-radius: 16px;
+  text-align: center;
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.text-special {
+  color: #fbbf24 !important;
+}
+
+.total-row {
+  margin-top: 10px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.val.large {
+  font-size: 2.2rem !important;
+  font-weight: 900 !important;
+  color: #10b981 !important;
+  letter-spacing: -1px;
+}
+
+.reason-box {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 14px;
+  border-radius: 12px;
+  border-left: 3px solid #3b82f6;
+  font-size: 0.9rem;
+  color: #cbd5e1 !important;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.detail-modal .ot-status-badge {
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  border-radius: 20px;
+  font-weight: 700;
+}
+
+.detail-modal .ot-status-badge.pending { background: #fffbeb; color: #d97706; }
+.detail-modal .ot-status-badge.approved { background: #f0fdf4; color: #16a34a; }
+.detail-modal .ot-status-badge.rejected { background: #fef2f2; color: #dc2626; }
+
+@media (max-width: 480px) {
+  .detail-modal { width: 95%; margin: 10px; }
+  .detail-grid { grid-template-columns: 1fr; }
+}
+
 </style>

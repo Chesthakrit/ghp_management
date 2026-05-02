@@ -1,86 +1,178 @@
 <template>
   <div class="attendance-dashboard">
     <div class="dashboard-header">
-      <h2><i class="fas fa-calendar-check"></i> Attendance Dashboard</h2>
-      <p class="subtitle">ภาพรวมการลงเวลาทำงานของพนักงาน</p>
+      <div class="header-main">
+        <h2><i class="fas fa-calendar-check"></i> Attendance Dashboard</h2>
+        <p class="subtitle">Daily Overview - {{ todayStr }}</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-refresh" @click="fetchData" :disabled="loading">
+          <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i> รีเฟรชข้อมูล
+        </button>
+      </div>
     </div>
 
     <div class="dashboard-content">
       <div v-if="loading" class="loading-state">
         <i class="fas fa-spinner fa-spin"></i>
-        <span>กำลังโหลดข้อมูลพนักงาน...</span>
+        <span>กำลังประมวลผลข้อมูล...</span>
       </div>
 
-      <!-- Dashboard Layout -->
-      <div v-else class="dashboard-layout">
-        
-        <!-- Left Sidebar: Employee List -->
-        <div class="employee-sidebar">
-          <h3 class="section-title">พนักงานทั้งหมด ({{ users.length }})</h3>
-          <div class="employee-list">
-            <div v-for="user in users" :key="user.id" class="employee-card">
-              <div class="emp-photo-wrapper">
-                <img v-if="user.photo_path" :src="mediaUrl(user.photo_path)" class="emp-photo" alt="Profile Photo" />
-                <div v-else class="emp-photo-placeholder">
-                  {{ user.first_name ? user.first_name[0].toUpperCase() : user.username[0].toUpperCase() }}
+      <div v-else class="summary-table-container">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>พนักงาน</th>
+              <th>Clock-in</th>
+              <th>Clock-out</th>
+              <th>สถานะ</th>
+              <th>สถานที่</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in attendanceData" :key="item.user_id">
+              <td class="col-user">
+                <div class="user-info-cell">
+                  <div class="emp-photo-wrapper">
+                    <img v-if="item.photo_path" :src="mediaUrl(item.photo_path)" class="emp-photo" />
+                    <div v-else class="emp-photo-placeholder">{{ item.first_name?.[0] || item.username?.[0] }}</div>
+                  </div>
+                  <div class="emp-text">
+                    <div class="emp-name">{{ item.first_name }} {{ item.last_name }}</div>
+                    <div class="emp-role">{{ item.job_title || 'No Position' }}</div>
+                  </div>
                 </div>
-              </div>
-              <div class="emp-info">
-                <p class="emp-name" :title="`${user.first_name} ${user.last_name}`">
-                  {{ user.first_name }} {{ user.last_name }}
-                </p>
-                <p class="emp-role">
-                  {{ user.employee_profile?.job_title || 'No Position' }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+              </td>
+              
+              <td class="col-time">
+                <div v-if="item.attendance?.check_in_time" class="time-wrap">
+                  <span class="time-val">{{ formatTime(item.attendance.check_in_time) }}</span>
+                  <span class="status-mini-label" :style="{ backgroundColor: getStatusBg(item.attendance.status), color: getStatusColor(item.attendance.status) }">
+                    {{ formatStatusLabel(item.attendance.status, item.attendance.late_minutes) }}
+                  </span>
+                </div>
+                <span v-else class="empty-val">—</span>
+              </td>
 
-        <!-- Right Main Area: Reports -->
-        <div class="report-area">
-          <div class="report-placeholder">
-            <i class="fas fa-chart-line"></i>
-            <p>เลือกพนักงานเพื่อดูรายงานเวลาเข้างาน...</p>
-          </div>
-        </div>
+              <td class="col-time">
+                <div v-if="item.attendance?.actual_check_out" class="time-wrap">
+                  <span class="time-val" :style="{ color: getCheckoutColor(item) }">
+                    {{ formatTime(item.attendance.actual_check_out) }}
+                  </span>
+                  <span v-if="item.ot_request" class="status-mini-label ot-label">
+                    OT {{ item.ot_request.total_hours }} hr ({{ item.ot_request.end_time }})
+                  </span>
+                </div>
+                <span v-else class="empty-val">—</span>
+              </td>
 
+              <td class="col-status">
+                <span v-if="item.attendance" class="status-pill" :class="item.attendance.status">
+                  {{ item.attendance.status === 'present' ? 'Present' : 'Late' }}
+                </span>
+                <span v-else class="status-pill absent">Absent</span>
+              </td>
+
+              <td class="col-location">
+                <span v-if="item.attendance?.site_name" class="location-badge">{{ item.attendance.site_name }}</span>
+                <span v-else class="empty-val">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '../../api'
 import { mediaUrl } from '../../utils/mediaUrl'
 
 const loading = ref(false)
-const users = ref([])
+const attendanceData = ref([])
+const otRules = ref({})
 
-onMounted(async () => {
-  await fetchUsers()
+const todayStr = computed(() => {
+  return new Date().toLocaleDateString('th-TH', { 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+  })
 })
 
-const fetchUsers = async () => {
+onMounted(async () => {
+  await fetchData()
+})
+
+const fetchData = async () => {
   try {
     loading.value = true
-    const response = await api.get('/users/')
-    // กรองไม่เอาพนักงานที่สถานะเป็น terminated (ลาออก/ถูกเชิญออก) และไม่เอา Admin หลัก
-    users.value = response.data.filter(u => {
-      const status = u.employee_profile?.employment_status
-      const isTerminated = status === 'terminated'
-      
-      const roleName = (u.role?.name || '').toLowerCase()
-      const isSystemAdmin = u.username.toLowerCase() === 'admin' || roleName === 'admin'
-      
-      return !isTerminated && !isSystemAdmin
-    })
+    // 1. ดึงกฎเวลา
+    const ruleRes = await api.get('/attendance/ot-rules')
+    otRules.value = ruleRes.data
+    
+    // 2. ดึงข้อมูลพนักงานและการลงเวลาวันนี้
+    const response = await api.get('/attendance/today')
+    attendanceData.value = response.data
   } catch (error) {
-    console.error("Error fetching users:", error)
+    console.error("Error fetching today's attendance:", error)
   } finally {
     loading.value = false
   }
+}
+
+// --- Helpers (Reused from AttendancePanel) ---
+
+const parseSafeDate = (dateStr) => {
+  if (!dateStr) return null
+  const t = dateStr.split(/[-T:.]/)
+  if (t.length >= 5) return new Date(t[0], t[1] - 1, t[2], t[3], t[4], t[5] || 0)
+  return new Date(dateStr)
+}
+
+const formatTime = (isoStr) => {
+  if (!isoStr) return '—'
+  const date = parseSafeDate(isoStr)
+  if (!date || isNaN(date.getTime())) return '—'
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+const getStatusColor = (status) => {
+  if (status === 'late_t1') return '#854d0e'
+  if (status === 'late_t2') return '#9a3412'
+  if (status === 'late_t3') return '#991b1b'
+  return '#10b981'
+}
+
+const getStatusBg = (status) => {
+  if (status === 'late_t1') return '#fef9c3'
+  if (status === 'late_t2') return '#ffedd5'
+  if (status === 'late_t3') return '#fee2e2'
+  return '#ecfdf5'
+}
+
+const formatStatusLabel = (status, lateMins = 0) => {
+  if (status?.startsWith('late')) return `Late ${lateMins} m`
+  if (status === 'none' || !status) return ''
+  return 'On-Time'
+}
+
+const getCheckoutColor = (item) => {
+  const actualStr = item.attendance?.actual_check_out
+  if (!actualStr || !otRules.value.check_out_time) return '#1e293b'
+  
+  const actual = parseSafeDate(actualStr)
+  const actualTime = actual.getHours() * 60 + actual.getMinutes()
+  
+  if (item.ot_request) {
+    const [otH, otM] = item.ot_request.end_time.split(':').map(Number)
+    const otEndTime = otH * 60 + otM
+    return actualTime < otEndTime ? '#ef4444' : '#3b82f6'
+  }
+
+  const [stdH, stdM] = otRules.value.check_out_time.split(':').map(Number)
+  const stdEndTime = stdH * 60 + stdM
+  return actualTime < stdEndTime ? '#ef4444' : '#10b981'
 }
 </script>
 
@@ -89,22 +181,21 @@ const fetchUsers = async () => {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
 }
 
 .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e2e8f0;
-  flex-shrink: 0;
+  border-bottom: 2px solid #f1f5f9;
 }
 
 .dashboard-header h2 {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   color: #1e293b;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -117,14 +208,27 @@ const fetchUsers = async () => {
 .subtitle {
   color: #64748b;
   margin: 0;
-  font-size: 0.95rem;
+  font-weight: 500;
 }
 
-.dashboard-content {
-  flex: 1;
+.btn-refresh {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
-  min-height: 0;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #3b82f6;
 }
 
 .loading-state {
@@ -132,85 +236,61 @@ const fetchUsers = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 0;
+  padding: 100px 0;
   color: #64748b;
-  font-size: 1.1rem;
-  gap: 12px;
+  gap: 16px;
 }
 
 .loading-state i {
-  font-size: 2rem;
+  font-size: 2.5rem;
   color: #3b82f6;
 }
 
-/* Layout Split */
-.dashboard-layout {
-  display: flex;
-  gap: 24px;
-  height: 100%;
-  min-height: 0;
-}
-
-/* Left Sidebar */
-.employee-sidebar {
-  flex: 0 0 280px;
-  display: flex;
-  flex-direction: column;
-  background: #f8fafc;
+/* Table Styles */
+.summary-table-container {
+  background: white;
   border-radius: 16px;
-  padding: 20px;
   border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-.section-title {
-  margin: 0 0 16px 0;
-  font-size: 1.05rem;
-  color: #1e293b;
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.summary-table th {
+  background: #f8fafc;
+  padding: 16px;
+  font-size: 0.75rem;
   font-weight: 800;
-  padding-bottom: 12px;
-  border-bottom: 2px dashed #cbd5e1;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.05em;
 }
 
-.employee-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  padding-right: 6px;
+.summary-table td {
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
 }
 
-/* Custom Scrollbar for List */
-.employee-list::-webkit-scrollbar { width: 5px; }
-.employee-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-.employee-list::-webkit-scrollbar-track { background: transparent; }
-
-/* Employee Card (Horizontal Match) */
-.employee-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
+/* User Column */
+.user-info-cell {
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.employee-card:hover {
-  transform: translateX(4px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-  border-color: #3b82f6;
 }
 
 .emp-photo-wrapper {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid #f1f5f9;
-  background: #e2e8f0;
+  background: #f1f5f9;
   flex-shrink: 0;
 }
 
@@ -226,77 +306,84 @@ const fetchUsers = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  background: #e2e8f0;
+  color: #64748b;
   font-weight: 800;
-  color: #94a3b8;
-  background: #f1f5f9;
-}
-
-.emp-info {
-  flex: 1;
-  min-width: 0; /* Prevents flex flex-wrap issues */
 }
 
 .emp-name {
-  margin: 0 0 2px 0;
-  font-weight: 750;
+  font-weight: 700;
   color: #1e293b;
   font-size: 0.95rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .emp-role {
-  margin: 0;
   font-size: 0.75rem;
   color: #64748b;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* Right Main Area */
-.report-area {
-  flex: 1;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.report-placeholder {
+/* Time Columns */
+.time-wrap {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  color: #94a3b8;
-  text-align: center;
+  gap: 4px;
 }
 
-.report-placeholder i {
-  font-size: 3.5rem;
-  color: #e2e8f0;
-  margin-bottom: 20px;
+.time-val {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #1e293b;
 }
 
-.report-placeholder p {
-  font-size: 1.1rem;
-  font-weight: 500;
+.status-mini-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  align-self: flex-start;
+  text-transform: uppercase;
+}
+
+.ot-label {
+  background-color: #e0e7ff;
+  color: #4338ca;
+}
+
+/* Status Column */
+.status-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-pill.present { background: #ecfdf5; color: #10b981; }
+.status-pill.late_t1, .status-pill.late_t2, .status-pill.late_t3 { background: #fff7ed; color: #f97316; }
+.status-pill.absent { background: #fef2f2; color: #ef4444; }
+
+/* Location Badge */
+.location-badge {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.empty-val {
+  color: #cbd5e1;
 }
 
 @media (max-width: 768px) {
-  .dashboard-layout {
-    flex-direction: column;
-  }
-  .employee-sidebar {
-    flex: none;
-    max-height: 300px; /* Limit height on mobile */
-  }
-  .report-area {
-    min-height: 400px;
+  .summary-table th:nth-child(4),
+  .summary-table td:nth-child(4),
+  .summary-table th:nth-child(5),
+  .summary-table td:nth-child(5) {
+    display: none;
   }
 }
 </style>

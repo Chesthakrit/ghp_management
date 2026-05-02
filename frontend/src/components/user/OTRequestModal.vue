@@ -319,13 +319,26 @@ const isTimeStepValid = computed(() => {
 })
 
 // --- 4. Watcher (Reset form when opened) ---
-watch(() => props.isOpen, (val) => {
+watch(() => props.isOpen, async (val) => {
   if (val) {
-    fetchOTRules()
+    await fetchOTRules()
     const today = new Date().toISOString().split('T')[0]
-    otForm.value = { request_date: today, start_time: '17:00', end_time: '19:00', reason: '' }
-    startTime.value = { h: '17', m: '00' }
-    endTime.value = { h: '19', m: '00' }
+    
+    // อ้างอิงตาม Standard OT ใน Settings (ot_normal_start)
+    const stdStart = configs.value.ot_normal_start || '17:30'
+    const [h, m] = stdStart.split(':')
+    
+    // ตั้งค่าเริ่มต้น: เริ่มตามกฎบริษัท, จบหลังจากนั้น 2 ชม.
+    const endH = String(parseInt(h) + 2).padStart(2, '0')
+    
+    otForm.value = { 
+      request_date: today, 
+      start_time: stdStart, 
+      end_time: `${endH}:${m}`, 
+      reason: '' 
+    }
+    startTime.value = { h, m }
+    endTime.value = { h: endH, m }
   }
 })
 
@@ -335,11 +348,12 @@ const submitOTRequest = async () => {
   
   isSubmitting.value = true
   try {
-    const summary = otSummary.value
-    await api.post('/attendance/ot-requests', {
+    const calc = otCalculated.value
+    await api.post('/attendance/ot-request', {
       ...otForm.value,
-      standard_hours: parseFloat(summary.std),
-      special_hours: parseFloat(summary.sp)
+      standard_hours: parseFloat(calc.std),
+      special_hours: parseFloat(calc.sp),
+      total_hours: parseFloat(calc.total)
     })
     alert('✅ ส่งคำขอเรียบร้อยแล้ว')
     emit('submitted')
