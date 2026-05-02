@@ -191,6 +191,25 @@
           </div>
         </div>
 
+        <!-- 3. WORK DAY CONFIGURATION -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-calendar-day"></i> Work Days</h3>
+            <button class="btn-primary-sm" @click="saveConfigs('workdays')">Save</button>
+          </div>
+          <div class="card-body">
+            <div class="work-days-compact-grid">
+              <div v-for="(day, idx) in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="idx" class="work-day-mini-item">
+                <span class="day-abbr">{{ day }}</span>
+                <select v-model="config['work_day_' + idx]" class="work-day-mini-select" :class="config['work_day_' + idx]">
+                  <option value="work">Work</option>
+                  <option value="off">Off</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 4. LEAVE QUOTAS -->
         <div class="card">
           <div class="card-header">
@@ -727,6 +746,45 @@ onMounted(() => { fetchConfigs(); fetchLocations(); fetchHolidays() })
 }
 .ot-inputs input:focus { border-color: #1a2a3a; outline: none; box-shadow: 0 0 0 3px rgba(26,42,58,0.1); }
 .sep { color: #94a3b8; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+
+/* Work Day Settings (Compact) */
+.work-days-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+}
+.work-day-mini-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 5px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  transition: 0.2s;
+}
+.work-day-mini-item:hover { border-color: #cbd5e1; background: #fff; }
+.day-abbr {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.work-day-mini-select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  outline: none;
+  width: 65px;
+  text-align: center;
+}
+.work-day-mini-select.work { color: #10b981; background: #ecfdf5; border-color: #10b981; }
+.work-day-mini-select.off { color: #ef4444; background: #fef2f2; border-color: #ef4444; }
 
 /* ────────── QUOTAS ────────── */
 .quota-body { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }

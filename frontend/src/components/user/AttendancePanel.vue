@@ -130,7 +130,7 @@
     <!-- [7] หน้าต่าง Modal สำหรับขอโอที (OT Request) -->
     <OTRequestModal 
       :isOpen="isOTModalOpen" 
-      :requesterName="requesterName" 
+      :user="currentUser" 
       :attendanceLogs="historyLogs"
       @close="isOTModalOpen = false"
       @submitted="fetchMyAttendance"
@@ -149,12 +149,12 @@ const props = defineProps(['userId'])
 const currentTime = ref('00:00:00') // เวลาปัจจุบัน 24H
 const currentDate = ref('')        // วันที่ปัจจุบัน
 const salaryType = ref('')         // ประเภทเงินเดิอนพนักงาน
-const hireDateStr = ref('')        // วันที่เริ่มงาน (ใช้ล็อคปฏิทินย้อนหลัง)
+const hireDateStr = ref('')        // วันที่เริ่มงาน
 const isLoading = ref(true)        // สถานะโหลดข้อมูล
-const baseDate = ref(new Date())   // วันที่ฐานสำหรับแสดงผลในตาราง
-const weekDays = ref([])           // อาร์เรย์เก็บข้อมูล 7 วันที่จะโชว์ในตาราง
-const historyLogs = ref([])        // ประวัติการเข้างานที่ดึงมาจาก API
-const requesterName = ref('User')  // ชื่อผู้ขอ (สำหรับส่งไปใน Modal)
+const baseDate = ref(new Date())   // วันที่ฐาน
+const weekDays = ref([])           
+const historyLogs = ref([])        
+const currentUser = ref(null)      
 
 const isOTModalOpen  = ref(false)
 
@@ -317,9 +317,7 @@ const fetchUserData = async () => {
     const endpoint = props.userId ? `/users/${props.userId}` : '/users/me'
     const res = await api.get(endpoint)
     const u = res.data
-    
-    // เก็บชื่อเพื่อแสดงใน Modal
-    requesterName.value = `${u.first_name} ${u.last_name}`
+    currentUser.value = u
 
     if (u.employee_profile) {
       salaryType.value = u.employee_profile.salary_type || 'monthly'

@@ -162,8 +162,16 @@ def create_ot_request(
     # 2. ตรวจสอบเงื่อนไข (Validation Policy)
     _validate_ot_request_window(cfg_dict)
     
-    is_weekend = ot_data.request_date.weekday() in [5, 6]
-    srv_std, srv_sp = calculate_ot_hours(ot_data.start_time, ot_data.end_time, cfg_dict, is_weekend)
+    # ตรวจสอบว่าเป็นวันทำงานหรือวันหยุด (Work Day Settings & Holidays)
+    weekday = ot_data.request_date.weekday() # 0=Mon, 6=Sun
+    day_status = cfg_dict.get(f"work_day_{weekday}", "work" if weekday < 5 else "off")
+    
+    # ตรวจสอบวันหยุดบริษัท (Company Holidays)
+    is_holiday = db.query(models.CompanyHoliday).filter(models.CompanyHoliday.date == ot_data.request_date).first() is not None
+    
+    is_day_off = (day_status == "off") or is_holiday
+    
+    srv_std, srv_sp = calculate_ot_hours(ot_data.start_time, ot_data.end_time, cfg_dict, is_day_off)
     
     _validate_ot_step_and_type(ot_data.start_time, ot_data.end_time, srv_sp)
     

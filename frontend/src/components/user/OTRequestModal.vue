@@ -86,11 +86,11 @@
           <div class="calculation-card">
             <div class="calc-row">
               <span>Standard OT:</span>
-              <span class="hours">{{ otSummary.std }} hrs.</span>
+              <span class="hours">{{ otCalculated.std }} hrs.</span>
             </div>
             <div class="calc-row">
               <span>Special OT:</span>
-              <span class="hours special">{{ otSummary.sp }} hrs.</span>
+              <span class="hours special">{{ otCalculated.sp }} hrs.</span>
             </div>
             <div class="calc-total">
               Total: <strong>{{ otCalculated.total }}</strong> hrs.
@@ -100,7 +100,9 @@
 
         <div class="modal-actions">
           <button class="btn-cancel" @click="$emit('close')">Cancel</button>
-          <button class="btn-submit" @click="submitOTRequest" :disabled="isSubmitting || !isInRequestWindow || !isTimeStepValid">
+          <button class="btn-submit" 
+                  @click="submitOTRequest" 
+                  :disabled="isSubmitting || !isInRequestWindow">
             {{ isSubmitting ? 'Sending...' : 'Request OT' }}
           </button>
         </div>
@@ -111,7 +113,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../../api'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -159,7 +161,7 @@ watch([startTime, endTime], () => {
   otForm.value.end_time = `${endTime.value.h}:${endTime.value.m}`
 }, { deep: true })
 
-// --- 2. Watchers & Actions ---
+// --- 4. Watchers ---
 // ค้นหา Log จริงเมื่อเปลี่ยนวันที่
 watch(() => otForm.value.request_date, (newDate) => {
   if (!newDate) {
@@ -246,44 +248,37 @@ const otCalculated = computed(() => {
   const startMin = timeToMin(start_time)
   const endMin = timeToMin(end_time)
   
-  // กฎเวลาจาก Config
-  const normStart = timeToMin(configs.value.ot_normal_start || '17:00')
-  const normEnd = timeToMin(configs.value.ot_normal_end || '22:00')
-  
-  const mornStart = timeToMin(configs.value.ot_morning_start || '05:00')
-  const mornEnd = timeToMin(configs.value.ot_morning_end || '08:00')
-
   // คำนวณชั่วโมงทั้งหมด (รองรับข้ามคืน)
   let totalMin = endMin - startMin
   if (totalMin <= 0) totalMin += 1440
   
-  const isWeekend = [0, 6].includes(new Date(request_date).getDay())
+  // ตรวจสอบว่าเป็นวันหยุดจาก Config
+  const d = new Date(request_date)
+  const weekday = (d.getDay() + 6) % 7 // ปรับให้ 0=Mon, 6=Sun
+  const dayStatus = configs.value[`work_day_${weekday}`] || (weekday < 5 ? 'work' : 'off')
+  const isDayOff = (dayStatus === 'off')
   
-  if (isWeekend) {
+  if (isDayOff) {
     return { total: (totalMin / 60).toFixed(1), std: '0.0', sp: (totalMin / 60).toFixed(1) }
   }
+
+  // กฎเวลาจาก Config (กรณีวันทำงาน)
+  const normStart = timeToMin(configs.value.ot_normal_start || '17:00')
+  const normEnd = timeToMin(configs.value.ot_normal_end || '22:00')
+  const mornStart = timeToMin(configs.value.ot_morning_start || '05:00')
+  const mornEnd = timeToMin(configs.value.ot_morning_end || '08:00')
 
   let stdMin = 0
   let spMin = 0
   
   for (let m = 0; m < totalMin; m++) {
     const current = (startMin + m) % 1440
-    
-    // ช่วง Standard ปกติ (เย็น)
-    const isInEveningStandard = (normStart < normEnd) 
-      ? (current >= normStart && current < normEnd)
-      : (current >= normStart || current < normEnd)
-      
-    // ช่วง Standard ใหม่ (เช้า)
+    const isInEveningStandard = (normStart < normEnd) ? (current >= normStart && current < normEnd) : (current >= normStart || current < normEnd)
     const isInMorningStandard = (current >= mornStart && current < mornEnd)
-      
-    if (isInEveningStandard || isInMorningStandard) {
-      stdMin++
-    } else {
-      spMin++
-    }
+    if (isInEveningStandard || isInMorningStandard) stdMin++
+    else spMin++
   }
-
+  
   return {
     total: (totalMin / 60).toFixed(1),
     std: (stdMin / 60).toFixed(1),
