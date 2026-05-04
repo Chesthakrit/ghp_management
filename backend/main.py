@@ -1,8 +1,7 @@
-"""
-ไฟล์หลักสำหรับการเริ่มต้นระบบ (Main Entry Point)
-ตั้งค่า FastAPI, CORS, Static Files และเชื่อมต่อ Router ต่างๆ
-"""
 import os
+print("\n" + "!"*60)
+print("!!! GHP BACKEND IS LOADING LATEST CODE (VERSION: 404-FIX-FINAL) !!!")
+print("!"*60 + "\n")
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
