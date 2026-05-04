@@ -26,12 +26,7 @@
           <i class="fas fa-sliders-h"></i> HR Settings
         </button>
 
-        <button
-          :class="['nav-item', { active: activeTab === 'salary' }]"
-          @click="activeTab = 'salary'; sidebarOpen = false"
-        >
-          <i class="fas fa-money-check-alt"></i> Salary Settings
-        </button>
+
 
         <button
           v-if="isAdmin || hasPerm('page.access')"
@@ -72,7 +67,6 @@
           {{ 
             activeTab === 'users' ? 'User Management' : 
             activeTab === 'hr' ? 'HR Settings' : 
-            activeTab === 'salary' ? 'Salary Settings' : 
             activeTab === 'access' ? 'Access Control' : 
             activeTab === 'attendance_dash' ? 'Attendance Dashboard' :
             activeTab === 'time_leave' ? 'Time & Leave' : 'Dashboard'
@@ -103,14 +97,7 @@
           />
         </div>
 
-        <!-- TAB: Salary Settings -->
-        <div v-if="activeTab === 'salary'">
-          <SalaryManagement 
-            :departments="departments" 
-            :jobTitles="rawJobTitles" 
-            @refresh="fetchHRData" 
-          />
-        </div>
+
         
         <!-- TAB: Access Control -->
         <div v-if="activeTab === 'access'">
@@ -145,8 +132,7 @@ import api from '../../api'
 import Swal from 'sweetalert2'
 import AccessManagement from './AccessManagement.vue'
 import UserManagement from '../shared/UserManagement.vue'
-import SalaryManagement from '../shared/SalaryManagement.vue'
-import HRManagement from '../shared/HRManagement.vue'
+import HRManagement from '../shared/hr-management/HRManagement.vue'
 import TimeConfiguration from '../shared/time-attendance-management/TimeConfiguration.vue'
 import AttendanceMonitoring from '../shared/attendance-monitoring/AttendanceMonitoring.vue'
 
