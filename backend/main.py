@@ -4,13 +4,19 @@
 """
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from routers import permissions, access_control
-from routers.authentication.login import router as auth_login_router
 from routers.personnel_management import router as users_router
+from hashing import Hash
+from sqlalchemy.orm import Session
+from database import get_db
+from models import users as models
+from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
+from datetime import datetime, timedelta
 from routers.hr_management import router as hr_router
 from routers.time_attendance_management import logs_router, settings_router, zkteco_router
 from routers.attendance_monitoring import monitoring_router
@@ -57,8 +63,26 @@ app.include_router(zkteco_router)
 app.include_router(monitoring_router)
 app.include_router(access_control.router)
 
-# ─── Auth & Users (Moved to bottom for debugging) ───
-app.include_router(auth_login_router, prefix="/auth")
+# ─── Auth & Users (Directly in main.py for debugging) ───
+SECRET_KEY = "1900"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+@app.post("/auth/login")
+def login(request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == request.username).first()
+    if not user or not Hash.verify(request.password, user.password):
+        raise HTTPException(status_code=404, detail="ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
+    
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
 app.include_router(users_router)
 
 
