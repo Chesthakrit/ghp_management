@@ -76,9 +76,35 @@ def create_access_token(data: dict):
 
 @app.post("/auth/login")
 def login(request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # 1. เช็คว่ามี Admin ในระบบหรือยัง (ถ้าไม่มีให้สร้างตัวตั้งต้นให้)
+    admin_user = db.query(models.User).filter(models.User.username == "admin").first()
+    if not admin_user and request.username == "admin" and request.password == "admin9999":
+        # สร้าง Role admin ก่อน
+        admin_role = db.query(models.Role).filter(models.Role.name == "admin").first()
+        if not admin_role:
+            admin_role = models.Role(name="admin", permissions='["*"]')
+            db.add(admin_role)
+            db.commit()
+            db.refresh(admin_role)
+            
+        new_admin = models.User(
+            username="admin",
+            password=Hash.bcrypt("admin9999"),
+            role_id=admin_role.id,
+            first_name="Master",
+            last_name="Admin",
+            is_active=True
+        )
+        db.add(new_admin)
+        db.commit()
+        db.refresh(new_admin)
+        admin_user = new_admin
+
+    # 2. ตรวจสอบการ Login ปกติ
     user = db.query(models.User).filter(models.User.username == request.username).first()
     if not user or not Hash.verify(request.password, user.password):
-        raise HTTPException(status_code=404, detail="ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
+        # เปลี่ยนเป็น 401 เพื่อให้แยกจาก 404 (Route Not Found)
+        raise HTTPException(status_code=401, detail="ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
     
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
