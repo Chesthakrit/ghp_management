@@ -13,7 +13,8 @@ def update_database():
     # คำสั่งเพิ่มคอลัมน์ใหม่
     commands = [
         "ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS actual_check_in TIMESTAMP;",
-        "ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS actual_check_out TIMESTAMP;"
+        "ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS actual_check_out TIMESTAMP;",
+        "ALTER TABLE employee_profiles ADD COLUMN IF NOT EXISTS scan_id VARCHAR;"
     ]
     
     with engine.connect() as conn:
