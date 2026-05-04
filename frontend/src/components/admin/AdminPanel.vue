@@ -56,12 +56,7 @@
           <i class="fas fa-clock"></i> Time & Leave
         </button>
 
-        <button
-          :class="['nav-item', { active: activeTab === 'policies' }]"
-          @click="activeTab = 'policies'; sidebarOpen = false"
-        >
-          <i class="fas fa-file-contract"></i> Policies Setup
-        </button>
+
       </nav>
       <button class="logout-sidebar-btn" @click="$emit('logout')">
         <i class="fas fa-door-open"></i> Logout System
@@ -80,8 +75,7 @@
             activeTab === 'salary' ? 'Salary Settings' : 
             activeTab === 'access' ? 'Access Control' : 
             activeTab === 'attendance_dash' ? 'Attendance Dashboard' :
-            activeTab === 'time_leave' ? 'Time & Leave' : 
-            activeTab === 'policies' ? 'Policy Management' : 'Dashboard'
+            activeTab === 'time_leave' ? 'Time & Leave' : 'Dashboard'
           }}
         </span>
         <button class="mobile-logout-btn" @click="$emit('logout')" title="Logout">🚪</button>
@@ -129,20 +123,17 @@
           />
         </div>
 
-        <!-- TAB: Attendance Dashboard -->
+        <!-- TAB: Attendance Monitoring -->
         <div v-if="activeTab === 'attendance_dash'">
-          <AttendanceDashboard />
+          <AttendanceMonitoring />
         </div>
 
         <!-- TAB: Time & Leave Settings -->
         <div v-if="activeTab === 'time_leave'">
-          <AttendanceSettings />
+          <TimeConfiguration />
         </div>
 
-        <!-- TAB: Policy Management -->
-        <div v-if="activeTab === 'policies'">
-          <PolicyManagement />
-        </div>
+
       </main>
     </div>
   </div>
@@ -156,9 +147,8 @@ import AccessManagement from './AccessManagement.vue'
 import UserManagement from '../shared/UserManagement.vue'
 import SalaryManagement from '../shared/SalaryManagement.vue'
 import HRManagement from '../shared/HRManagement.vue'
-import PolicyManagement from '../shared/PolicyManagement.vue'
-import AttendanceSettings from '../shared/AttendanceSettings.vue'
-import AttendanceDashboard from '../user/AttendanceDashboard.vue'
+import TimeConfiguration from '../shared/time-attendance-management/TimeConfiguration.vue'
+import AttendanceMonitoring from '../shared/attendance-monitoring/AttendanceMonitoring.vue'
 
 const props = defineProps({
   embedded: { type: String, default: null }

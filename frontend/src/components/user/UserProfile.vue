@@ -114,9 +114,9 @@
             @toggle-sub-duty="toggleSubDuty"
           />
 
-          <AttendancePanel v-else-if="activeMenu === 'attendance'" :userId="userId" />
+          <AttendanceHistory v-else-if="activeMenu === 'attendance'" :userId="userId" />
 
-          <CompanyPolicy v-else-if="activeMenu === 'policy'" />
+          
 
           <!-- Management Tab for authorized Users/Managers -->
           <div v-else-if="activeMenu === 'manage_users'" class="management-tab">
@@ -163,8 +163,7 @@ import Swal from 'sweetalert2'
 import UserManagement from '../shared/UserManagement.vue'
 import AdminPanel from '../admin/AdminPanel.vue'
 import SkillViewer from './SkillViewer.vue'
-import AttendancePanel from './AttendancePanel.vue'
-import CompanyPolicy from './CompanyPolicy.vue'
+import AttendanceHistory from '../shared/time-attendance-management/AttendanceHistory.vue'
 import { mediaUrl } from '../../utils/mediaUrl'
 
 const props = defineProps(['username', 'userId'])
@@ -221,7 +220,6 @@ const menuItems = computed(() => {
     { id: 'profile', label: 'Personal Card', icon: 'fas fa-user-circle' },
     { id: 'attendance', label: 'Time Recording', icon: 'fas fa-clock' },
     { id: 'skills', label: 'Skill (Tutorial)', icon: 'fas fa-award' },
-    { id: 'policy', label: 'Policy & Welfare', icon: 'fas fa-file-contract' },
   ]
 
   // Add Dynamic Management Tabs based on Permissions

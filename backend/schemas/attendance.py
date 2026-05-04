@@ -16,7 +16,6 @@ class AttendanceLogResponse(BaseModel):
     note:          Optional[str] = None
     is_approved:   bool
     late_minutes:  int = 0
-    ot_request:    Optional['OTRequestResponse'] = None # Join info
 
     class Config:
         from_attributes = True
@@ -70,27 +69,4 @@ class AttendanceLocationResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class OTRequestCreate(BaseModel):
-    request_date: date
-    start_time: str
-    end_time: str
-    reason: Optional[str] = None
-    standard_hours: float = 0.0
-    special_hours: float = 0.0
-    total_hours: float = 0.0
 
-class OTRequestResponse(BaseModel):
-    id: int
-    user_id: int
-    request_date: date
-    start_time: str
-    end_time: str
-    standard_hours: float
-    special_hours: float
-    total_hours: float
-    reason: Optional[str] = None
-    status: str
-    
-    class Config:
-        from_attributes = True
-        orm_mode = True

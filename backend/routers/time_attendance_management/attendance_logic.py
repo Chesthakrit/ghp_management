@@ -44,48 +44,4 @@ def calculate_attendance_status(user_id: int, check_in_dt: datetime, config_dict
     return status, max(0, diff_mins)
 
 
-def calculate_ot_hours(start_time: str, end_time: str, config_dict: dict, is_weekend: bool = False) -> tuple:
-    """
-    คำนวณชั่วโมง OT แยกเป็น Standard และ Special ตามกฎบริษัท (Server-side validation)
-    ส่งคืน: (standard_hours, special_hours)
-    """
-    def time_to_min(t_str: str) -> int:
-        if not t_str:
-            return 0
-        h, m = map(int, t_str.split(':'))
-        return h * 60 + m
 
-    start_min = time_to_min(start_time)
-    end_min   = time_to_min(end_time)
-
-    total_min = end_min - start_min
-    if total_min <= 0:
-        total_min += 1440  # รองรับกรณีข้ามคืน
-
-    if is_weekend:
-        return 0.0, float(round(total_min / 60, 1))
-
-    norm_start = time_to_min(config_dict.get('ot_normal_start',  '17:00'))
-    norm_end   = time_to_min(config_dict.get('ot_normal_end',    '22:00'))
-    morn_start = time_to_min(config_dict.get('ot_morning_start', '05:00'))
-    morn_end   = time_to_min(config_dict.get('ot_morning_end',   '08:00'))
-
-    std_min = 0
-    sp_min  = 0
-
-    for m in range(total_min):
-        current = (start_min + m) % 1440
-
-        if norm_start < norm_end:
-            is_evening_std = norm_start <= current < norm_end
-        else:
-            is_evening_std = current >= norm_start or current < norm_end
-
-        is_morning_std = morn_start <= current < morn_end
-
-        if is_evening_std or is_morning_std:
-            std_min += 1
-        else:
-            sp_min += 1
-
-    return float(round(std_min / 60, 1)), float(round(sp_min / 60, 1))

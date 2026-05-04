@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import users as models
 from models.projects import Project
-from models.attendance import OTRequest
+
 from schemas import users as schemas
 from hashing import Hash
 import oauth2
@@ -324,7 +324,7 @@ def delete_user(
     # ตัด FK ที่ไม่มี CASCADE ก่อนลบ
     try:
         db.query(Project).filter(Project.owner_id == user_id).update({"owner_id": None})
-        db.query(OTRequest).filter(OTRequest.approved_by_id == user_id).update({"approved_by_id": None})
+
         db.query(models.UserDutyEvaluation).filter(
             models.UserDutyEvaluation.evaluated_by_id == user_id
         ).update({"evaluated_by_id": None})

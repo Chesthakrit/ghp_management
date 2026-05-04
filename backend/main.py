@@ -8,7 +8,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routers import attendance, auth, hr, payroll, permissions, projects, users, access_control, zkteco
+from routers import auth, hr, payroll, permissions, projects, users, access_control
+from routers.time_attendance_management import logs_router, settings_router, zkteco_router
+from routers.attendance_monitoring import monitoring_router
 
 app = FastAPI(title="GHP Management API")
 
@@ -41,10 +43,12 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(permissions.router)
 app.include_router(hr.router)
-app.include_router(attendance.router)
+app.include_router(logs_router)
+app.include_router(settings_router)
+app.include_router(zkteco_router)
+app.include_router(monitoring_router)
 app.include_router(payroll.router)
 app.include_router(access_control.router)
-app.include_router(zkteco.router)
 
 
 @app.get("/")

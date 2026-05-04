@@ -59,9 +59,6 @@
                   <span class="time-val" :style="{ color: getCheckoutColor(item) }">
                     {{ formatTime(item.attendance.actual_check_out) }}
                   </span>
-                  <span v-if="item.ot_request" class="status-mini-label ot-label">
-                    OT {{ item.ot_request.total_hours }} hr ({{ item.ot_request.end_time }})
-                  </span>
                 </div>
                 <span v-else class="empty-val">—</span>
               </td>
@@ -87,8 +84,8 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import api from '../../api'
-import { mediaUrl } from '../../utils/mediaUrl'
+import api from '../../../api'
+import { mediaUrl } from '../../../utils/mediaUrl'
 
 const loading = ref(false)
 const attendanceData = ref([])
@@ -112,7 +109,7 @@ const fetchData = async () => {
     otRules.value = ruleRes.data
     
     // 2. ดึงข้อมูลพนักงานและการลงเวลาวันนี้
-    const response = await api.get('/attendance/today')
+    const response = await api.get('/attendance-monitoring/today')
     attendanceData.value = response.data
   } catch (error) {
     console.error("Error fetching today's attendance:", error)
@@ -164,12 +161,6 @@ const getCheckoutColor = (item) => {
   const actual = parseSafeDate(actualStr)
   const actualTime = actual.getHours() * 60 + actual.getMinutes()
   
-  if (item.ot_request) {
-    const [otH, otM] = item.ot_request.end_time.split(':').map(Number)
-    const otEndTime = otH * 60 + otM
-    return actualTime < otEndTime ? '#ef4444' : '#3b82f6'
-  }
-
   const [stdH, stdM] = otRules.value.check_out_time.split(':').map(Number)
   const stdEndTime = stdH * 60 + stdM
   return actualTime < stdEndTime ? '#ef4444' : '#10b981'
@@ -345,10 +336,7 @@ const getCheckoutColor = (item) => {
   text-transform: uppercase;
 }
 
-.ot-label {
-  background-color: #e0e7ff;
-  color: #4338ca;
-}
+
 
 /* Status Column */
 .status-pill {
