@@ -49,17 +49,17 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(os.path.join(UPLOAD_DIR, "videos"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# ─── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(users_router)
-app.include_router(auth_login_router, prefix="/auth")
 app.include_router(permissions.router)
 app.include_router(hr_router)
 app.include_router(logs_router)
 app.include_router(settings_router)
 app.include_router(zkteco_router)
 app.include_router(monitoring_router)
-
 app.include_router(access_control.router)
+
+# ─── Auth & Users (Moved to bottom for debugging) ───
+app.include_router(auth_login_router, prefix="/auth")
+app.include_router(users_router)
 
 
 @app.get("/")
