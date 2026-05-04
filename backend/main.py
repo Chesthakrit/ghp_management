@@ -1,7 +1,4 @@
 import os
-print("\n" + "!"*60)
-print("!!! GHP BACKEND IS LOADING LATEST CODE (VERSION: 404-FIX-FINAL) !!!")
-print("!"*60 + "\n")
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,15 +18,6 @@ from routers.time_attendance_management import logs_router, settings_router, zkt
 from routers.attendance_monitoring import monitoring_router
 
 app = FastAPI(title="GHP Management API")
-
-@app.on_event("startup")
-async def startup_event():
-    print("\n" + "="*50)
-    print("REGISTERED ROUTES:")
-    for route in app.routes:
-        methods = getattr(route, 'methods', None)
-        print(f"Path: {route.path} | Methods: {methods}")
-    print("="*50 + "\n")
 
 # ─── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
@@ -114,7 +102,3 @@ app.include_router(users_router)
 @app.get("/")
 async def root():
     return {"message": "GHP Management System is running."}
-
-@app.get("/test-refactor")
-def test_refactor():
-    return {"status": "ok", "message": "Refactor code is active"}
