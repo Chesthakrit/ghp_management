@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from routers import permissions, access_control
-from routers.authentication import router as auth_router
+from routers.authentication.login import router as auth_login_router
 from routers.personnel_management import router as users_router
 from routers.hr_management import router as hr_router
 from routers.time_attendance_management import logs_router, settings_router, zkteco_router
@@ -42,7 +42,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ─── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(users_router)
-app.include_router(auth_router, prefix="/auth")
+app.include_router(auth_login_router, prefix="/auth")
 app.include_router(permissions.router)
 app.include_router(hr_router)
 app.include_router(logs_router)
@@ -56,3 +56,7 @@ app.include_router(access_control.router)
 @app.get("/")
 async def root():
     return {"message": "GHP Management System is running."}
+
+@app.get("/test-refactor")
+def test_refactor():
+    return {"status": "ok", "message": "Refactor code is active"}
