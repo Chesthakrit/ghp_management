@@ -19,8 +19,6 @@ AVAILABLE_PERMISSIONS = [
     {"id": "user.view", "name": "ดูรายชื่อพนักงาน (View Users)"},
     {"id": "user.manage", "name": "จัดการข้อมูลพนักงาน/ประเมินผล (Manage Users / Evaluation)"},
     {"id": "role.manage", "name": "จัดการตำแหน่งและสิทธิ์การใช้งาน (Manage Roles)"},
-    {"id": "project.view_all", "name": "ดูโปรเจกต์ของทุกคน (View All Projects)"},
-    {"id": "project.delete", "name": "ลบโปรเจกต์ (Delete Projects)"},
 
     {"id": "page.usermanagement", "name": "หน้า: จัดการพนักงาน (User Management Page)"},
     {"id": "action.user.edit_identity", "name": "ปุ่ม: แก้ไขข้อมูลตัวตน (Edit Employee Identity)"},

@@ -11,9 +11,9 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.attendance import AttendanceLog, AttendanceConfig, OTRequest
+from models.attendance import AttendanceLog, AttendanceConfig
 from models.users import User, EmployeeProfile
-from utils.attendance_utils import calculate_attendance_status
+from .attendance_logic import calculate_attendance_status
 
 # ─── Logger ───────────────────────────────────────────────────────────────────
 logger = logging.getLogger("zkteco")
@@ -126,25 +126,13 @@ def _process_attlog(body: str, db: Session):
                     normal_out_h, normal_out_m = map(int, normal_out_str.split(":"))
                     normal_out_time = scan_time.replace(hour=normal_out_h, minute=normal_out_m, second=0, microsecond=0)
 
-                    # เช็คว่ามี OT ที่อนุมัติแล้วในวันนั้นหรือไม่
-                    approved_ot = db.query(OTRequest).filter(
-                        OTRequest.user_id == user.id,
-                        OTRequest.request_date == scan_date,
-                        OTRequest.status == "approved"
-                    ).first()
-
-                    if not approved_ot:
-                        # ถ้าไม่มี OT และสแกนหลังเวลาเลิกงานปกติ -> ตัดจบที่เวลาเลิกงานปกติ
-                        if scan_time > normal_out_time:
-                            log.check_out_time = normal_out_time
-                            log.note = f"Scanned out at {scan_time.strftime('%H:%M')} (No OT: Cutoff applied)"
-                        else:
-                            log.check_out_time = scan_time
-                            log.note = "Scanned out via ZKTeco (Auto)"
+                    # ถ้าสแกนหลังเวลาเลิกงานปกติ -> ตัดจบที่เวลาเลิกงานปกติ (No OT)
+                    if scan_time > normal_out_time:
+                        log.check_out_time = normal_out_time
+                        log.note = f"Scanned out at {scan_time.strftime('%H:%M')} (Cutoff applied)"
                     else:
-                        # ถ้ามี OT ให้บันทึกตามจริง (ลอจิก OT จะไปคำนวณแยกที่ตาราง OT อีกที)
                         log.check_out_time = scan_time
-                        log.note = f"Scanned out via ZKTeco (OT Approved until {approved_ot.end_time})"
+                        log.note = "Scanned out via ZKTeco (Auto)"
 
             success += 1
 

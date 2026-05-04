@@ -16,32 +16,27 @@
       </div>
 
       <nav class="sidebar-nav">
-        <!-- Dashboard / Projects -->
-        <button 
-          :class="['nav-item', { active: currentView === 'projects' }]"
-          @click="currentView = 'projects'; sidebarOpen = false"
-        >
-          📊 กิจการทั้งหมด
-        </button>
+        <!-- Main Management Hub -->
+        <div class="nav-divider">System Hub</div>
 
-        <!-- Profile -->
+        <!-- Profile (Always available) -->
         <button 
           :class="['nav-item', { active: currentView === 'profile' }]"
           @click="emit('go-to-profile'); sidebarOpen = false"
         >
-          👤 โปรไฟล์ของฉัน
+          👤 My Personal Profile
         </button>
 
         <!-- Admin Features directly in sidebar -->
         <template v-if="canManageUsers || canManageRoles">
-          <div class="nav-divider">Admin Features</div>
+          <div class="nav-divider">Management Modules</div>
           
           <button 
             v-if="canManageUsers"
             :class="['nav-item', { active: currentView === 'users' }]"
             @click="currentView = 'users'; sidebarOpen = false"
           >
-            👥 การจัดการผู้ใช้
+            👥 Personnel Management
           </button>
 
           <button 
@@ -49,7 +44,7 @@
             :class="['nav-item', { active: currentView === 'roles' }]"
             @click="currentView = 'roles'; sidebarOpen = false"
           >
-            🔐 ตำแหน่งและสิทธิ์
+            🔐 Roles & Permissions
           </button>
         </template>
       </nav>
@@ -74,47 +69,29 @@
 
       <main class="dashboard-content">
         
-        <!-- View: Projects -->
-        <div v-if="currentView === 'projects'">
-          <div class="content-header">
-            <h2>{{ viewTitle }}</h2>
-          </div>
+        <!-- View: User Management -->
+        <UserManagement v-if="currentView === 'users'" />
+        
+        <!-- View: Role Management -->
+        <RoleManagement v-if="currentView === 'roles'" />
 
-          <!-- Loading State -->
-          <div v-if="isLoading" class="loading-spinner">
-            Loading...
-          </div>
-
-          <!-- Project Grid -->
-          <div v-else-if="projects.length > 0" class="projects-grid">
-            <div v-for="project in projects" :key="project.id" class="project-card">
-              <div class="card-header">
-                <h3>{{ project.name }}</h3>
-                <span class="status-badge">Active</span>
-              </div>
-              <div class="card-body">
-                <p><strong>Customer:</strong> {{ project.customer }}</p>
-                <p><strong>Due Date:</strong> {{ project.due_date || 'N/A' }}</p>
-                <p class="description">{{ project.description }}</p>
-                <!-- Show Owner ID if Admin (or has permission) -->
-                <p v-if="canViewAllProjects" class="owner-info">Owner ID: {{ project.owner_id }}</p>
-              </div>
-              <div class="card-footer">
-                <button class="btn-view">View Details</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Empty State -->
-          <div v-else class="empty-state">
-            <h3>No Projects Found</h3>
-            <p>Get started by creating a new project.</p>
+        <!-- View: Dashboard Stats (Placeholder for future) -->
+        <div v-if="currentView === 'hub'" class="welcome-screen">
+          <div class="welcome-box">
+             <h1>Welcome, {{ username }}</h1>
+             <p>Select a module from the sidebar to manage the system.</p>
+             <div class="hub-stats">
+                <div class="hub-card" @click="currentView = 'users'">
+                  <i class="fas fa-users"></i>
+                  <span>Manage Employees</span>
+                </div>
+                <div class="hub-card" @click="emit('go-to-profile')">
+                  <i class="fas fa-user-circle"></i>
+                  <span>View My Card</span>
+                </div>
+             </div>
           </div>
         </div>
-
-        <!-- View: User Management (Inside Dashboard if needed) -->
-        <UserManagement v-if="currentView === 'users'" />
-        <RoleManagement v-if="currentView === 'roles'" />
 
       </main>
     </div>
@@ -125,12 +102,11 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
-import UserManagement from '../admin/UserManagement.vue'
+import UserManagement from './personnel-management/UserManagement.vue'
 import RoleManagement from './RoleManagement.vue'
 
 const emit = defineEmits(['go-to-login', 'go-to-admin', 'go-to-profile'])
 
-const projects = ref([])
 const isLoading = ref(false)
 const sidebarOpen = ref(false)
 
@@ -140,23 +116,22 @@ const roleName = ref('')
 const permissions = ref([])
 
 // View State
-const currentView = ref('users') 
+const currentView = ref('hub') 
 
 // Permission Checks
 const canManageUsers = computed(() => permissions.value.includes('user.manage'))
 const canManageRoles = computed(() => permissions.value.includes('role.manage'))
-const canViewAllProjects = computed(() => permissions.value.includes('project.view_all'))
 
 const viewTitle = computed(() => {
   const titles = {
-    projects: 'กิจการทั้งหมด',
-    users: 'การจัดการผู้ใช้',
-    roles: 'ตำแหน่งและสิทธิ์'
+    hub: 'GHP System Hub',
+    users: 'Personnel Management',
+    roles: 'Roles & Permissions'
   }
   return titles[currentView.value] || 'GHP Platform'
 })
 
-const fetchProjects = async () => {
+const fetchUserInfo = async () => {
   const token = localStorage.getItem('token')
   if (!token) {
     window.location.reload() 
@@ -169,10 +144,8 @@ const fetchProjects = async () => {
     const userRes = await api.get('/users/me')
     roleName.value = userRes.data.role
     permissions.value = userRes.data.permissions || []
-    const response = await api.get('/projects/')
-    projects.value = response.data
   } catch (error) {
-    console.error('Error fetching data:', error)
+    console.error('Error fetching user info:', error)
     if (error.response && error.response.status === 401) logout()
   } finally {
     isLoading.value = false
@@ -185,7 +158,7 @@ const logout = () => {
   Swal.fire({ icon: 'success', title: 'Logged Out', timer: 1000, showConfirmButton: false })
 }
 
-onMounted(() => { fetchProjects() })
+onMounted(() => { fetchUserInfo() })
 </script>
 
 <style scoped>
@@ -193,7 +166,7 @@ onMounted(() => { fetchProjects() })
   display: flex;
   min-height: 100vh;
   background-color: #f2f4f6;
-  font-family: 'Kanit', sans-serif;
+  font-family: 'Outfit', 'Kanit', sans-serif;
   overflow: hidden;
 }
 
@@ -268,7 +241,6 @@ onMounted(() => { fetchProjects() })
   padding: 15px 14px 5px;
   font-weight: 700;
 }
-.btn-admin-panel-nav { border: 1px dashed rgba(52, 152, 219, 0.4); margin-top: 10px; color: #fff; font-weight: 600; }
 
 .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
 .btn-logout-sidebar {
@@ -323,35 +295,41 @@ onMounted(() => { fetchProjects() })
   overflow-y: auto;
 }
 
-.content-header {
+/* Welcome Screen */
+.welcome-screen {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  justify-content: center;
+  height: 100%;
 }
-.content-header h2 { font-size: 1.5rem; color: #1a2a3a; margin: 0; }
+.welcome-box {
+  text-align: center;
+}
+.welcome-box h1 { font-size: 2rem; color: #1a2a3a; margin-bottom: 8px; }
+.welcome-box p { color: #64748b; margin-bottom: 32px; }
 
-/* Project Cards */
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+.hub-stats {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
 }
-.project-card {
-  background: white; border-radius: 12px; padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-  transition: all 0.25s; border: 1px solid #edf0f2;
+.hub-card {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  width: 180px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
 }
-.project-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08); }
-
-.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-.card-header h3 { font-size: 1.1rem; color: #1a2a3a; margin: 0; }
-.status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; background: #f1c40f; color: #fff; font-weight: 600; }
-.card-body p { margin: 6px 0; font-size: 0.88rem; color: #576574; }
-.description { color: #8395a7; font-size: 0.82rem; margin-top: 8px !important; }
-.card-footer { margin-top: 16px; padding-top: 14px; border-top: 1px solid #f2f4f6; display: flex; justify-content: flex-end; }
-.btn-view { background: transparent; color: #3498db; border: 1px solid #3498db; padding: 6px 14px; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
-.btn-view:hover { background: #3498db; color: #fff; }
+.hub-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); border-color: #3b82f6; }
+.hub-card i { font-size: 2rem; color: #3b82f6; }
+.hub-card span { font-weight: 600; color: #1e293b; font-size: 0.9rem; }
 
 /* RESPONSIVE */
 @media (max-width: 1024px) {
@@ -362,9 +340,4 @@ onMounted(() => { fetchProjects() })
   .sidebar-close-btn { display: block; }
   .dashboard-content { padding: 20px; }
 }
-@media (max-width: 640px) {
-  .projects-grid { grid-template-columns: 1fr; }
-}
-.loading-spinner, .empty-state { text-align: center; padding: 60px; color: #a8bcc8; grid-column: 1 / -1; }
-.empty-state h3 { color: #1a2a3a; margin-bottom: 6px; }
 </style>

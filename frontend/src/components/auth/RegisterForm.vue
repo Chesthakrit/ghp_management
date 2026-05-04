@@ -257,14 +257,14 @@ const handleRegister = async () => {
       role:           'employee',
     }
 
-    const resp = await api.post('/users/', payload)
+    const resp = await api.post('/auth/register', payload)
     const userId = resp.data.id
 
     // Step 2: Upload files
     const fd = new FormData()
     fd.append('photo',  formData.photo)
     fd.append('id_doc', formData.idDoc)
-    await api.post(`/users/${userId}/upload`, fd, {
+    await api.post(`/auth/register/${userId}/upload`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 

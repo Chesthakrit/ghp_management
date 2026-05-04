@@ -8,7 +8,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routers import attendance, auth, hr, payroll, permissions, projects, users, access_control, zkteco
+from routers import permissions, access_control
+from routers.authentication import router as auth_router
+from routers.personnel_management import router as users_router
+from routers.hr_management import router as hr_router
+from routers.time_attendance_management import logs_router, settings_router, zkteco_router
+from routers.attendance_monitoring import monitoring_router
 
 app = FastAPI(title="GHP Management API")
 
@@ -36,15 +41,16 @@ os.makedirs(os.path.join(UPLOAD_DIR, "videos"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ─── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(users.router)
-app.include_router(auth.router)
-app.include_router(projects.router)
+app.include_router(users_router)
+app.include_router(auth_router)
 app.include_router(permissions.router)
-app.include_router(hr.router)
-app.include_router(attendance.router)
-app.include_router(payroll.router)
+app.include_router(hr_router)
+app.include_router(logs_router)
+app.include_router(settings_router)
+app.include_router(zkteco_router)
+app.include_router(monitoring_router)
+
 app.include_router(access_control.router)
-app.include_router(zkteco.router)
 
 
 @app.get("/")

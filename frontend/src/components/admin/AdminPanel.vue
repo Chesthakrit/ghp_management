@@ -26,12 +26,7 @@
           <i class="fas fa-sliders-h"></i> HR Settings
         </button>
 
-        <button
-          :class="['nav-item', { active: activeTab === 'salary' }]"
-          @click="activeTab = 'salary'; sidebarOpen = false"
-        >
-          <i class="fas fa-money-check-alt"></i> Salary Settings
-        </button>
+
 
         <button
           v-if="isAdmin || hasPerm('page.access')"
@@ -56,12 +51,7 @@
           <i class="fas fa-clock"></i> Time & Leave
         </button>
 
-        <button
-          :class="['nav-item', { active: activeTab === 'policies' }]"
-          @click="activeTab = 'policies'; sidebarOpen = false"
-        >
-          <i class="fas fa-file-contract"></i> Policies Setup
-        </button>
+
       </nav>
       <button class="logout-sidebar-btn" @click="$emit('logout')">
         <i class="fas fa-door-open"></i> Logout System
@@ -77,11 +67,9 @@
           {{ 
             activeTab === 'users' ? 'User Management' : 
             activeTab === 'hr' ? 'HR Settings' : 
-            activeTab === 'salary' ? 'Salary Settings' : 
             activeTab === 'access' ? 'Access Control' : 
             activeTab === 'attendance_dash' ? 'Attendance Dashboard' :
-            activeTab === 'time_leave' ? 'Time & Leave' : 
-            activeTab === 'policies' ? 'Policy Management' : 'Dashboard'
+            activeTab === 'time_leave' ? 'Time & Leave' : 'Dashboard'
           }}
         </span>
         <button class="mobile-logout-btn" @click="$emit('logout')" title="Logout">🚪</button>
@@ -109,14 +97,7 @@
           />
         </div>
 
-        <!-- TAB: Salary Settings -->
-        <div v-if="activeTab === 'salary'">
-          <SalaryManagement 
-            :departments="departments" 
-            :jobTitles="rawJobTitles" 
-            @refresh="fetchHRData" 
-          />
-        </div>
+
         
         <!-- TAB: Access Control -->
         <div v-if="activeTab === 'access'">
@@ -129,20 +110,17 @@
           />
         </div>
 
-        <!-- TAB: Attendance Dashboard -->
+        <!-- TAB: Attendance Monitoring -->
         <div v-if="activeTab === 'attendance_dash'">
-          <AttendanceDashboard />
+          <AttendanceMonitoring />
         </div>
 
         <!-- TAB: Time & Leave Settings -->
         <div v-if="activeTab === 'time_leave'">
-          <AttendanceSettings />
+          <TimeConfiguration />
         </div>
 
-        <!-- TAB: Policy Management -->
-        <div v-if="activeTab === 'policies'">
-          <PolicyManagement />
-        </div>
+
       </main>
     </div>
   </div>
@@ -153,12 +131,10 @@ import { ref, computed, watch, onMounted } from 'vue'
 import api from '../../api'
 import Swal from 'sweetalert2'
 import AccessManagement from './AccessManagement.vue'
-import UserManagement from '../shared/UserManagement.vue'
-import SalaryManagement from '../shared/SalaryManagement.vue'
-import HRManagement from '../shared/HRManagement.vue'
-import PolicyManagement from '../shared/PolicyManagement.vue'
-import AttendanceSettings from '../shared/AttendanceSettings.vue'
-import AttendanceDashboard from '../user/AttendanceDashboard.vue'
+import UserManagement from '../shared/personnel-management/UserManagement.vue'
+import HRManagement from '../shared/hr-management/HRManagement.vue'
+import TimeConfiguration from '../shared/time-attendance-management/TimeConfiguration.vue'
+import AttendanceMonitoring from '../shared/attendance-monitoring/AttendanceMonitoring.vue'
 
 const props = defineProps({
   embedded: { type: String, default: null }

@@ -175,9 +175,9 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue'
-import api from '../../api'
+import api from '../../../api'
 import Swal from 'sweetalert2'
-import { mediaUrl } from '../../utils/mediaUrl'
+import { mediaUrl } from '../../../utils/mediaUrl'
 
 const props = defineProps(['initialUserId'])
 const emit = defineEmits(['go-back'])
