@@ -42,7 +42,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ─── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(users_router)
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/auth")
 app.include_router(permissions.router)
 app.include_router(hr_router)
 app.include_router(logs_router)
