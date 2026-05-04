@@ -2,6 +2,5 @@
 # เพื่อให้ไฟล์อื่นสามารถ import ข้อมูลจากโฟลเดอร์นี้ไปใช้งานได้สะดวก
 
 from .users import *
-from .projects import *
 from .attendance import *
 

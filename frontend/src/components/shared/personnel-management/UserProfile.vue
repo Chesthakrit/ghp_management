@@ -158,13 +158,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import api from '../../api'
+import api from '../../../api'
 import Swal from 'sweetalert2'
-import UserManagement from '../shared/UserManagement.vue'
-import AdminPanel from '../admin/AdminPanel.vue'
+import UserManagement from './UserManagement.vue'
+import AdminPanel from '../../admin/AdminPanel.vue'
 import SkillViewer from './SkillViewer.vue'
-import AttendanceHistory from '../shared/time-attendance-management/AttendanceHistory.vue'
-import { mediaUrl } from '../../utils/mediaUrl'
+import AttendanceHistory from '../time-attendance-management/AttendanceHistory.vue'
+import { mediaUrl } from '../../../utils/mediaUrl'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
