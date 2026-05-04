@@ -58,7 +58,6 @@ class User(Base):
     id_doc_path = Column(String, nullable=True)    # ที่อยู่ไฟล์รูปบัตรประชาชน/พาสปอร์ต
 
     # ความสัมพันธ์กับตารางอื่นๆ
-    projects = relationship("Project", back_populates="owner") # โครงการที่ดูแล
     employee_profile = relationship("EmployeeProfile", back_populates="user", uselist=False) # ข้อมูลพนักงาน (1-to-1)
     duty_evaluations = relationship("UserDutyEvaluation", foreign_keys="[UserDutyEvaluation.user_id]", back_populates="user", cascade="all, delete-orphan")
 

@@ -57,9 +57,5 @@ class AttendanceLocation(Base):
     lon = Column(Float, nullable=False)
     radius = Column(Integer, default=100) # รัศมีที่ยอมให้เช็คอินได้ (เป็นเมตร)
     is_fixed = Column(Boolean, default=True) # True=Fixed (โรงงาน/ออฟฟิศ), False=Onsite (ดึงมาจากโปรเจกต์)
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True) # เชื่อมกับโปรเจกต์ (ถ้ามี)
-    
-    # Relationship (Optional: to project if needed later)
-    project = relationship("Project", backref="attendance_locations")
 
 
