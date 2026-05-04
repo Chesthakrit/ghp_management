@@ -17,6 +17,15 @@ from routers.attendance_monitoring import monitoring_router
 
 app = FastAPI(title="GHP Management API")
 
+@app.on_event("startup")
+async def startup_event():
+    print("\n" + "="*50)
+    print("REGISTERED ROUTES:")
+    for route in app.routes:
+        methods = getattr(route, 'methods', None)
+        print(f"Path: {route.path} | Methods: {methods}")
+    print("="*50 + "\n")
+
 # ─── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
