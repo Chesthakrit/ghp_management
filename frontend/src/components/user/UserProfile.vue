@@ -158,13 +158,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import api from '../../../api'
+import api from '../../api'
 import Swal from 'sweetalert2'
-import UserManagement from './UserManagement.vue'
-import AdminPanel from '../../admin/AdminPanel.vue'
+import UserManagement from '../shared/personnel-management/UserManagement.vue'
+import AdminPanel from '../admin/AdminPanel.vue'
 import SkillViewer from './SkillViewer.vue'
-import AttendanceHistory from '../time-attendance-management/AttendanceHistory.vue'
-import { mediaUrl } from '../../../utils/mediaUrl'
+import AttendanceHistory from '../shared/time-attendance-management/AttendanceHistory.vue'
+import { mediaUrl } from '../../utils/mediaUrl'
 
 const props = defineProps(['username', 'userId'])
 const emit = defineEmits(['go-back', 'logout', 'go-to-identity', 'view-profile', 'go-to-admin'])
@@ -183,6 +183,7 @@ const userSkills = ref([])
 const userEvaluations = ref({})
 const selectedSkill = ref(null)
 const subEvaluations = ref({}) // subDutyId -> boolean
+const viewedUserPermissions = ref([])
 
 // Auto-calculate percentage (0-100) from sub-duty checklist completion
 const autoPercentRatings = computed(() => {
@@ -214,7 +215,8 @@ const selectSkill = (skill) => {
 const currentUserPermissions = ref(JSON.parse(localStorage.getItem('user_permissions') || '[]'))
 
 const menuItems = computed(() => {
-  const perms = currentUserPermissions.value
+  // Use permissions of the user being viewed (owner of the profile)
+  const perms = viewedUserPermissions.value
   
   const baseItems = [
     { id: 'profile', label: 'Personal Card', icon: 'fas fa-user-circle' },
@@ -223,23 +225,23 @@ const menuItems = computed(() => {
   ]
 
   // Add Dynamic Management Tabs based on Permissions
-  if (perms.includes('page.usermanagement') || isAdmin.value) {
-    baseItems.push({ id: 'manage_users', label: 'Admin (User List)', icon: 'fas fa-users-cog' })
+  if (perms.includes('page.usermanagement')) {
+    baseItems.push({ id: 'manage_users', label: 'Personnel Management', icon: 'fas fa-users-cog' })
   }
-  if (perms.includes('page.hr') || isAdmin.value) {
-    baseItems.push({ id: 'manage_hr', label: 'Admin (Section)', icon: 'fas fa-sitemap' })
+  if (perms.includes('page.hr')) {
+    baseItems.push({ id: 'manage_hr', label: 'Organization Structure', icon: 'fas fa-sitemap' })
   }
-  if (perms.includes('page.time_leave') || isAdmin.value) {
-    baseItems.push({ id: 'manage_time_leave', label: 'Admin (Time)', icon: 'fas fa-hourglass-half' })
+  if (perms.includes('page.time_leave')) {
+    baseItems.push({ id: 'manage_time_leave', label: 'Attendance Management', icon: 'fas fa-hourglass-half' })
   }
-  if (perms.includes('page.salary') || isAdmin.value) {
-    baseItems.push({ id: 'manage_salary', label: 'Admin (Salary)', icon: 'fas fa-money-check-alt' })
+  if (perms.includes('page.salary')) {
+    baseItems.push({ id: 'manage_salary', label: 'Payroll Settings', icon: 'fas fa-money-check-alt' })
   }
-  if (perms.includes('page.access') || isAdmin.value) {
-    baseItems.push({ id: 'manage_access', label: 'Admin (Access Control)', icon: 'fas fa-shield-alt' })
+  if (perms.includes('page.access')) {
+    baseItems.push({ id: 'manage_access', label: 'Access Control', icon: 'fas fa-shield-alt' })
   }
-  if (perms.includes('page.attendance_dash') || isAdmin.value) {
-    baseItems.push({ id: 'manage_attendance_dash', label: 'Admin (Attendance Dash)', icon: 'fas fa-chart-line' })
+  if (perms.includes('page.attendance_dash')) {
+    baseItems.push({ id: 'manage_attendance_dash', label: 'Attendance Dashboard', icon: 'fas fa-chart-line' })
   }
 
   return baseItems
@@ -295,6 +297,7 @@ const fetchUserData = async () => {
     const endpoint = targetUserId ? `/users/${targetUserId}` : '/users/me'
     const res = await api.get(endpoint)
     user.value = res.data
+    viewedUserPermissions.value = res.data.permissions || []
 
     // ─── CRITICAL: Refresh current user's permissions in frontend state ───
     if (!props.userId) {

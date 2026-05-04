@@ -130,7 +130,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import api from '../../../api'
+import api from '../../api'
 
 const props = defineProps({
   userSkills: {
