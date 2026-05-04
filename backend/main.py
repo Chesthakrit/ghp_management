@@ -22,16 +22,7 @@ app = FastAPI(title="GHP Management API")
 # ─── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:3000",
-        "http://192.168.1.104:5173",
-        "http://192.168.1.104:5174",
-        "http://192.168.1.104:5175",
-        "http://192.168.1.104:5176",
-        "http://192.168.1.104:3000",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
